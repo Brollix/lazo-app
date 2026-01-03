@@ -1,0 +1,13 @@
+{
+  "name": "lazo-app",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "lazo-client",
+    "lazo-server"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev --workspace=lazo-client",
+    "dev:server": "npm run dev --workspace=lazo-server"
+  }
+}
