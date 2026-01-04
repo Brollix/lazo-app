@@ -2,6 +2,8 @@ version: "3.8"
 
 services:
   server:
+    image: lazo-server
+    container_name: lazo-server
     build: .
     ports:
       - "3000:3000"

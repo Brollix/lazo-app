@@ -7,7 +7,17 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(
+	cors({
+		origin: "*", // Allow all origins for testing
+		methods: ["GET", "POST", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
+	})
+);
+
+// Explicitly handle OPTIONS to ensure preflight works
+app.options("*", cors());
+
 app.use(express.json());
 
 import multer from "multer";
