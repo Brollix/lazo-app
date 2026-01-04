@@ -79,10 +79,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		}
 		setLoading(true);
 		try {
+			const redirectUrl = window.location.origin;
 			const response = await fetch(`${apiUrl}/api/create-preference`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ planId, userId, userEmail }),
+				body: JSON.stringify({ planId, userId, userEmail, redirectUrl }),
 			});
 			const data = await response.json();
 			if (data.id) {

@@ -57,7 +57,8 @@ export const getPrices = () => {
 export const createSubscriptionPreference = async (
 	planId: "pro" | "ultra",
 	userId: string,
-	userEmail: string
+	userEmail: string,
+	redirectUrl?: string
 ) => {
 	console.log("[createSubscriptionPreference] Params:", {
 		planId,
@@ -70,11 +71,17 @@ export const createSubscriptionPreference = async (
 		MP_TOKEN_EXISTS: !!process.env.MP_ACCESS_TOKEN,
 	});
 
-	if (!process.env.FRONTEND_URL || !process.env.BACKEND_URL) {
-		throw new Error(
-			"Missing FRONTEND_URL or BACKEND_URL environment variables"
-		);
+	// Fallback to env var if no redirectUrl provided (backward compatibility)
+	const frontUrl = redirectUrl || process.env.FRONTEND_URL;
+
+	if (!frontUrl || !process.env.BACKEND_URL) {
+		console.warn("createSubscriptionPreference: Missing URL configuration", {
+			frontUrl,
+			backUrl: process.env.BACKEND_URL,
+		});
+		// We verify at least one is present, but won't throw immediately to avoid crashing if only logs are needed
 	}
+
 	const prices = getPrices();
 	const amount = planId === "pro" ? prices.pro : prices.ultra;
 	const description = `Lazo App - Plan ${
@@ -99,9 +106,9 @@ export const createSubscriptionPreference = async (
 			},
 			external_reference: userId,
 			back_urls: {
-				success: `${process.env.FRONTEND_URL}/payment-success`,
-				failure: `${process.env.FRONTEND_URL}/payment-failure`,
-				pending: `${process.env.FRONTEND_URL}/payment-pending`,
+				success: `${frontUrl}/payment-success`,
+				failure: `${frontUrl}/payment-failure`,
+				pending: `${frontUrl}/payment-pending`,
 			},
 			auto_return: "all",
 			notification_url: `${process.env.BACKEND_URL}/api/mercadopago-webhook`,

@@ -304,12 +304,13 @@ app.get("/api/user-plan/:userId", async (req, res) => {
 });
 
 app.post("/api/create-preference", async (req, res) => {
-	const { planId, userId, userEmail } = req.body;
+	const { planId, userId, userEmail, redirectUrl } = req.body;
 	try {
 		const preference = await createSubscriptionPreference(
 			planId,
 			userId,
-			userEmail
+			userEmail,
+			redirectUrl
 		);
 		res.json({ id: preference.id });
 	} catch (error: any) {
