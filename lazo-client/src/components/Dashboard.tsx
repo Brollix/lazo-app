@@ -121,21 +121,46 @@ export const Dashboard: React.FC<{
 			</Stack>
 		);
 
+		// Check for Risks
+		if (data.analysis.risk_assessment?.has_risk) {
+			addMessage(
+				"bot",
+				<Box
+					sx={{
+						p: 2,
+						bgcolor: "error.light",
+						color: "error.contrastText",
+						borderRadius: 2,
+						border: "2px solid",
+						borderColor: "error.main",
+					}}
+				>
+					<Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+						🚨 ALERTA DE RIESGO DETECTADA
+					</Typography>
+					<Typography variant="body2">
+						{data.analysis.risk_assessment.summary}
+					</Typography>
+					<Box sx={{ mt: 1 }}>
+						{data.analysis.risk_assessment.alerts.map((alert, i) => (
+							<Chip
+								key={i}
+								label={alert}
+								size="small"
+								sx={{ mr: 0.5, bgcolor: "error.main", color: "white" }}
+							/>
+						))}
+					</Box>
+				</Box>
+			);
+		}
+
 		// We don't auto-generate SOAP here anymore as per new flow,
 		// but we keep the data for when the user clicks the button.
 	};
 
-	const generateSoapNote = (data: ProcessSessionResponse) => {
-		const newContent = `Subjetivo:\n${
-			data.analysis.summary
-		}\n\nObjetivo:\n- Sentimiento: ${
-			data.analysis.sentiment
-		}\n- Temas: ${data.analysis.topics.join(
-			", "
-		)}\n\nEvaluación:\n\nPlan:\n${data.analysis.action_items
-			.map((i) => `- ${i}`)
-			.join("\n")}`;
-
+	const generateClinicalNote = (data: ProcessSessionResponse) => {
+		const newContent = data.analysis.clinical_note || "";
 		setSoapContent(newContent);
 		return newContent;
 	};
@@ -166,17 +191,21 @@ export const Dashboard: React.FC<{
 
 		switch (action) {
 			case "soap":
-				generateSoapNote(sessionData);
+				generateClinicalNote(sessionData);
 				addMessage(
 					"bot",
-					`### Nota SOAP Generada\n\nHe redactado la nota clínica basada en el audio. Ya puedes verla y editarla en el panel de la izquierda.`
+					`### Nota Clínica Generada\n\nHe redactado la nota basada en el formato solicitado. Ya puedes verla y editarla en el panel de la izquierda.`
 				);
 				break;
 			case "tasks":
-				const tasks = sessionData.analysis.action_items
+				const tasks = (sessionData.analysis.action_items || [])
 					.map((t) => `- ${t}`)
 					.join("\n");
-				setSoapContent((prev) => prev + `\n\n### Tareas Detectadas:\n${tasks}`);
+				setSoapContent(
+					(prev) =>
+						prev +
+						`\n\n### Tareas Detectadas:\n${tasks || "No se detectaron tareas."}`
+				);
 				addMessage(
 					"bot",
 					`### Tareas Extraídas\n\nHe detectado las siguientes tareas y las he agregado a la nota:\n\n${tasks}`
@@ -197,7 +226,9 @@ export const Dashboard: React.FC<{
 			case "sentiment":
 				addMessage(
 					"bot",
-					`### Análisis de Sentimiento\n\nEl tono general de la conversación fue predominantemente **${sessionData.analysis.sentiment}**.`
+					`### Análisis de Sentimiento\n\nEl tono general de la conversación fue predominantemente **${
+						sessionData.analysis.sentiment || "No detectado"
+					}**.`
 				);
 				break;
 		}
@@ -329,7 +360,7 @@ export const Dashboard: React.FC<{
 						}}
 					>
 						{audioFile ? (
-							<AudioPlayer url={audioFile} />
+							<AudioPlayer url={audioFile} biometry={sessionData?.biometry} />
 						) : (
 							<Button
 								fullWidth
@@ -595,6 +626,7 @@ export const Dashboard: React.FC<{
 						setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
 					}}
 					analysisData={sessionData ? sessionData.analysis : undefined}
+					biometry={sessionData ? sessionData.biometry : undefined}
 				/>
 			</Box>
 

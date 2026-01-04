@@ -17,16 +17,20 @@ import {
 	Speed,
 } from "@mui/icons-material";
 
+import { Biometry } from "./AudioUploader";
+
 interface AudioPlayerProps {
 	url: string;
 	onReady?: () => void;
 	onTimeUpdate?: (currentTime: number) => void;
+	biometry?: Biometry;
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 	url,
 	onReady,
 	onTimeUpdate,
+	biometry,
 }) => {
 	const theme = useTheme();
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -140,7 +144,72 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 					/>
 				</Box>
 
-				<Box ref={containerRef} sx={{ width: "100%" }} />
+				{/* Alliance Chart */}
+				{biometry && (
+					<Box sx={{ px: 1 }}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							mb={0.5}
+						>
+							<Typography variant="caption" sx={{ fontWeight: 700 }}>
+								Alianza Terapéutica (Habla/Escucha)
+							</Typography>
+							<Typography variant="caption" color="text.secondary">
+								P: {biometry.talkListenRatio.patient}% | T:{" "}
+								{biometry.talkListenRatio.therapist}%
+							</Typography>
+						</Stack>
+						<Box
+							sx={{
+								height: 8,
+								width: "100%",
+								bgcolor: "divider",
+								borderRadius: 4,
+								overflow: "hidden",
+								display: "flex",
+							}}
+						>
+							<Box
+								sx={{
+									width: `${biometry.talkListenRatio.patient}%`,
+									bgcolor: "primary.main",
+									height: "100%",
+								}}
+							/>
+							<Box
+								sx={{
+									width: `${biometry.talkListenRatio.therapist}%`,
+									bgcolor: "secondary.main",
+									height: "100%",
+								}}
+							/>
+						</Box>
+					</Box>
+				)}
+
+				<Box sx={{ position: "relative" }}>
+					<Box ref={containerRef} sx={{ width: "100%" }} />
+					{/* Silence Markers Overlay */}
+					{biometry?.silences.map((s, i) => (
+						<Box
+							key={i}
+							sx={{
+								position: "absolute",
+								top: 0,
+								left: `${(s.start / duration) * 100}%`,
+								width: `${(s.duration / duration) * 100}%`,
+								height: "100%",
+								bgcolor: "rgba(255, 0, 0, 0.1)",
+								borderLeft: "1px dashed rgba(255, 0, 0, 0.3)",
+								borderRight: "1px dashed rgba(255, 0, 0, 0.3)",
+								pointerEvents: "none",
+								zIndex: 1,
+							}}
+						/>
+					))}
+				</Box>
 
 				<Box
 					sx={{

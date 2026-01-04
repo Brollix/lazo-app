@@ -7,6 +7,8 @@ import {
 	TranscribeClient,
 	StartTranscriptionJobCommand,
 	GetTranscriptionJobCommand,
+	StartMedicalTranscriptionJobCommand,
+	GetMedicalTranscriptionJobCommand,
 	MediaFormat,
 	LanguageCode,
 } from "@aws-sdk/client-transcribe";
@@ -52,7 +54,10 @@ export const startTranscriptionJob = async (
 		TranscriptionJobName: jobName,
 		LanguageCode: languageCode as LanguageCode,
 		Media: { MediaFileUri: s3Uri },
-		// OutputBucketName: process.env.AWS_S3_BUCKET_NAME, // Optional: if we want Transcribe to write the JSON to our bucket
+		Settings: {
+			ShowSpeakerLabels: true,
+			MaxSpeakerLabels: 2,
+		},
 	});
 
 	return await transcribeClient.send(command);
@@ -61,6 +66,35 @@ export const startTranscriptionJob = async (
 export const getTranscriptionJobStatus = async (jobName: string) => {
 	const command = new GetTranscriptionJobCommand({
 		TranscriptionJobName: jobName,
+	});
+
+	return await transcribeClient.send(command);
+};
+
+export const startMedicalTranscriptionJob = async (
+	jobName: string,
+	s3Uri: string,
+	languageCode: string = "es-US"
+) => {
+	const command = new StartMedicalTranscriptionJobCommand({
+		MedicalTranscriptionJobName: jobName,
+		LanguageCode: languageCode as LanguageCode,
+		Media: { MediaFileUri: s3Uri },
+		Specialty: "PRIMARYCARE",
+		Type: "CONVERSATION",
+		OutputBucketName: process.env.AWS_S3_BUCKET_NAME,
+		Settings: {
+			ShowSpeakerLabels: true,
+			MaxSpeakerLabels: 2,
+		},
+	});
+
+	return await transcribeClient.send(command);
+};
+
+export const getMedicalTranscriptionJobStatus = async (jobName: string) => {
+	const command = new GetMedicalTranscriptionJobCommand({
+		MedicalTranscriptionJobName: jobName,
 	});
 
 	return await transcribeClient.send(command);

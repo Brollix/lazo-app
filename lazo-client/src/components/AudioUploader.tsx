@@ -23,18 +23,38 @@ import { getGradients } from "../styles.theme";
 import { useTheme } from "@mui/material/styles";
 
 // Define the response structure
-export interface AnalysisResult {
+export interface Topic {
+	label: string;
+	frequency: number;
+	sentiment: string;
+}
+
+export interface RiskAssessment {
+	has_risk: boolean;
+	alerts: string[];
 	summary: string;
-	topics: string[];
-	sentiment: string; // Expanded to include: Positivo, Negativo, Neutral, Ansioso, Triste, Enojado, Confundido, Esperanzado, Abrumado, Frustrado
+}
+
+export interface AnalysisResult {
+	clinical_note: string;
+	summary: string;
+	topics: Topic[];
+	sentiment: string;
 	action_items: string[];
+	risk_assessment: RiskAssessment;
 	entities: { name: string; type: string }[];
+}
+
+export interface Biometry {
+	talkListenRatio: { patient: number; therapist: number };
+	silences: { start: number; duration: number }[];
 }
 
 export interface ProcessSessionResponse {
 	message: string;
 	transcript: string;
 	analysis: AnalysisResult;
+	biometry?: Biometry;
 }
 
 interface AudioUploaderProps {
@@ -44,6 +64,7 @@ interface AudioUploaderProps {
 
 // Helper functions for sentiment display
 const getSentimentLabel = (sentiment: string): string => {
+	if (!sentiment) return "N/A";
 	const labels: Record<string, string> = {
 		Positivo: "POSITIVO",
 		Negativo: "NEGATIVO",
@@ -95,6 +116,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [errorMessage, setErrorMessage] = useState<string>("");
 	const [inputLang, setInputLang] = useState<string>("es-US");
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
+	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
@@ -123,6 +145,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		formData.append("audio", file);
 		formData.append("inputLanguage", inputLang);
 		formData.append("outputLanguage", outputLang);
+		formData.append("noteFormat", noteFormat);
 
 		try {
 			// Start processing immediately after upload starts
@@ -229,6 +252,24 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									<option value="Spanish">Español</option>
 									<option value="English">Inglés</option>
 								</TextField>
+
+								<TextField
+									select
+									label="Formato de Nota"
+									value={noteFormat}
+									onChange={(e) =>
+										setNoteFormat(e.target.value as "SOAP" | "DAP" | "BIRP")
+									}
+									SelectProps={{
+										native: true,
+									}}
+									fullWidth
+									variant="outlined"
+								>
+									<option value="SOAP">SOAP</option>
+									<option value="DAP">DAP</option>
+									<option value="BIRP">BIRP</option>
+								</TextField>
 							</Box>
 
 							<StyledDropzone {...getRootProps({ isDragActive })} sx={{ p: 6 }}>
@@ -328,7 +369,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										<Typography variant="h6">Resumen</Typography>
 									</Box>
 									<Typography variant="body1" color="text.secondary">
-										{result.analysis.summary}
+										{result.analysis?.summary || "No hay resumen disponible."}
 									</Typography>
 								</Paper>
 
@@ -355,8 +396,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 												Sentimiento
 											</Typography>
 											<Chip
-												label={getSentimentLabel(result.analysis.sentiment)}
-												color={getSentimentColor(result.analysis.sentiment)}
+												label={getSentimentLabel(result.analysis?.sentiment)}
+												color={getSentimentColor(
+													result.analysis?.sentiment || "default"
+												)}
 												sx={{ fontWeight: "bold" }}
 											/>
 										</Box>
@@ -366,14 +409,20 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 												Temas Clave
 											</Typography>
 											<Box display="flex" flexWrap="wrap" gap={1}>
-												{result.analysis.topics.map((topic, i) => (
+												{result.analysis?.topics?.map((topic, i) => (
 													<Chip
 														key={i}
-														label={topic}
+														label={topic.label}
 														size="small"
 														variant="outlined"
 													/>
 												))}
+												{(!result.analysis?.topics ||
+													result.analysis.topics.length === 0) && (
+													<Typography variant="caption" color="text.secondary">
+														No se detectaron temas.
+													</Typography>
+												)}
 											</Box>
 										</Box>
 									</Paper>
@@ -381,14 +430,14 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 							</Box>
 
 							{/* Analysis/Entities/Action Items could be expanded here */}
-							{result.analysis.action_items &&
+							{result.analysis?.action_items &&
 								result.analysis.action_items.length > 0 && (
 									<Box mt={3}>
 										<Typography variant="h6" gutterBottom>
 											Acciones a Tomar
 										</Typography>
 										<List dense>
-											{result.analysis.action_items.map((item, i) => (
+											{result.analysis.action_items?.map((item, i) => (
 												<ListItem key={i}>
 													<ListItemText primary={`• ${item}`} />
 												</ListItem>

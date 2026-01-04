@@ -23,25 +23,41 @@ const client = new BedrockRuntimeClient({
 
 export const processTranscriptWithClaude = async (
 	transcriptText: string,
-	targetLanguage: string = "Spanish" // Default to Spanish
+	targetLanguage: string = "Spanish", // Default to Spanish
+	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP"
 ) => {
-	const prompt = `You are an expert AI assistant for "Lazo", an app for tracking therapy sessions and projects.
+	const prompt = `You are an expert AI assistant for "Lazo", an app for tracking therapy sessions.
     
     Processing Task:
-    Analyze the following transcription of a voice note and extract structured data into JSON format.
-    The voice note may contain information about a therapy session, a creative project, or general thoughts.
+    Analyze the following transcription of a therapy session and extract structured data into JSON format.
     
-    IMPORTANT: The output JSON values (summary, topics, sentiment, action_items, entities) MUST be written in ${targetLanguage}, regardless of the input language.
+    Clinical Note Format: ${noteFormat}
+    - SOAP: Subjective (what the patient says), Objective (what is observed), Assessment (clinical impression), Plan (next steps).
+    - DAP: Data (subjective/objective details), Assessment (clinical impression), Plan (next steps).
+    - BIRP: Behavior (observation), Intervention (what therapist did), Response (how patient responded), Plan (next steps).
+
+    Risk Analysis:
+    Identify any "Red Flags" related to suicide, self-harm, abuse, or violence. Respond with clear warnings if detected.
+
+    IMPORTANT: The output JSON values MUST be written in ${targetLanguage}.
 
     Transcript:
     "${transcriptText}"
     
     Output Format (JSON Only):
     {
-      "summary": "Brief summary of the content",
-      "topics": ["topic1", "topic2"],
+      "clinical_note": "The full formatted note in ${noteFormat} style using professional clinical language",
+      "summary": "Brief summary for the dashboard",
+      "topics": [
+         { "label": "Topic Name", "frequency": 25, "sentiment": "Positive|Negative|Neutral" }
+      ],
       "sentiment": "Positivo|Negativo|Neutral|Ansioso|Triste|Enojado|Confundido|Esperanzado|Abrumado|Frustrado",
       "action_items": ["action1", "action2"],
+      "risk_assessment": {
+         "has_risk": true/false,
+         "alerts": ["List of detected red flag topics"],
+         "summary": "Specific risk explanation"
+      },
       "entities": [
          { "name": "Entity Name", "type": "Person|Project|Location|Other" }
       ]
