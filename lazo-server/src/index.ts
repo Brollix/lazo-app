@@ -312,8 +312,13 @@ app.post("/api/create-preference", async (req, res) => {
 			userEmail
 		);
 		res.json({ id: preference.id });
-	} catch (error) {
-		res.status(500).json({ error: "Error creating preference" });
+	} catch (error: any) {
+		console.error("Error creating preference:", error);
+		res.status(500).json({
+			error: "Error creating preference",
+			details: error.message || String(error),
+			stack: error.stack,
+		});
 	}
 });
 

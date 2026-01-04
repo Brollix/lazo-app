@@ -59,6 +59,22 @@ export const createSubscriptionPreference = async (
 	userId: string,
 	userEmail: string
 ) => {
+	console.log("[createSubscriptionPreference] Params:", {
+		planId,
+		userId,
+		userEmail,
+	});
+	console.log("[createSubscriptionPreference] Env:", {
+		FRONTEND_URL: process.env.FRONTEND_URL,
+		BACKEND_URL: process.env.BACKEND_URL,
+		MP_TOKEN_EXISTS: !!process.env.MP_ACCESS_TOKEN,
+	});
+
+	if (!process.env.FRONTEND_URL || !process.env.BACKEND_URL) {
+		throw new Error(
+			"Missing FRONTEND_URL or BACKEND_URL environment variables"
+		);
+	}
 	const prices = getPrices();
 	const amount = planId === "pro" ? prices.pro : prices.ultra;
 	const description = `Lazo App - Plan ${
