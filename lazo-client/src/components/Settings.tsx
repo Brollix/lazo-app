@@ -26,7 +26,8 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 	React.useEffect(() => {
 		if (open) {
 			// In a real app, userId would come from context
-			fetch("http://localhost:3000/api/user-plan/demo-user")
+			const apiUrl = import.meta.env.VITE_API_URL;
+			fetch(`${apiUrl}/api/user-plan/demo-user`)
 				.then((res) => res.json())
 				.then((data) => setUserProfile(data));
 		}
@@ -61,7 +62,7 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 			<DialogTitle
 				sx={{ display: "flex", alignItems: "center", gap: 2, pb: 1 }}
 			>
-				<Typography variant="h6" fontWeight="bold">
+				<Typography variant="h6" fontWeight="bold" component="div">
 					Configuración
 				</Typography>
 			</DialogTitle>
