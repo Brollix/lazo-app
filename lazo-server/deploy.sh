@@ -3,6 +3,9 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 echo "🚀 Starting deployment for Lazo Server..."
 
+echo "📥 Pulling latest changes..."
+git pull
+
 # Check if docker is running
 if ! docker info > /dev/null 2>&1; then
   echo "❌ Error: Docker is not running. Please start Docker Desktop."

@@ -80,10 +80,18 @@ export const createSubscriptionPreference = async (
 	// Fallback to env var if no redirectUrl provided (backward compatibility)
 	const frontUrl = redirectUrl || process.env.FRONTEND_URL;
 
-	if (!frontUrl || !process.env.BACKEND_URL) {
-		const msg = `createSubscriptionPreference: Missing URL configuration. frontUrl: ${frontUrl} (received redirectUrl: ${redirectUrl}), backUrl: ${process.env.BACKEND_URL}`;
+	// Check requirements: We need frontUrl for redirects.
+	// BACKEND_URL is optional (if missing, webhooks won't work, but payment flow will).
+	if (!frontUrl) {
+		const msg = `createSubscriptionPreference: Missing redirectUrl/frontUrl. (received: ${redirectUrl})`;
 		console.error(msg);
 		throw new Error(msg);
+	}
+
+	if (!process.env.BACKEND_URL) {
+		console.warn(
+			"createSubscriptionPreference: BACKEND_URL missing. Webhooks will not be received."
+		);
 	}
 
 	const prices = getPrices();
@@ -96,38 +104,45 @@ export const createSubscriptionPreference = async (
 	const preference = new Preference(client);
 
 	try {
+		const preferenceBody: any = {
+			items: [
+				{
+					id: planId,
+					title: description,
+					quantity: 1,
+					unit_price: amount,
+					currency_id: "ARS",
+				},
+			],
+			payer: {
+				email: userEmail,
+			},
+			external_reference: userId,
+			back_urls: {
+				success: `${frontUrl}/payment-success`,
+				failure: `${frontUrl}/payment-failure`,
+				pending: `${frontUrl}/payment-pending`,
+			},
+			auto_return: "all",
+		};
+
+		// Only add notification_url if BACKEND_URL is defined
+		if (process.env.BACKEND_URL) {
+			preferenceBody.notification_url = `${process.env.BACKEND_URL}/api/mercadopago-webhook`;
+		}
+
 		console.log(
 			"[createSubscriptionPreference] Creating preference with body:",
 			JSON.stringify({
-				items: [{ id: planId, unit_price: amount }],
-				payer: { email: userEmail },
-				external_reference: userId,
+				items: preferenceBody.items,
+				payer: preferenceBody.payer,
+				back_urls: preferenceBody.back_urls,
+				notification_url: preferenceBody.notification_url,
 			})
 		);
 
 		const response = await preference.create({
-			body: {
-				items: [
-					{
-						id: planId,
-						title: description,
-						quantity: 1,
-						unit_price: amount,
-						currency_id: "ARS",
-					},
-				],
-				payer: {
-					email: userEmail,
-				},
-				external_reference: userId,
-				back_urls: {
-					success: `${frontUrl}/payment-success`,
-					failure: `${frontUrl}/payment-failure`,
-					pending: `${frontUrl}/payment-pending`,
-				},
-				auto_return: "all",
-				notification_url: `${process.env.BACKEND_URL}/api/mercadopago-webhook`,
-			},
+			body: preferenceBody,
 		});
 		console.log("[createSubscriptionPreference] Success:", response.id);
 		return response;
