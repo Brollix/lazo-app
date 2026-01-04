@@ -123,7 +123,7 @@ export const createSubscriptionPreference = async (
 				failure: `${frontUrl}/payment-failure`,
 				pending: `${frontUrl}/payment-pending`,
 			},
-			auto_return: "all",
+			// auto_return: "all", // Disabling auto_return as it might cause issues with localhost URLs
 		};
 
 		// Only add notification_url if BACKEND_URL is defined
