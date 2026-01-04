@@ -69,17 +69,21 @@ export const createSubscriptionPreference = async (
 		FRONTEND_URL: process.env.FRONTEND_URL,
 		BACKEND_URL: process.env.BACKEND_URL,
 		MP_TOKEN_EXISTS: !!process.env.MP_ACCESS_TOKEN,
+		MP_TOKEN_PREFIX: process.env.MP_ACCESS_TOKEN
+			? process.env.MP_ACCESS_TOKEN.substring(0, 5) + "..."
+			: "NONE",
+		MP_TOKEN_LEN: process.env.MP_ACCESS_TOKEN
+			? process.env.MP_ACCESS_TOKEN.length
+			: 0,
 	});
 
 	// Fallback to env var if no redirectUrl provided (backward compatibility)
 	const frontUrl = redirectUrl || process.env.FRONTEND_URL;
 
 	if (!frontUrl || !process.env.BACKEND_URL) {
-		console.warn("createSubscriptionPreference: Missing URL configuration", {
-			frontUrl,
-			backUrl: process.env.BACKEND_URL,
-		});
-		// We verify at least one is present, but won't throw immediately to avoid crashing if only logs are needed
+		const msg = `createSubscriptionPreference: Missing URL configuration. frontUrl: ${frontUrl} (received redirectUrl: ${redirectUrl}), backUrl: ${process.env.BACKEND_URL}`;
+		console.error(msg);
+		throw new Error(msg);
 	}
 
 	const prices = getPrices();
@@ -132,8 +136,13 @@ export const createSubscriptionPreference = async (
 			"[createSubscriptionPreference] FAILED at preference.create:",
 			err
 		);
+		const tokenPrefix = process.env.MP_ACCESS_TOKEN
+			? process.env.MP_ACCESS_TOKEN.substring(0, 5)
+			: "NONE";
 		throw new Error(
-			`MercadoPago Error: ${err.message || String(err)} -- Stack: ${err.stack}`
+			`MercadoPago Error: ${
+				err.message || String(err)
+			} -- TokenPrefix: ${tokenPrefix} -- Stack: ${err.stack}`
 		);
 	}
 };
