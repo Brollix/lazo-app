@@ -26,7 +26,7 @@ import { useTheme } from "@mui/material/styles";
 export interface Topic {
 	label: string;
 	frequency: number;
-	sentiment: string;
+	sentiment?: string;
 }
 
 export interface RiskAssessment {
@@ -63,7 +63,7 @@ interface AudioUploaderProps {
 }
 
 // Helper functions for sentiment display
-const getSentimentLabel = (sentiment: string): string => {
+const getSentimentLabel = (sentiment?: string): string => {
 	if (!sentiment) return "N/A";
 	const labels: Record<string, string> = {
 		Positivo: "POSITIVO",
@@ -81,8 +81,9 @@ const getSentimentLabel = (sentiment: string): string => {
 };
 
 const getSentimentColor = (
-	sentiment: string
+	sentiment?: string
 ): "success" | "error" | "warning" | "info" | "default" => {
+	if (!sentiment) return "default";
 	const colors: Record<
 		string,
 		"success" | "error" | "warning" | "info" | "default"
@@ -127,6 +128,13 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			// Wait for upload to invoke onAudioSelected
 		}
 	}, []);
+
+	// Enforce Spanish output if input is Spanish
+	React.useEffect(() => {
+		if (inputLang.startsWith("es")) {
+			setOutputLang("Spanish");
+		}
+	}, [inputLang]);
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop,

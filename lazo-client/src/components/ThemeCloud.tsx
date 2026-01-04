@@ -18,7 +18,8 @@ export const ThemeCloud: React.FC<ThemeCloudProps> = ({ topics }) => {
 		return `${base + (frequency / 100) * scale}rem`;
 	};
 
-	const getSentimentColor = (sentiment: string) => {
+	const getSentimentColor = (sentiment?: string) => {
+		if (!sentiment) return "default";
 		switch (sentiment.toLowerCase()) {
 			case "positive":
 			case "positivo":
@@ -58,7 +59,9 @@ export const ThemeCloud: React.FC<ThemeCloudProps> = ({ topics }) => {
 				{sortedTopics.map((topic, index) => (
 					<Tooltip
 						key={index}
-						title={`${topic.frequency}% de relevancia - ${topic.sentiment}`}
+						title={`${topic.frequency}% de relevancia${
+							topic.sentiment ? ` - ${topic.sentiment}` : ""
+						}`}
 					>
 						<Chip
 							label={topic.label}

@@ -30,7 +30,15 @@ export const processTranscriptWithClaude = async (
     
     Processing Task:
     Analyze the following transcription of a therapy session and extract structured data into JSON format.
-    
+
+    IMPORTANT - LANGUAGE INSTRUCTIONS:
+    The output JSON values MUST be written in ${
+			targetLanguage === "Spanish" ? "Español de Latinoamérica" : targetLanguage
+		}.
+    - If the target is Spanish, DO NOT use English anywhere in the values.
+    - Translate any technical terms if possible, or keep them only if strictly necessary.
+    - The tone should be professional, clinical, and natural for a Latin American psychologist.
+
     Clinical Note Format: ${noteFormat}
     - SOAP: Subjective (what the patient says), Objective (what is observed), Assessment (clinical impression), Plan (next steps).
     - DAP: Data (subjective/objective details), Assessment (clinical impression), Plan (next steps).
@@ -39,31 +47,44 @@ export const processTranscriptWithClaude = async (
     Risk Analysis:
     Identify any "Red Flags" related to suicide, self-harm, abuse, or violence. Respond with clear warnings if detected.
 
-    IMPORTANT: The output JSON values MUST be written in ${targetLanguage}.
-
     Transcript:
     "${transcriptText}"
     
     Output Format (JSON Only):
     {
-      "clinical_note": "The full formatted note in ${noteFormat} style using professional clinical language",
-      "summary": "Brief summary for the dashboard",
+      "clinical_note": "The full formatted note in ${noteFormat} style using professional clinical language in ${
+		targetLanguage === "Spanish" ? "Español" : targetLanguage
+	}",
+      "summary": "Brief summary for the dashboard in ${
+				targetLanguage === "Spanish" ? "Español" : targetLanguage
+			}",
       "topics": [
-         { "label": "Topic Name", "frequency": 25, "sentiment": "Positive|Negative|Neutral" }
+         { "label": "Topic Name (In ${
+						targetLanguage === "Spanish" ? "Español" : targetLanguage
+					})", "frequency": 25, "sentiment": "Positivo|Negativo|Neutral" }
       ],
       "sentiment": "Positivo|Negativo|Neutral|Ansioso|Triste|Enojado|Confundido|Esperanzado|Abrumado|Frustrado",
-      "action_items": ["action1", "action2"],
+      "action_items": ["action1 (in ${
+				targetLanguage === "Spanish" ? "Español" : targetLanguage
+			})", "action2"],
       "risk_assessment": {
          "has_risk": true/false,
-         "alerts": ["List of detected red flag topics"],
-         "summary": "Specific risk explanation"
+         "alerts": ["List of detected red flag topics in ${
+						targetLanguage === "Spanish" ? "Español" : targetLanguage
+					}"],
+         "summary": "Specific risk explanation in ${
+						targetLanguage === "Spanish" ? "Español" : targetLanguage
+					}"
       },
       "entities": [
          { "name": "Entity Name", "type": "Person|Project|Location|Other" }
       ]
     }
     
-    For sentiment, select the MOST DOMINANT emotional state from the list above. Use the exact spelling as shown.
+    IMPORTANT NOTES:
+    - For topics array: Each topic MUST include "label" and "frequency". The "sentiment" field is optional but recommended.
+    - For overall sentiment: Select the MOST DOMINANT emotional state from the list above. Use the exact spelling as shown (Always in Spanish).
+    - All sentiment values in topics should be: "Positivo", "Negativo", or "Neutral".
     
     Ensure the output is valid JSON and nothing else. Do not add markdown blocks like \`\`\`json.`;
 
