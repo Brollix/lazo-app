@@ -7,23 +7,51 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(
-	cors({
-		origin: true, // This echoes back the request origin, which is more reliable than "*" for some cases
-		methods: ["GET", "POST", "OPTIONS"],
-		allowedHeaders: [
-			"Content-Type",
-			"Authorization",
-			"X-Requested-With",
-			"Accept",
-			"Origin",
-		],
-		credentials: true,
-	})
-);
+// CORS configuration - more explicit for CloudFront compatibility
+const corsOptions = {
+	origin: function (origin: string | undefined, callback: Function) {
+		// Allow requests with or without origin (e.g., mobile apps, Postman)
+		if (!origin) return callback(null, true);
+		// Allow all origins for now - you can restrict this in production
+		callback(null, true);
+	},
+	methods: ["GET", "POST", "OPTIONS"],
+	allowedHeaders: [
+		"Content-Type",
+		"Authorization",
+		"X-Requested-With",
+		"Accept",
+		"Origin",
+		"Access-Control-Request-Method",
+		"Access-Control-Request-Headers",
+	],
+	exposedHeaders: [
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Credentials",
+	],
+	credentials: true,
+	maxAge: 86400, // 24 hours
+};
 
-// Explicitly handle OPTIONS to ensure preflight works
-app.options("*", cors());
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS preflight requests
+app.options("*", cors(corsOptions));
+
+// Additional middleware to ensure CORS headers are always present
+app.use((req, res, next) => {
+	const origin = req.headers.origin;
+	if (origin) {
+		res.header("Access-Control-Allow-Origin", origin);
+		res.header("Access-Control-Allow-Credentials", "true");
+	}
+	res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+	);
+	next();
+});
 
 app.use(express.json());
 
