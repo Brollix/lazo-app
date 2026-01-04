@@ -32,6 +32,8 @@ import {
 	uploadAudioToS3,
 	startMedicalTranscriptionJob,
 	getMedicalTranscriptionJobStatus,
+	startTranscriptionJob,
+	getTranscriptionJobStatus,
 	fetchTranscriptContent,
 } from "./services/awsService";
 import { processTranscriptWithClaude } from "./services/aiService";
@@ -63,24 +65,41 @@ app.post(
 			const s3Uri = await uploadAudioToS3(req.file.buffer, fileName, mimeType);
 			console.log(`Uploaded to S3: ${s3Uri}`);
 
-			// 2. Start Transcription Job (Medical)
-			const jobName = `medical-job-${Date.now()}`;
-			await startMedicalTranscriptionJob(jobName, s3Uri, inputLanguage);
-			console.log(`Started medical transcription job: ${jobName}`);
+			// 2. Start Transcription Job
+			// Amazon Transcribe Medical only supports en-US. For others, we fallback to standard Transcribe.
+			const useMedical = inputLanguage === "en-US";
+			const jobName = useMedical
+				? `medical-job-${Date.now()}`
+				: `standard-job-${Date.now()}`;
+
+			if (useMedical) {
+				await startMedicalTranscriptionJob(jobName, s3Uri, inputLanguage);
+				console.log(`Started medical transcription job: ${jobName}`);
+			} else {
+				await startTranscriptionJob(jobName, s3Uri, inputLanguage);
+				console.log(`Started standard transcription job: ${jobName}`);
+			}
 
 			// 3. Poll for completion
 			let status = "IN_PROGRESS";
 			let transcriptUri = null;
 			let attempts = 0;
-			const maxAttempts = 120; // Medical can take slightly longer
+			const maxAttempts = 120;
 
 			while (
 				(status === "IN_PROGRESS" || status === "QUEUED") &&
 				attempts < maxAttempts
 			) {
 				await new Promise((resolve) => setTimeout(resolve, 5000));
-				const response = await getMedicalTranscriptionJobStatus(jobName);
-				const job = response.MedicalTranscriptionJob;
+
+				let job: any;
+				if (useMedical) {
+					const response = await getMedicalTranscriptionJobStatus(jobName);
+					job = response.MedicalTranscriptionJob;
+				} else {
+					const response = await getTranscriptionJobStatus(jobName);
+					job = response.TranscriptionJob;
+				}
 
 				if (job) {
 					status = job.TranscriptionJobStatus || "UNKNOWN";
@@ -89,9 +108,7 @@ app.post(
 					if (status === "COMPLETED") {
 						transcriptUri = job.Transcript?.TranscriptFileUri;
 					} else if (status === "FAILED") {
-						throw new Error(
-							`Medical Transcription failed: ${job.FailureReason}`
-						);
+						throw new Error(`Transcription failed: ${job.FailureReason}`);
 					}
 				}
 			}
