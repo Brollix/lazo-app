@@ -1,10 +1,10 @@
 // Light mode colors (original terracotta palette)
 const lightColors = {
-	terracotta: "#E07A5F",
-	darkSlate: "#3D405B",
-	cream: "#F4F1DE",
-	softGreen: "#81B29A",
-	deepOrange: "#F2CC8F",
+	terracotta: "#D6684E", // Slightly deeper terracotta
+	darkSlate: "#2D3047", // Slightly more navy slate
+	cream: "#FAF9F6", // Softer off-white
+	softGreen: "#6B9080", // Muted sage green
+	deepOrange: "#E29578", // Complementary muted orange
 	white: "#FFFFFF",
 	glassBorder: "rgba(255, 255, 255, 0.18)",
 	text: {
@@ -22,21 +22,21 @@ const lightColors = {
 // Dark mode colors (refined for better contrast and aesthetics)
 const darkColors = {
 	terracotta: "#E07A5F",
-	darkSlate: "#1E2030", // Dark navy/slate
-	cream: "#0F1116", // Very dark background
+	darkSlate: "#1F2133", // Slightly lighter for UI depth
+	cream: "#0B0D11", // Deep background
 	softGreen: "#81B29A",
 	deepOrange: "#F2CC8F",
 	white: "#FFFFFF",
 	glassBorder: "rgba(255, 255, 255, 0.12)",
 	text: {
 		primary: "#FFFFFF",
-		secondary: "#9499B6",
+		secondary: "#B0B5D1", // Much lighter for better contrast
 	},
 	status: {
 		success: "#81B29A",
 		error: "#E07A5F",
 		warning: "#F2CC8F",
-		info: "#1E2030",
+		info: "#B0B5D1",
 	},
 };
 

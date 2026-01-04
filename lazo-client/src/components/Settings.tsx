@@ -20,7 +20,7 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 	// Mock User Data
 	const user = {
-		name: "Paciente Demo",
+		name: "Paciente de prueba",
 		email: "demo@lazo.app",
 		plan: "Suscripción Pro",
 	};

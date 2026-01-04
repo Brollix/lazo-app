@@ -1,13 +1,5 @@
 import React, { useState } from "react";
 import { Box, Typography, TextField, Button, Paper } from "@mui/material";
-// import { createClient } from "@supabase/supabase-js";
-import { colors } from "../styles.theme";
-
-// Placeholder Supabase init - usually done in a service
-// const supabaseUrl =
-// 	import.meta.env.VITE_SUPABASE_URL || "https://example.supabase.co";
-// const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "placeholder";
-// const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 	const [email, setEmail] = useState("");
@@ -15,10 +7,8 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log("Login attempt", email);
-		// const { error } = await supabase.auth.signInWithPassword({ email, password });
-		// if (!error) onLogin();
-		onLogin(); // Bypass for scaffold demo
+		// Auth logic should go here
+		onLogin();
 	};
 
 	return (

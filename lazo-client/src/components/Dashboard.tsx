@@ -3,7 +3,6 @@ import {
 	Box,
 	Paper,
 	Typography,
-	TextField,
 	Button,
 	Chip,
 	IconButton,
@@ -12,18 +11,18 @@ import {
 	Dialog,
 	DialogTitle,
 	DialogContent,
+	CircularProgress,
 } from "@mui/material";
 import {
 	SmartToy,
-	Mic,
 	ChevronLeft,
 	Settings as SettingsIcon,
 	Assignment,
 	TaskAlt,
 	Psychology,
 	Category,
-	Send,
 	CloudUpload,
+	Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 
@@ -32,7 +31,6 @@ import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 import { Patient } from "./PatientsList";
 import { AudioPlayer } from "./AudioPlayer";
-import { getColors } from "../styles.theme";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -42,6 +40,14 @@ interface ChatMessage {
 	actions?: React.ReactNode;
 	timestamp: Date;
 }
+
+const formatDuration = (seconds?: number) => {
+	if (!seconds) return "";
+	const mins = Math.floor(seconds / 60);
+	const secs = Math.round(seconds % 60);
+	if (mins === 0) return `(${secs} seg)`;
+	return `(${mins} min ${secs.toString().padStart(2, "0")}s)`;
+};
 
 export const Dashboard: React.FC<{
 	onLogout: () => void;
@@ -55,7 +61,7 @@ export const Dashboard: React.FC<{
 		null
 	);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
-	const [inputValue, setInputValue] = useState("");
+	const [isActionLoading, setIsActionLoading] = useState(false);
 	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -91,32 +97,36 @@ export const Dashboard: React.FC<{
 		addMessage(
 			"bot",
 			`He analizado el audio de **${
-				patient?.name || "Paciente Demo"
-			} (45 min)**. ¿Por dónde quieres empezar?`,
-			<Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+				patient?.name || "Paciente"
+			} ${formatDuration(data.localDuration)}**. ¿Por dónde quieres empezar?`,
+			<Stack
+				direction="row"
+				spacing={1}
+				sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
+			>
 				<Button
 					variant="outlined"
 					size="small"
-					onClick={() => handleQuickAction("soap")}
+					onClick={() => handleQuickAction("resumen")}
 					sx={{ borderRadius: 2, textTransform: "none" }}
 				>
-					Generar Nota
+					Resumen Ejecutivo
 				</Button>
 				<Button
 					variant="outlined"
 					size="small"
-					onClick={() => handleQuickAction("tasks")}
+					onClick={() => handleQuickAction("tareas")}
 					sx={{ borderRadius: 2, textTransform: "none" }}
 				>
-					Extraer Tareas
+					Tareas y Objetivos
 				</Button>
 				<Button
 					variant="outlined"
 					size="small"
-					onClick={() => handleQuickAction("sentiment")}
+					onClick={() => handleQuickAction("psicologico")}
 					sx={{ borderRadius: 2, textTransform: "none" }}
 				>
-					Análisis de Sentimiento
+					Análisis Psicológico
 				</Button>
 			</Stack>
 		);
@@ -170,67 +180,94 @@ export const Dashboard: React.FC<{
 		setAudioFile(url);
 	};
 
-	const handleSendMessage = () => {
-		if (!inputValue.trim()) return;
-		addMessage("user", inputValue);
-		setInputValue("");
-
-		// Mock response for now
-		setTimeout(() => {
-			addMessage(
-				"bot",
-				"Entendido. ¿Necesitas ayuda con algo más sobre esta sesión?"
-			);
-		}, 1000);
-	};
-
-	const handleQuickAction = (
-		action: "soap" | "tasks" | "entities" | "sentiment"
+	const handleQuickAction = async (
+		action:
+			| "soap"
+			| "resumen"
+			| "tareas"
+			| "psicologico"
+			| "intervencion"
+			| "animo"
 	) => {
 		if (!sessionData) return;
 
-		switch (action) {
-			case "soap":
-				generateClinicalNote(sessionData);
-				addMessage(
-					"bot",
-					`### Nota Clínica Generada\n\nHe redactado la nota basada en el formato solicitado. Ya puedes verla y editarla en el panel de la izquierda.`
-				);
-				break;
-			case "tasks":
-				const tasks = (sessionData.analysis.action_items || [])
-					.map((t) => `- ${t}`)
-					.join("\n");
-				setSoapContent(
-					(prev) =>
-						prev +
-						`\n\n### Tareas Detectadas:\n${tasks || "No se detectaron tareas."}`
-				);
-				addMessage(
-					"bot",
-					`### Tareas Extraídas\n\nHe detectado las siguientes tareas y las he agregado a la nota:\n\n${tasks}`
-				);
-				break;
-			case "entities":
-				const entities = sessionData.analysis.entities || [];
-				const entitiesMd = entities
-					.map((e) => `- **${e.name}** (${e.type})`)
-					.join("\n");
-				addMessage(
-					"bot",
-					`### Entidades Detectadas\n\n${
-						entitiesMd || "No se detectaron entidades específicas."
-					}`
-				);
-				break;
-			case "sentiment":
-				addMessage(
-					"bot",
-					`### Análisis de Sentimiento\n\nEl tono general de la conversación fue predominantemente **${
-						sessionData.analysis.sentiment || "No detectado"
-					}**.`
-				);
-				break;
+		if (action === "soap") {
+			generateClinicalNote(sessionData);
+			addMessage(
+				"bot",
+				`### Nota Clínica Generada\n\nHe redactado la nota basada en el formato solicitado (**${
+					sessionData.analysis.clinical_note.includes("## S")
+						? "SOAP"
+						: "Clínico"
+				}**). Ya puedes verla y editarla en el panel de la izquierda.`
+			);
+			return;
+		}
+
+		setIsActionLoading(true);
+
+		const actionLabels: Record<string, string> = {
+			resumen: "Generando Resumen Ejecutivo...",
+			tareas: "Extrayendo Tareas y Objetivos...",
+			psicologico: "Realizando Análisis Psicológico...",
+			intervencion: "Sugiriendo Intervenciones...",
+			animo: "Analizando Estado de Ánimo...",
+		};
+
+		const loadingMsgId = Date.now().toString() + "loading";
+		setMessages((prev) => [
+			...prev,
+			{
+				id: loadingMsgId,
+				sender: "bot",
+				content: (
+					<Stack direction="row" spacing={1} alignItems="center">
+						<CircularProgress size={16} />
+						<Typography variant="body2">
+							{actionLabels[action] || "Procesando..."}
+						</Typography>
+					</Stack>
+				),
+				timestamp: new Date(),
+			} as ChatMessage,
+		]);
+
+		try {
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/ai-action`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					transcriptText: sessionData.transcript,
+					actionType: action,
+				}),
+			});
+
+			if (!response.ok) throw new Error("Error en la acción de IA");
+
+			const data = await response.json();
+
+			// Remove loading message and add result
+			setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
+
+			const actionTitles: Record<string, string> = {
+				resumen: "Resumen Ejecutivo",
+				tareas: "Tareas y Objetivos",
+				psicologico: "Análisis Psicológico",
+				intervencion: "Sugerencias de Intervención",
+				animo: "Análisis de Ánimo",
+			};
+
+			addMessage("bot", `### ${actionTitles[action]}\n\n${data.result}`);
+		} catch (error) {
+			console.error("AI Action error:", error);
+			setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
+			addMessage(
+				"bot",
+				"Lo siento, hubo un error al procesar tu solicitud. Por favor intenta de nuevo."
+			);
+		} finally {
+			setIsActionLoading(false);
 		}
 	};
 
@@ -285,7 +322,7 @@ export const Dashboard: React.FC<{
 						variant="body2"
 						sx={{ color: "text.secondary", fontWeight: 500, ml: 2 }}
 					>
-						{patient ? patient.name : "Paciente Demo"}
+						{patient ? patient.name : "Nueva Sesión"}
 					</Typography>
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
@@ -344,9 +381,13 @@ export const Dashboard: React.FC<{
 						borderColor: "divider",
 						boxShadow: (theme) =>
 							theme.palette.mode === "light"
-								? "0 4px 20px rgba(0,0,0,0.04)"
-								: "0 4px 20px rgba(0,0,0,0.4)",
-						bgcolor: "background.paper",
+								? "0 8px 32px rgba(0,0,0,0.06)"
+								: "0 8px 32px rgba(0,0,0,0.5)",
+						bgcolor: (theme) =>
+							theme.palette.mode === "light"
+								? "rgba(255, 255, 255, 0.7)"
+								: "rgba(15, 17, 22, 0.7)",
+						backdropFilter: "blur(16px)",
 					}}
 				>
 					{/* Top Section: Audio Player or New Session Button */}
@@ -420,30 +461,6 @@ export const Dashboard: React.FC<{
 									Asistente IA
 								</Typography>
 							</Stack>
-							{!audioFile && (
-								<Box
-									sx={{
-										px: 1.5,
-										py: 0.5,
-										bgcolor: (theme) =>
-											theme.palette.mode === "light"
-												? `${getColors("light").softGreen}1A`
-												: "rgba(129, 178, 154, 0.15)",
-										borderRadius: 4,
-										display: "flex",
-										alignItems: "center",
-										gap: 0.5,
-									}}
-								>
-									<Mic sx={{ fontSize: 14, color: "success.main" }} />
-									<Typography
-										variant="caption"
-										sx={{ color: "success.main", fontWeight: 600 }}
-									>
-										Escuchando
-									</Typography>
-								</Box>
-							)}
 						</Box>
 
 						{/* Quick Actions Toolbar */}
@@ -455,39 +472,63 @@ export const Dashboard: React.FC<{
 							>
 								<Chip
 									icon={<Assignment fontSize="small" />}
-									label="Nota SOAP"
+									label="Nota Clínica"
 									onClick={() => handleQuickAction("soap")}
 									size="small"
 									clickable
 									color="primary"
 									variant="outlined"
+									disabled={isActionLoading}
+								/>
+								<Chip
+									icon={<DescriptionIcon fontSize="small" />}
+									label="Resumen"
+									onClick={() => handleQuickAction("resumen")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+									disabled={isActionLoading}
 								/>
 								<Chip
 									icon={<TaskAlt fontSize="small" />}
 									label="Tareas"
-									onClick={() => handleQuickAction("tasks")}
+									onClick={() => handleQuickAction("tareas")}
 									size="small"
 									clickable
 									color="primary"
 									variant="outlined"
-								/>
-								<Chip
-									icon={<Category fontSize="small" />}
-									label="Entidades"
-									onClick={() => handleQuickAction("entities")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
+									disabled={isActionLoading}
 								/>
 								<Chip
 									icon={<Psychology fontSize="small" />}
-									label="Sentimiento"
-									onClick={() => handleQuickAction("sentiment")}
+									label="Psicológico"
+									onClick={() => handleQuickAction("psicologico")}
 									size="small"
 									clickable
 									color="primary"
 									variant="outlined"
+									disabled={isActionLoading}
+								/>
+								<Chip
+									icon={<SmartToy fontSize="small" />}
+									label="Intervenciones"
+									onClick={() => handleQuickAction("intervencion")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+									disabled={isActionLoading}
+								/>
+								<Chip
+									icon={<Category fontSize="small" />}
+									label="Ánimo"
+									onClick={() => handleQuickAction("animo")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+									disabled={isActionLoading}
 								/>
 							</Stack>
 						)}
@@ -506,15 +547,36 @@ export const Dashboard: React.FC<{
 						}}
 					>
 						{messages.length === 0 ? (
-							<Typography
-								variant="body2"
-								color="text.secondary"
-								align="center"
-								sx={{ mt: 4 }}
+							<Box
+								sx={{
+									flex: 1,
+									display: "flex",
+									flexDirection: "column",
+									alignItems: "center",
+									justifyContent: "center",
+									opacity: 0.6,
+									textAlign: "center",
+									px: 4,
+								}}
 							>
-								Sube el audio de la sesión para que pueda ayudarte a redactar la
-								nota clínica.
-							</Typography>
+								<SmartToy
+									sx={{
+										fontSize: 48,
+										color: "primary.main",
+										mb: 2,
+										opacity: 0.4,
+									}}
+								/>
+								<Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+									{patient
+										? `Asistente de sesión con ${patient.name}`
+										: "Asistente Lazo"}
+								</Typography>
+								<Typography variant="body2" color="text.secondary">
+									Sube el audio de la sesión para comenzar el análisis
+									automático y generar tu nota SOAP.
+								</Typography>
+							</Box>
 						) : (
 							messages.map((msg) => (
 								<Box
@@ -574,7 +636,6 @@ export const Dashboard: React.FC<{
 						<div ref={messagesEndRef} />
 					</Box>
 
-					{/* Input Area */}
 					<Box
 						sx={{
 							p: 2,
@@ -582,41 +643,20 @@ export const Dashboard: React.FC<{
 							borderColor: "divider",
 							bgcolor: "background.paper",
 							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
 							gap: 1,
 							flexShrink: 0,
 						}}
 					>
-						<TextField
-							fullWidth
-							placeholder="Pregúntale a lazo..."
-							size="small"
-							variant="outlined"
-							value={inputValue}
-							onChange={(e) => setInputValue(e.target.value)}
-							onKeyPress={(e) => {
-								if (e.key === "Enter") handleSendMessage();
-							}}
-							sx={{
-								"& .MuiOutlinedInput-root": {
-									borderRadius: 2,
-									bgcolor: "background.default",
-									"& fieldset": { borderColor: "divider" },
-									"&:hover fieldset": { borderColor: "primary.main" },
-								},
-							}}
-						/>
-						<IconButton
-							color="primary"
-							onClick={handleSendMessage}
-							disabled={!inputValue.trim()}
-							sx={{
-								bgcolor: inputValue.trim() ? "primary.main" : "transparent",
-								color: inputValue.trim() ? "white" : "action.disabled",
-								"&:hover": { bgcolor: "primary.dark" },
-							}}
+						<Typography
+							variant="caption"
+							color="text.secondary"
+							sx={{ fontStyle: "italic", textAlign: "center", width: "100%" }}
 						>
-							<Send />
-						</IconButton>
+							Selecciona una de las acciones predefinidas arriba para analizar
+							la sesión.
+						</Typography>
 					</Box>
 				</Paper>
 

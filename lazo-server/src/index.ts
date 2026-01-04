@@ -64,7 +64,10 @@ import {
 	getTranscriptionJobStatus,
 	fetchTranscriptContent,
 } from "./services/awsService";
-import { processTranscriptWithClaude } from "./services/aiService";
+import {
+	processTranscriptWithClaude,
+	performAiAction,
+} from "./services/aiService";
 
 // Configure Multer to store files in memory
 const upload = multer({ storage: multer.memoryStorage() });
@@ -81,7 +84,9 @@ app.post(
 	async (req: any, res: any) => {
 		try {
 			if (!req.file) {
-				return res.status(400).json({ message: "No audio file provided" });
+				return res
+					.status(400)
+					.json({ message: "No se proporcionó ningún archivo de audio" });
 			}
 
 			const sessionId = `session-${Date.now()}-${Math.random()
@@ -100,7 +105,7 @@ app.post(
 
 			// Return immediately
 			res.status(202).json({
-				message: "Processing started",
+				message: "Procesamiento iniciado",
 				sessionId: sessionId,
 			});
 
@@ -245,7 +250,7 @@ app.post(
 		} catch (error: any) {
 			console.error("Error initiating session:", error);
 			res.status(500).json({
-				message: "Internal Server Error",
+				message: "Error interno del servidor",
 				error: error.message,
 			});
 		}
@@ -257,10 +262,34 @@ app.get("/api/session/:sessionId", (req: any, res: any) => {
 	const session = sessionStore.get(sessionId);
 
 	if (!session) {
-		return res.status(404).json({ message: "Session not found" });
+		return res.status(404).json({ message: "Sesión no encontrada" });
 	}
 
 	res.json(session);
+});
+
+app.post("/api/ai-action", async (req: any, res: any) => {
+	try {
+		const { transcriptText, actionType, targetLanguage } = req.body;
+
+		if (!transcriptText || !actionType) {
+			return res.status(400).json({
+				error: "Faltan parámetros requeridos (transcriptText, actionType)",
+			});
+		}
+
+		console.log(`Ejecutando acción IA: ${actionType}`);
+		const result = await performAiAction(
+			transcriptText,
+			actionType,
+			targetLanguage || "Spanish"
+		);
+
+		res.json(result);
+	} catch (error: any) {
+		console.error("Error en /api/ai-action:", error);
+		res.status(500).json({ error: "Error al procesar la acción de IA" });
+	}
 });
 
 app.listen(port, () => {

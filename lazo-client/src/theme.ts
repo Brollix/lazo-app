@@ -17,7 +17,7 @@ export const createAppTheme = (mode: "light" | "dark") => {
 			},
 			background: {
 				default: colors.cream,
-				paper: mode === "light" ? colors.white : "#2d2d2d",
+				paper: mode === "light" ? colors.white : "#161821", // Themed dark paper
 			},
 			text: {
 				primary: colors.text.primary,
@@ -41,34 +41,40 @@ export const createAppTheme = (mode: "light" | "dark") => {
 			h1: {
 				fontWeight: 900,
 				letterSpacing: "-0.04em",
-				color: colors.darkSlate,
+				color: mode === "light" ? colors.darkSlate : colors.white,
 			},
 			h2: {
 				fontWeight: 900,
 				letterSpacing: "-0.04em",
-				color: colors.darkSlate,
+				color: mode === "light" ? colors.darkSlate : colors.white,
 			},
 			h3: {
 				fontWeight: 900,
 				letterSpacing: "-0.03em",
-				color: colors.darkSlate,
+				color: mode === "light" ? colors.darkSlate : colors.white,
 			},
 			h4: {
 				fontWeight: 700,
 				letterSpacing: "-0.02em",
-				color: colors.darkSlate,
+				color: mode === "light" ? colors.darkSlate : colors.white,
 			},
 			h5: {
 				fontWeight: 700,
 				letterSpacing: "-0.02em",
 				color: colors.terracotta,
 			},
-			h6: { fontWeight: 700, color: colors.darkSlate },
+			h6: {
+				fontWeight: 700,
+				color: mode === "light" ? colors.darkSlate : colors.white,
+			},
 			button: {
 				textTransform: "none",
 				fontWeight: 700,
 			},
-			subtitle1: { fontWeight: 600, color: colors.darkSlate },
+			subtitle1: {
+				fontWeight: 600,
+				color: mode === "light" ? colors.darkSlate : colors.white,
+			},
 			subtitle2: {
 				fontWeight: 700,
 				textTransform: "uppercase",

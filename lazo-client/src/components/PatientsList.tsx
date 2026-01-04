@@ -32,13 +32,7 @@ export interface Patient {
 	lastVisit: string;
 }
 
-const INITIAL_PATIENTS: Patient[] = [
-	{ id: "1", name: "Juan Pérez", age: 45, lastVisit: "2023-12-10" },
-	{ id: "2", name: "María González", age: 32, lastVisit: "2024-01-02" },
-	{ id: "3", name: "Carlos López", age: 58, lastVisit: "2023-11-28" },
-	{ id: "4", name: "Ana Martínez", age: 29, lastVisit: "2024-01-03" },
-	{ id: "5", name: "Roberto Sánchez", age: 67, lastVisit: "2023-10-15" },
-];
+const INITIAL_PATIENTS: Patient[] = [];
 
 interface PatientsListProps {
 	onSelectPatient: (patient: Patient) => void;

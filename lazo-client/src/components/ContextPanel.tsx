@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
 	Box,
 	Paper,
@@ -8,12 +8,9 @@ import {
 	ListItemText,
 	IconButton,
 	Stack,
-	Accordion,
-	AccordionSummary,
-	AccordionDetails,
 	Tooltip,
 } from "@mui/material";
-import { Psychology, ExpandMore, History, Add } from "@mui/icons-material";
+import { Psychology, Add } from "@mui/icons-material";
 
 import { AnalysisResult, Biometry } from "./AudioUploader";
 import { ThemeCloud } from "./ThemeCloud";
@@ -23,13 +20,6 @@ export const ContextPanel: React.FC<{
 	analysisData?: AnalysisResult;
 	biometry?: Biometry;
 }> = ({ onAddToNote, analysisData, biometry }) => {
-	const [expanded, setExpanded] = useState<string | false>(false);
-
-	const handleChange =
-		(panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
-			setExpanded(isExpanded ? panel : false);
-		};
-
 	return (
 		<Paper
 			elevation={0}
@@ -76,61 +66,6 @@ export const ContextPanel: React.FC<{
 
 			{/* Content */}
 			<Box sx={{ flexGrow: 1, overflowY: "auto", bgcolor: "background.paper" }}>
-				{/* Previous Session Accordion */}
-				<Accordion
-					expanded={expanded === "panel1"}
-					onChange={handleChange("panel1")}
-					disableGutters
-					elevation={0}
-					sx={{
-						"&:before": { display: "none" },
-						borderBottom: "1px solid rgba(0,0,0,0.04)",
-					}}
-				>
-					<AccordionSummary
-						expandIcon={<ExpandMore />}
-						sx={{ bgcolor: "background.default", minHeight: 48 }}
-					>
-						<Stack direction="row" alignItems="center" gap={1}>
-							<History fontSize="small" color="action" />
-							<Typography variant="body2" fontWeight={600}>
-								Sesión Anterior (24/12)
-							</Typography>
-						</Stack>
-					</AccordionSummary>
-					<AccordionDetails sx={{ p: 0 }}>
-						<List dense>
-							<ListItem
-								secondaryAction={
-									<IconButton
-										edge="end"
-										size="small"
-										onClick={() =>
-											onAddToNote("El paciente reportó mejoría en el sueño.")
-										}
-									>
-										<Add fontSize="small" />
-									</IconButton>
-								}
-							>
-								<ListItemText
-									primary="Resumen"
-									secondary="El paciente reportó mejoría en el sueño."
-									primaryTypographyProps={{
-										variant: "caption",
-										fontWeight: 700,
-									}}
-									secondaryTypographyProps={{
-										variant: "body2",
-										color: "text.primary",
-										noWrap: false,
-									}}
-								/>
-							</ListItem>
-						</List>
-					</AccordionDetails>
-				</Accordion>
-
 				{/* Pattern Detector: Theme Cloud */}
 				{analysisData && analysisData.topics && (
 					<Box
@@ -143,37 +78,6 @@ export const ContextPanel: React.FC<{
 						<ThemeCloud topics={analysisData.topics} />
 					</Box>
 				)}
-
-				{/* Longitudinal Tracking Mock */}
-				<Box
-					sx={{
-						p: 2,
-						borderBottom: "1px solid",
-						borderColor: "divider",
-						bgcolor: (theme) =>
-							theme.palette.mode === "light"
-								? "rgba(102, 60, 48, 0.03)"
-								: "rgba(102, 60, 48, 0.1)",
-					}}
-				>
-					<Stack direction="row" alignItems="center" gap={1} mb={1}>
-						<History sx={{ fontSize: 16, color: "primary.main" }} />
-						<Typography
-							variant="caption"
-							sx={{ fontWeight: 700, color: "primary.main" }}
-						>
-							Evolución Clínica
-						</Typography>
-					</Stack>
-					<Typography
-						variant="body2"
-						color="text.secondary"
-						sx={{ fontSize: "0.8rem" }}
-					>
-						El paciente mencionó **"divorcio"** con un 40% menos de frecuencia
-						que en la sesión anterior.
-					</Typography>
-				</Box>
 
 				{/* Biometry Section */}
 				{biometry && (

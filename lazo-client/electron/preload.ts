@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
 	selectFolder: () => ipcRenderer.invoke("select-folder"),
 	getWatchPath: () => ipcRenderer.invoke("get-watch-path"),
 	getRecordings: () => ipcRenderer.invoke("get-recordings"),
+	getAudioDuration: (path: string) =>
+		ipcRenderer.invoke("get-audio-duration", path),
 
 	// You can expose other APTs you need here.
 	// ...

@@ -3,9 +3,15 @@ import Store from "electron-store";
 // import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import ffmpeg from "fluent-ffmpeg";
 
 // const require = createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Define global __dirname and __filename for dependencies that might expect them
+(globalThis as any).__dirname = __dirname;
+(globalThis as any).__filename = __filename;
 
 // The built directory structure
 //
@@ -124,6 +130,15 @@ ipcMain.handle("get-watch-path", () => {
 
 ipcMain.handle("get-recordings", () => {
 	return getRecordings();
+});
+
+ipcMain.handle("get-audio-duration", async (_event, filePath) => {
+	return new Promise((resolve, reject) => {
+		ffmpeg.ffprobe(filePath, (err, metadata) => {
+			if (err) return reject(err);
+			resolve(metadata.format.duration);
+		});
+	});
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

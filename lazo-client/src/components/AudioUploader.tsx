@@ -55,6 +55,7 @@ export interface ProcessSessionResponse {
 	transcript: string;
 	analysis: AnalysisResult;
 	biometry?: Biometry;
+	localDuration?: number;
 }
 
 interface AudioUploaderProps {
@@ -110,6 +111,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const gradients = getGradients(theme.palette.mode as "light" | "dark");
 
 	const [file, setFile] = useState<File | null>(null);
+	const [localDuration, setLocalDuration] = useState<number | null>(null);
 	const [status, setStatus] = useState<
 		"idle" | "uploading" | "processing" | "completed" | "error"
 	>("idle");
@@ -119,13 +121,29 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
 	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
 
-	const onDrop = useCallback((acceptedFiles: File[]) => {
+	const onDrop = useCallback(async (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
 			const selectedFile = acceptedFiles[0];
 			setFile(selectedFile);
 			setStatus("idle");
 			setResult(null);
-			// Wait for upload to invoke onAudioSelected
+
+			// Extract local duration via Electron IPC if available
+			try {
+				// @ts-ignore
+				if (
+					window.ipcRenderer?.getAudioDuration &&
+					(selectedFile as any).path
+				) {
+					// @ts-ignore
+					const duration = await window.ipcRenderer.getAudioDuration(
+						(selectedFile as any).path
+					);
+					setLocalDuration(duration);
+				}
+			} catch (err) {
+				console.error("Failed to get local duration:", err);
+			}
 		}
 	}, []);
 
@@ -217,6 +235,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									transcript: sessionData.data.transcript || "",
 									analysis: sessionData.data.analysis,
 									biometry: sessionData.data.biometry,
+									localDuration: localDuration || undefined,
 								};
 
 								setResult(data);
@@ -273,7 +292,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			case "completed":
 				return "¡Análisis completado!";
 			case "error":
-				return "Error procesando la sesión";
+				return "Error al procesar la sesión";
 			default:
 				return "";
 		}
@@ -321,7 +340,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									fullWidth
 									variant="outlined"
 								>
-									<option value="es-US">Español (EE.UU.)</option>
+									<option value="es-US">Español (Latinoamérica)</option>
 									<option value="es-ES">Español (España)</option>
 									<option value="en-US">Inglés (EE.UU.)</option>
 								</TextField>

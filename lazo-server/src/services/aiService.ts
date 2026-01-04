@@ -26,67 +26,171 @@ export const processTranscriptWithClaude = async (
 	targetLanguage: string = "Spanish", // Default to Spanish
 	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP"
 ) => {
-	const prompt = `You are an expert AI assistant for "Lazo", an app for tracking therapy sessions.
+	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.
     
     Processing Task:
-    Analyze the following transcription of a therapy session and extract structured data into JSON format.
+    Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata.
+
+    IMPORTANT - CLINICAL RIGOR:
+    - Use professional, clinical language. 
+    - Be concise but thorough.
+    - Avoid generic statements; focus on specific evidence from the transcript.
+
+    CRITICAL - NOTE FORMAT INSTRUCTIONS:
+    You MUST follow the specific structure for: ${noteFormat}
+
+    ${
+			noteFormat === "SOAP"
+				? `- **S (Subjective)**: Patient's report of symptoms, feelings, and experiences. Use direct quotes if relevant.
+       - **O (Objective)**: Observable findings, behavioral data, status of the patient during the session (affect, tone, cooperation).
+       - **A (Assessment)**: Your clinical interpretation. Synthesis of S and O. Identify progress, setbacks, or recurring themes.
+       - **P (Plan)**: Specific next steps, homework, or focus for the next session.`
+				: noteFormat === "DAP"
+				? `- **D (Data)**: Objective and subjective information. What happened during the session? (Combines S and O from SOAP).
+       - **A (Assessment)**: Interpretation of the data. What did this session mean for the therapeutic process?
+       - **P (Plan)**: Future steps based on the assessment.`
+				: `- **B (Behavior)**: Specific observations of the patient's behavior and presentation.
+       - **I (Intervention)**: Specific interventions the therapist used during the session.
+       - **R (Response)**: How the patient responded to the interventions.
+       - **P (Plan)**: Recommendations and plan for the next session.`
+		}
 
     IMPORTANT - LANGUAGE INSTRUCTIONS:
     The output JSON values MUST be written in ${
 			targetLanguage === "Spanish" ? "Español de Latinoamérica" : targetLanguage
 		}.
-    - If the target is Spanish, DO NOT use English anywhere in the values.
-    - Translate any technical terms if possible, or keep them only if strictly necessary.
-    - The tone should be professional, clinical, and natural for a Latin American psychologist.
-
-    Clinical Note Format: ${noteFormat}
-    - SOAP: Subjective (what the patient says), Objective (what is observed), Assessment (clinical impression), Plan (next steps).
-    - DAP: Data (subjective/objective details), Assessment (clinical impression), Plan (next steps).
-    - BIRP: Behavior (observation), Intervention (what therapist did), Response (how patient responded), Plan (next steps).
-
-    Risk Analysis:
-    Identify any "Red Flags" related to suicide, self-harm, abuse, or violence. Respond with clear warnings if detected.
+    - Tone: Clinical, empathetic, and professional.
 
     Transcript:
     "${transcriptText}"
     
     Output Format (JSON Only):
     {
-      "clinical_note": "The full formatted note in ${noteFormat} style using professional clinical language in ${
-		targetLanguage === "Spanish" ? "Español" : targetLanguage
-	}",
-      "summary": "Brief summary for the dashboard in ${
+      "clinical_note": "The full formatted note (using markdown headers like ## S, ## O, etc.) in ${
+				targetLanguage === "Spanish" ? "Español" : targetLanguage
+			}",
+      "summary": "Professional executive summary (1 paragraph) in ${
 				targetLanguage === "Spanish" ? "Español" : targetLanguage
 			}",
       "topics": [
-         { "label": "Topic Name (In ${
-						targetLanguage === "Spanish" ? "Español" : targetLanguage
-					})", "frequency": 25, "sentiment": "Positivo|Negativo|Neutral" }
+         { "label": "Topic Name", "frequency": 25, "sentiment": "Positivo|Negativo|Neutral" }
       ],
       "sentiment": "Positivo|Negativo|Neutral|Ansioso|Triste|Enojado|Confundido|Esperanzado|Abrumado|Frustrado",
-      "action_items": ["action1 (in ${
-				targetLanguage === "Spanish" ? "Español" : targetLanguage
-			})", "action2"],
+      "action_items": ["Actionable step for therapist or patient"],
       "risk_assessment": {
          "has_risk": true/false,
-         "alerts": ["List of detected red flag topics in ${
-						targetLanguage === "Spanish" ? "Español" : targetLanguage
-					}"],
-         "summary": "Specific risk explanation in ${
-						targetLanguage === "Spanish" ? "Español" : targetLanguage
-					}"
+         "alerts": ["Specific concerns"],
+         "summary": "Brief risk analysis"
       },
       "entities": [
-         { "name": "Entity Name", "type": "Person|Project|Location|Other" }
+         { "name": "Entity Name", "type": "Persona|Proyecto|Ubicación|Otro" }
       ]
     }
     
-    IMPORTANT NOTES:
-    - For topics array: Each topic MUST include "label" and "frequency". The "sentiment" field is optional but recommended.
-    - For overall sentiment: Select the MOST DOMINANT emotional state from the list above. Use the exact spelling as shown (Always in Spanish).
-    - All sentiment values in topics should be: "Positivo", "Negativo", or "Neutral".
+    Final check: Ensure the output is valid JSON.`;
+
+	const payload = {
+		anthropic_version: "bedrock-2023-05-31",
+		max_tokens: 3000,
+		messages: [
+			{
+				role: "user",
+				content: [{ type: "text", text: prompt }],
+			},
+		],
+	};
+
+	try {
+		const command = new InvokeModelCommand({
+			modelId: MODEL_ID,
+			contentType: "application/json",
+			accept: "application/json",
+			body: JSON.stringify(payload),
+		});
+
+		const response = await client.send(command);
+		const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+
+		if (responseBody.content && responseBody.content[0]?.text) {
+			const textContent = responseBody.content[0].text;
+
+			try {
+				const jsonStart = textContent.indexOf("{");
+				const jsonEnd = textContent.lastIndexOf("}");
+				if (jsonStart !== -1 && jsonEnd !== -1) {
+					const jsonString = textContent.substring(jsonStart, jsonEnd + 1);
+					return JSON.parse(jsonString);
+				}
+				return { error: "Could not parse JSON", raw: textContent };
+			} catch (e) {
+				console.error("JSON Parsing Error from Bedrock:", e);
+				return { error: "JSON Parsing Error", raw: textContent };
+			}
+		}
+
+		return { error: "Unexpected response format", raw: responseBody };
+	} catch (error: any) {
+		console.error("Error invoking Bedrock:", error);
+		if (error.name === "AccessDeniedException") {
+			return {
+				error:
+					"AWS Permissions Error: Ensure IAM Role has bedrock:InvokeModel for us-east-1",
+			};
+		}
+		throw error;
+	}
+};
+
+/**
+ * Performs a specific AI action based on a predefined prompt.
+ */
+export const performAiAction = async (
+	transcriptText: string,
+	actionType: string,
+	targetLanguage: string = "Spanish"
+) => {
+	let actionPrompt = "";
+
+	switch (actionType) {
+		case "resumen":
+			actionPrompt =
+				"Genera un resumen ejecutivo de la sesión, destacando los puntos más importantes discutidos.";
+			break;
+		case "tareas":
+			actionPrompt =
+				"Identifica todas las tareas, compromisos o 'homework' mencionados para el paciente o el terapeuta.";
+			break;
+		case "psicologico":
+			actionPrompt =
+				"Realiza un análisis psicológico profundo: identifica patrones de pensamiento, mecanismos de defensa o temas recurrentes en el discurso del paciente.";
+			break;
+		case "intervencion":
+			actionPrompt =
+				"Basado en esta sesión, sugiere 3 estrategias o intervenciones puntuales para que el terapeuta aplique en la próxima sesión.";
+			break;
+		case "animo":
+			actionPrompt =
+				"Analiza detalladamente la evolución del estado de ánimo del paciente durante la sesión. ¿Hubo cambios significativos?";
+			break;
+		default:
+			actionPrompt = "Analiza la sesión y proporciona insights relevantes.";
+	}
+
+	const prompt = `You are an expert clinical AI assistant for "Lazo". 
     
-    Ensure the output is valid JSON and nothing else. Do not add markdown blocks like \`\`\`json.`;
+    Task: ${actionPrompt}
+
+    Context:
+    Transcription of the session: "${transcriptText}"
+
+    Instructions:
+    - Respond in ${
+			targetLanguage === "Spanish" ? "Español de Latinoamérica" : targetLanguage
+		}.
+    - Use Markdown for formatting.
+    - Be clinical, professional, and precise.
+    - Do not include any introductory text, just the analysis.
+    `;
 
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
@@ -110,37 +214,12 @@ export const processTranscriptWithClaude = async (
 		const response = await client.send(command);
 		const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
-		// Extract content from Bedrock Claude response structure
-		// Response format: { "content": [ { "type": "text", "text": "..." } ], ... }
 		if (responseBody.content && responseBody.content[0]?.text) {
-			const textContent = responseBody.content[0].text;
-
-			// Try to parse JSON
-			try {
-				// Find JSON brackets just in case there is chatty text
-				const jsonStart = textContent.indexOf("{");
-				const jsonEnd = textContent.lastIndexOf("}");
-				if (jsonStart !== -1 && jsonEnd !== -1) {
-					const jsonString = textContent.substring(jsonStart, jsonEnd + 1);
-					return JSON.parse(jsonString);
-				}
-				// Fallback if no brackets found (unlikely with Sonnet)
-				return { error: "Could not parse JSON", raw: textContent };
-			} catch (e) {
-				console.error("JSON Parsing Error from Bedrock:", e);
-				return { error: "JSON Parsing Error", raw: textContent };
-			}
+			return { result: responseBody.content[0].text };
 		}
-
-		return { error: "Unexpected response format", raw: responseBody };
-	} catch (error: any) {
-		console.error("Error invoking Bedrock:", error);
-		if (error.name === "AccessDeniedException") {
-			return {
-				error:
-					"AWS Permissions Error: Ensure IAM Role has bedrock:InvokeModel for us-east-1",
-			};
-		}
+		return { error: "No response from AI" };
+	} catch (error) {
+		console.error("Error performing AI action:", error);
 		throw error;
 	}
 };
