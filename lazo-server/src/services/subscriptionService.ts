@@ -88,32 +88,52 @@ export const createSubscriptionPreference = async (
 		planId.charAt(0).toUpperCase() + planId.slice(1)
 	}`;
 
+	console.log("[createSubscriptionPreference] Initializing Preference...");
 	const preference = new Preference(client);
 
-	const response = await preference.create({
-		body: {
-			items: [
-				{
-					id: planId,
-					title: description,
-					quantity: 1,
-					unit_price: amount,
-					currency_id: "ARS",
-				},
-			],
-			payer: {
-				email: userEmail,
-			},
-			external_reference: userId,
-			back_urls: {
-				success: `${frontUrl}/payment-success`,
-				failure: `${frontUrl}/payment-failure`,
-				pending: `${frontUrl}/payment-pending`,
-			},
-			auto_return: "all",
-			notification_url: `${process.env.BACKEND_URL}/api/mercadopago-webhook`,
-		},
-	});
+	try {
+		console.log(
+			"[createSubscriptionPreference] Creating preference with body:",
+			JSON.stringify({
+				items: [{ id: planId, unit_price: amount }],
+				payer: { email: userEmail },
+				external_reference: userId,
+			})
+		);
 
-	return response;
+		const response = await preference.create({
+			body: {
+				items: [
+					{
+						id: planId,
+						title: description,
+						quantity: 1,
+						unit_price: amount,
+						currency_id: "ARS",
+					},
+				],
+				payer: {
+					email: userEmail,
+				},
+				external_reference: userId,
+				back_urls: {
+					success: `${frontUrl}/payment-success`,
+					failure: `${frontUrl}/payment-failure`,
+					pending: `${frontUrl}/payment-pending`,
+				},
+				auto_return: "all",
+				notification_url: `${process.env.BACKEND_URL}/api/mercadopago-webhook`,
+			},
+		});
+		console.log("[createSubscriptionPreference] Success:", response.id);
+		return response;
+	} catch (err: any) {
+		console.error(
+			"[createSubscriptionPreference] FAILED at preference.create:",
+			err
+		);
+		throw new Error(
+			`MercadoPago Error: ${err.message || String(err)} -- Stack: ${err.stack}`
+		);
+	}
 };
