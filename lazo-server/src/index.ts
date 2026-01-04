@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 
 app.use(
 	cors({
-		origin: "*", // Using * is safer if CloudFront is stripping headers or acting up
+		origin: true, // This echoes back the request origin, which is more reliable than "*" for some cases
 		methods: ["GET", "POST", "OPTIONS"],
 		allowedHeaders: [
 			"Content-Type",
@@ -18,7 +18,7 @@ app.use(
 			"Accept",
 			"Origin",
 		],
-		// credentials: true, // Must be disabled for origin: "*"
+		credentials: true,
 	})
 );
 
