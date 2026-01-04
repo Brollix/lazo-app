@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from "electron";
+import { ipcRenderer, contextBridge, shell } from "electron";
 
 console.log("Preload script loading...");
 
@@ -30,4 +30,11 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
 
 	// You can expose other APTs you need here.
 	// ...
+});
+
+// Expose shell API for opening external links
+contextBridge.exposeInMainWorld("electron", {
+	shell: {
+		openExternal: (url: string) => shell.openExternal(url),
+	},
 });

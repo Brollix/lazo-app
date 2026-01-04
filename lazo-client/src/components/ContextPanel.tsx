@@ -11,6 +11,7 @@ import {
 	Tooltip,
 } from "@mui/material";
 import { Psychology, Add } from "@mui/icons-material";
+import { getExtendedShadows, typographyExtended } from "../styles.theme";
 
 import { AnalysisResult, Biometry } from "./AudioUploader";
 import { ThemeCloud } from "./ThemeCloud";
@@ -32,9 +33,7 @@ export const ContextPanel: React.FC<{
 				border: "1px solid",
 				borderColor: "divider",
 				boxShadow: (theme) =>
-					theme.palette.mode === "light"
-						? "0 2px 12px rgba(0,0,0,0.02)"
-						: "0 2px 12px rgba(0,0,0,0.3)",
+					getExtendedShadows(theme.palette.mode as "light" | "dark").editor,
 				height: "100%", // Fit column height
 			}}
 		>
@@ -52,11 +51,11 @@ export const ContextPanel: React.FC<{
 					<Typography
 						variant="subtitle2"
 						sx={{
-							fontWeight: 700,
+							fontWeight: typographyExtended.fontWeights.bold,
 							color: "text.secondary",
 							textTransform: "uppercase",
-							fontSize: "0.75rem",
-							letterSpacing: "0.05em",
+							fontSize: typographyExtended.fontSizes.sm,
+							letterSpacing: typographyExtended.letterSpacing.relaxed,
 						}}
 					>
 						Contexto

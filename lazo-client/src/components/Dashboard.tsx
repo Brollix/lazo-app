@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 	DialogContent,
 	CircularProgress,
+	useTheme,
 } from "@mui/material";
 import {
 	SmartToy,
@@ -23,8 +24,18 @@ import {
 	Category,
 	CloudUpload,
 	Description as DescriptionIcon,
+	Visibility,
+	VisibilityOff,
+	AddCircleOutline,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
+import {
+	getBackgrounds,
+	getExtendedShadows,
+	components as themeComponents,
+	opacity,
+	typographyExtended,
+} from "../styles.theme";
 
 import { AudioUploader, ProcessSessionResponse } from "./AudioUploader";
 import { ContextPanel } from "./ContextPanel";
@@ -54,6 +65,9 @@ export const Dashboard: React.FC<{
 	patient: Patient | null;
 	onBack?: () => void;
 }> = ({ onLogout, patient, onBack }) => {
+	const theme = useTheme();
+	const backgrounds = getBackgrounds(theme.palette.mode);
+	const extendedShadows = getExtendedShadows(theme.palette.mode);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
@@ -63,7 +77,15 @@ export const Dashboard: React.FC<{
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [isActionLoading, setIsActionLoading] = useState(false);
 	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
+	const [isFocusMode, setIsFocusMode] = useState(false);
+	const [showContext, setShowContext] = useState(true);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const sessionDataRef = useRef<ProcessSessionResponse | null>(null);
+
+	// Sync ref with state
+	useEffect(() => {
+		sessionDataRef.current = sessionData;
+	}, [sessionData]);
 
 	const scrollToBottom = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -189,14 +211,15 @@ export const Dashboard: React.FC<{
 			| "intervencion"
 			| "animo"
 	) => {
-		if (!sessionData) return;
+		const currentSessionData = sessionDataRef.current;
+		if (!currentSessionData) return;
 
 		if (action === "soap") {
-			generateClinicalNote(sessionData);
+			generateClinicalNote(currentSessionData);
 			addMessage(
 				"bot",
 				`### Nota Clínica Generada\n\nHe redactado la nota basada en el formato solicitado (**${
-					sessionData.analysis.clinical_note.includes("## S")
+					currentSessionData.analysis.clinical_note.includes("## S")
 						? "SOAP"
 						: "Clínico"
 				}**). Ya puedes verla y editarla en el panel de la izquierda.`
@@ -238,7 +261,7 @@ export const Dashboard: React.FC<{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					transcriptText: sessionData.transcript,
+					transcriptText: currentSessionData.transcript,
 					actionType: action,
 				}),
 			});
@@ -258,7 +281,29 @@ export const Dashboard: React.FC<{
 				animo: "Análisis de Ánimo",
 			};
 
-			addMessage("bot", `### ${actionTitles[action]}\n\n${data.result}`);
+			addMessage(
+				"bot",
+				`### ${actionTitles[action]}\n\n${data.result}`,
+				<Button
+					size="small"
+					startIcon={<AddCircleOutline />}
+					onClick={() =>
+						setSoapContent(
+							(prev) =>
+								prev +
+								(prev ? "\n\n" : "") +
+								`### ${actionTitles[action]}\n${data.result}`
+						)
+					}
+					sx={{
+						textTransform: "none",
+						fontSize: typographyExtended.fontSizes.xs,
+						mt: 1,
+					}}
+				>
+					Meter en la nota
+				</Button>
+			);
 		} catch (error) {
 			console.error("AI Action error:", error);
 			setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
@@ -285,17 +330,14 @@ export const Dashboard: React.FC<{
 				elevation={0}
 				square
 				sx={{
-					height: 64,
+					height: themeComponents.dashboard.headerHeight,
 					px: 3,
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
 					borderBottom: "1px solid",
 					borderColor: "divider",
-					bgcolor: (theme) =>
-						theme.palette.mode === "light"
-							? "rgba(255, 255, 255, 0.8)"
-							: "rgba(15, 17, 22, 0.8)", // 80% opacity
+					bgcolor: backgrounds.glass.header,
 					backdropFilter: "blur(12px)",
 					position: "sticky",
 					top: 0,
@@ -311,8 +353,8 @@ export const Dashboard: React.FC<{
 					<Typography
 						variant="h5"
 						sx={{
-							fontWeight: 900,
-							letterSpacing: "-0.05em",
+							fontWeight: typographyExtended.fontWeights.black,
+							letterSpacing: typographyExtended.letterSpacing.tight,
 							color: "primary.main",
 						}}
 					>
@@ -332,24 +374,37 @@ export const Dashboard: React.FC<{
 						<SettingsIcon fontSize="small" />
 					</IconButton>
 				</Box>
-				<Button
-					variant="outlined"
-					onClick={onLogout}
-					size="small"
-					sx={{
-						textTransform: "none",
-						borderRadius: 2,
-						borderColor: "divider",
-						color: "text.secondary",
-						"&:hover": {
-							borderColor: "primary.main",
-							color: "primary.main",
-							bgcolor: "action.hover",
-						},
-					}}
-				>
-					Cerrar Sesión
-				</Button>
+				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+					<Button
+						variant="outlined"
+						onClick={onLogout}
+						size="small"
+						sx={{
+							textTransform: "none",
+							borderRadius: 2,
+							borderColor: "divider",
+							color: "text.secondary",
+							"&:hover": {
+								borderColor: "primary.main",
+								color: "primary.main",
+								bgcolor: "action.hover",
+							},
+						}}
+					>
+						Cerrar Sesión
+					</Button>
+					<IconButton
+						onClick={() => setShowContext(!showContext)}
+						size="small"
+						title={showContext ? "Esconder Contexto" : "Mostrar Contexto"}
+						sx={{
+							borderRadius: 2,
+							color: showContext ? "primary.main" : "text.secondary",
+						}}
+					>
+						{showContext ? <Visibility /> : <VisibilityOff />}
+					</IconButton>
+				</Box>
 			</Paper>
 
 			<Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -366,27 +421,24 @@ export const Dashboard: React.FC<{
 						console.log("Saving note:", soapContent);
 						// Show success toast here
 					}}
+					method={sessionData?.noteFormat || "SOAP"}
+					isFocused={isFocusMode}
+					onToggleFocus={() => setIsFocusMode(!isFocusMode)}
 				/>
 
 				{/* Column 2: Command Center (Center) */}
 				<Paper
 					elevation={0}
 					sx={{
-						flex: 4, // 40%
-						display: "flex",
+						flex: themeComponents.dashboard.panelFlex.center,
+						display: isFocusMode ? "none" : "flex", // Hide center in focus mode
 						flexDirection: "column",
 						borderRadius: 3,
 						overflow: "hidden",
 						border: "1px solid",
 						borderColor: "divider",
-						boxShadow: (theme) =>
-							theme.palette.mode === "light"
-								? "0 8px 32px rgba(0,0,0,0.06)"
-								: "0 8px 32px rgba(0,0,0,0.5)",
-						bgcolor: (theme) =>
-							theme.palette.mode === "light"
-								? "rgba(255, 255, 255, 0.7)"
-								: "rgba(15, 17, 22, 0.7)",
+						boxShadow: extendedShadows.panel,
+						bgcolor: backgrounds.glass.panel,
 						backdropFilter: "blur(16px)",
 					}}
 				>
@@ -401,7 +453,11 @@ export const Dashboard: React.FC<{
 						}}
 					>
 						{audioFile ? (
-							<AudioPlayer url={audioFile} biometry={sessionData?.biometry} />
+							<AudioPlayer
+								url={audioFile}
+								biometry={sessionData?.biometry}
+								markers={sessionData?.analysis.key_moments}
+							/>
 						) : (
 							<Button
 								fullWidth
@@ -416,10 +472,10 @@ export const Dashboard: React.FC<{
 									"&:hover": {
 										borderStyle: "dashed",
 										borderWidth: 2,
-										bgcolor: (theme) =>
+										bgcolor:
 											theme.palette.mode === "light"
 												? "primary.light"
-												: "rgba(102, 60, 48, 0.1)",
+												: backgrounds.hover.primaryLight,
 									},
 								}}
 							>
@@ -451,11 +507,11 @@ export const Dashboard: React.FC<{
 								<Typography
 									variant="subtitle2"
 									sx={{
-										fontWeight: 700,
+										fontWeight: typographyExtended.fontWeights.bold,
 										color: "primary.main",
 										textTransform: "uppercase",
-										fontSize: "0.75rem",
-										letterSpacing: "0.05em",
+										fontSize: typographyExtended.fontSizes.sm,
+										letterSpacing: typographyExtended.letterSpacing.relaxed,
 									}}
 								>
 									Asistente IA
@@ -554,7 +610,7 @@ export const Dashboard: React.FC<{
 									flexDirection: "column",
 									alignItems: "center",
 									justifyContent: "center",
-									opacity: 0.6,
+									opacity: opacity.medium,
 									textAlign: "center",
 									px: 4,
 								}}
@@ -564,7 +620,7 @@ export const Dashboard: React.FC<{
 										fontSize: 48,
 										color: "primary.main",
 										mb: 2,
-										opacity: 0.4,
+										opacity: opacity.low,
 									}}
 								/>
 								<Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
@@ -584,14 +640,18 @@ export const Dashboard: React.FC<{
 									sx={{
 										alignSelf:
 											msg.sender === "user" ? "flex-end" : "flex-start",
-										maxWidth: "85%",
+										maxWidth: themeComponents.chatMessage.maxWidth,
 										display: "flex",
 										gap: 1.5,
 									}}
 								>
 									{msg.sender === "bot" && (
 										<Avatar
-											sx={{ width: 28, height: 28, bgcolor: "primary.main" }}
+											sx={{
+												width: themeComponents.chatMessage.avatarSize,
+												height: themeComponents.chatMessage.avatarSize,
+												bgcolor: "primary.main",
+											}}
 										>
 											<SmartToy sx={{ fontSize: 16 }} />
 										</Avatar>
@@ -607,18 +667,21 @@ export const Dashboard: React.FC<{
 											color: msg.sender === "user" ? "white" : "text.primary",
 											borderRadius:
 												msg.sender === "user"
-													? "12px 12px 2px 12px"
-													: "2px 12px 12px 12px",
+													? themeComponents.chatMessage.borderRadius.user
+													: themeComponents.chatMessage.borderRadius.bot,
 										}}
 									>
 										{typeof msg.content === "string" ? (
 											<Box
 												sx={{
-													"& p": { m: 0, fontSize: "0.875rem" },
+													"& p": {
+														m: 0,
+														fontSize: typographyExtended.fontSizes.md,
+													},
 													"& h3": {
 														m: "0 0 8px 0",
-														fontSize: "1rem",
-														fontWeight: 700,
+														fontSize: typographyExtended.fontSizes.lg,
+														fontWeight: typographyExtended.fontWeights.bold,
 													},
 													"& ul": { m: "8px 0", pl: 2 },
 												}}
@@ -661,13 +724,15 @@ export const Dashboard: React.FC<{
 				</Paper>
 
 				{/* Column 3: Context Panel (Right) */}
-				<ContextPanel
-					onAddToNote={(text) => {
-						setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
-					}}
-					analysisData={sessionData ? sessionData.analysis : undefined}
-					biometry={sessionData ? sessionData.biometry : undefined}
-				/>
+				{showContext && !isFocusMode && (
+					<ContextPanel
+						onAddToNote={(text) => {
+							setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
+						}}
+						analysisData={sessionData ? sessionData.analysis : undefined}
+						biometry={sessionData ? sessionData.biometry : undefined}
+					/>
+				)}
 			</Box>
 
 			{/* Audio Upload Modal */}

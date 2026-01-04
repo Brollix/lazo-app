@@ -1,5 +1,10 @@
 import { Box, styled, Theme } from "@mui/material";
-import { getColors, getGradients, getShadows } from "../styles.theme";
+import {
+	getColors,
+	getGradients,
+	getShadows,
+	getBackgrounds,
+} from "../styles.theme";
 
 // Helper to get theme mode from MUI theme
 const getMode = (theme: Theme) => theme.palette.mode || "light";
@@ -29,14 +34,15 @@ export const StyledDropzone = styled(Box, {
 })<{ isDragActive: boolean }>(({ theme, isDragActive }) => {
 	const mode = getMode(theme);
 	const colors = getColors(mode);
+	const backgrounds = getBackgrounds(mode);
 
 	return {
 		border: "2px dashed",
 		borderColor: isDragActive
 			? colors.terracotta
 			: mode === "light"
-			? "rgba(0,0,0,0.1)"
-			: "rgba(255,255,255,0.1)",
+			? backgrounds.hover.light
+			: backgrounds.hover.dark,
 		borderRadius: "20px",
 		padding: theme.spacing(6),
 		textAlign: "center",

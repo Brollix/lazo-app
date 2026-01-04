@@ -2,6 +2,11 @@ import { Box, Typography, ButtonBase } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import React, { useState, useContext } from "react";
 import { ThemeContext } from "../App";
+import {
+	components as themeComponents,
+	getBackgrounds,
+	getExtendedColors,
+} from "../styles.theme";
 
 interface WindowControlProps {
 	onClick: () => void;
@@ -22,7 +27,7 @@ const WindowControl = ({
 			onClick={onClick}
 			disableRipple
 			sx={{
-				width: "46px",
+				width: themeComponents.titleBar.controlWidth,
 				height: "100%",
 				display: "flex",
 				alignItems: "center",
@@ -52,6 +57,8 @@ const WindowControl = ({
 
 const TitleBar = () => {
 	const theme = useTheme();
+	const backgrounds = getBackgrounds(theme.palette.mode);
+	const extendedColors = getExtendedColors(theme.palette.mode);
 	const [isMaximized, setIsMaximized] = useState(false);
 	const { mode, toggleTheme } = useContext(ThemeContext);
 
@@ -77,7 +84,7 @@ const TitleBar = () => {
 	return (
 		<Box
 			sx={{
-				height: "32px",
+				height: themeComponents.titleBar.height,
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "space-between",
@@ -103,10 +110,8 @@ const TitleBar = () => {
 			>
 				<WindowControl
 					onClick={toggleTheme}
-					hoverColor={(theme) =>
-						theme.palette.mode === "light"
-							? "rgba(0,0,0,0.05)"
-							: "rgba(255,255,255,0.05)"
+					hoverColor={
+						backgrounds.hover[theme.palette.mode === "light" ? "light" : "dark"]
 					}
 				>
 					{mode === "light" ? (
@@ -131,10 +136,8 @@ const TitleBar = () => {
 
 				<WindowControl
 					onClick={handleMinimize}
-					hoverColor={(theme) =>
-						theme.palette.mode === "light"
-							? "rgba(0,0,0,0.05)"
-							: "rgba(255,255,255,0.05)"
+					hoverColor={
+						backgrounds.hover[theme.palette.mode === "light" ? "light" : "dark"]
 					}
 				>
 					<svg width="10" height="1" viewBox="0 0 10 1">
@@ -144,10 +147,8 @@ const TitleBar = () => {
 
 				<WindowControl
 					onClick={handleMaximize}
-					hoverColor={(theme) =>
-						theme.palette.mode === "light"
-							? "rgba(0,0,0,0.05)"
-							: "rgba(255,255,255,0.05)"
+					hoverColor={
+						backgrounds.hover[theme.palette.mode === "light" ? "light" : "dark"]
 					}
 				>
 					{isMaximized ? (
@@ -170,7 +171,7 @@ const TitleBar = () => {
 				<WindowControl
 					onClick={handleClose}
 					hoverColor={(theme) => theme.palette.error.main}
-					hoverIconColor="#FFFFFF"
+					hoverIconColor={extendedColors.neutral.white}
 				>
 					<svg width="10" height="10" viewBox="0 0 10 10">
 						<path

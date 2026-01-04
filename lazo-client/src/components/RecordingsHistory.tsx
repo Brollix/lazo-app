@@ -11,10 +11,12 @@ import {
 	Chip,
 	IconButton,
 	Container,
+	useTheme,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MicIcon from "@mui/icons-material/Mic";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import { getBackgrounds } from "../styles.theme";
 
 interface Recording {
 	id: number;
@@ -32,6 +34,8 @@ interface RecordingsHistoryProps {
 export const RecordingsHistory: React.FC<RecordingsHistoryProps> = ({
 	onBack,
 }) => {
+	const theme = useTheme();
+	const backgrounds = getBackgrounds(theme.palette.mode);
 	const [recordings, setRecordings] = useState<Recording[]>([]);
 
 	useEffect(() => {
@@ -82,10 +86,7 @@ export const RecordingsHistory: React.FC<RecordingsHistoryProps> = ({
 					alignItems: "center",
 					borderBottom: "1px solid",
 					borderColor: "divider",
-					bgcolor: (theme) =>
-						theme.palette.mode === "light"
-							? "rgba(255, 255, 255, 0.8)"
-							: "rgba(26, 26, 26, 0.8)",
+					bgcolor: backgrounds.glass.modal,
 					backdropFilter: "blur(12px)",
 					position: "sticky",
 					top: 0,

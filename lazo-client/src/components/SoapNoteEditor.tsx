@@ -8,6 +8,7 @@ import {
 	Fab,
 	Tooltip,
 	IconButton,
+	Chip,
 } from "@mui/material";
 import {
 	EditNote,
@@ -15,19 +16,31 @@ import {
 	FormatBold,
 	FormatListBulleted,
 	Title,
+	ChevronLeft,
 } from "@mui/icons-material";
-import { getColors } from "../styles.theme";
+import {
+	getColors,
+	getExtendedShadows,
+	typographyExtended,
+	opacity,
+} from "../styles.theme";
 
 interface SoapNoteEditorProps {
 	content: string;
 	onChange: (value: string) => void;
 	onSave: () => void;
+	method?: string;
+	onToggleFocus?: () => void;
+	isFocused?: boolean;
 }
 
 export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 	content,
 	onChange,
 	onSave,
+	method = "SOAP",
+	onToggleFocus,
+	isFocused = false,
 }) => {
 	const insertText = (before: string, after: string = "") => {
 		// Simple insertion at end for this iteration.
@@ -39,7 +52,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 		<Paper
 			elevation={0}
 			sx={{
-				flex: 3, // 30%
+				flex: isFocused ? 1 : 3, // Adjust based on focus
 				display: "flex",
 				flexDirection: "column",
 				borderRadius: 3,
@@ -47,10 +60,18 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 				border: "1px solid",
 				borderColor: "divider",
 				boxShadow: (theme) =>
-					theme.palette.mode === "light"
-						? "0 2px 12px rgba(0,0,0,0.02)"
-						: "0 2px 12px rgba(0,0,0,0.3)",
+					getExtendedShadows(theme.palette.mode as "light" | "dark").editor,
 				position: "relative",
+				transition: "all 0.3s ease",
+				...(isFocused && {
+					position: "fixed",
+					top: 80,
+					left: 20,
+					right: 20,
+					bottom: 20,
+					zIndex: 1000,
+					m: 0,
+				}),
 			}}
 		>
 			<Box
@@ -64,20 +85,34 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 					justifyContent: "space-between",
 				}}
 			>
-				<Stack direction="row" alignItems="center" gap={1}>
-					<EditNote color="primary" fontSize="small" />
-					<Typography
-						variant="subtitle2"
+				<Stack direction="row" alignItems="center" gap={2}>
+					<Stack direction="row" alignItems="center" gap={1}>
+						<EditNote color="primary" fontSize="small" />
+						<Typography
+							variant="subtitle2"
+							sx={{
+								fontWeight: typographyExtended.fontWeights.bold,
+								color: "text.secondary",
+								textTransform: "uppercase",
+								fontSize: typographyExtended.fontSizes.sm,
+								letterSpacing: typographyExtended.letterSpacing.relaxed,
+							}}
+						>
+							Nota Clínica
+						</Typography>
+					</Stack>
+					<Chip
+						label={`MÉTODO: ${method}`}
+						size="small"
 						sx={{
-							fontWeight: 700,
-							color: "text.secondary",
-							textTransform: "uppercase",
-							fontSize: "0.75rem",
-							letterSpacing: "0.05em",
+							height: 20,
+							fontSize: "0.65rem",
+							fontWeight: typographyExtended.fontWeights.bold,
+							bgcolor: "primary.main",
+							color: "white",
+							opacity: opacity.high,
 						}}
-					>
-						Nota Clínica
-					</Typography>
+					/>
 				</Stack>
 
 				{/* Mini Toolbar */}
@@ -86,6 +121,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 						sx={{ color: "text.secondary" }}
 						size="small"
 						onClick={() => insertText("**bold**")}
+						title="Negrita"
 					>
 						<FormatBold fontSize="small" />
 					</IconButton>
@@ -93,6 +129,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 						sx={{ color: "text.secondary" }}
 						size="small"
 						onClick={() => insertText("\n- ")}
+						title="Lista"
 					>
 						<FormatListBulleted fontSize="small" />
 					</IconButton>
@@ -100,9 +137,24 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 						sx={{ color: "text.secondary" }}
 						size="small"
 						onClick={() => insertText("\n## ")}
+						title="Título"
 					>
 						<Title fontSize="small" />
 					</IconButton>
+					{onToggleFocus && (
+						<IconButton
+							sx={{ color: "primary.main" }}
+							size="small"
+							onClick={onToggleFocus}
+							title={isFocused ? "Contraer" : "Maximizar"}
+						>
+							{isFocused ? (
+								<ChevronLeft sx={{ transform: "rotate(90deg)" }} />
+							) : (
+								<ChevronLeft sx={{ transform: "rotate(-90deg)" }} />
+							)}
+						</IconButton>
+					)}
 				</Stack>
 			</Box>
 
@@ -112,7 +164,11 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 					fullWidth
 					value={content}
 					onChange={(e) => onChange(e.target.value)}
-					placeholder="Escribe el informe clínico aquí..."
+					inputProps={{
+						spellCheck: false,
+						lang: "es",
+					}}
+					placeholder="Escribe el informe clínico aquí (Markdown soportado)..."
 					sx={{
 						height: "100%",
 						bgcolor: "background.paper",

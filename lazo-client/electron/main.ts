@@ -1,13 +1,36 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import Store from "electron-store";
-// import { createRequire } from "node:module";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import ffmpeg from "fluent-ffmpeg";
 
-// const require = createRequire(import.meta.url);
+const require = createRequire(import.meta.url);
+const ffmpeg = require("fluent-ffmpeg");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Get static paths via require (since they are externalized CJS)
+let ffmpegPath: string | undefined;
+let ffprobePath: any;
+
+try {
+	ffmpegPath = require("ffmpeg-static");
+	ffprobePath = require("ffprobe-static");
+} catch (e) {
+	console.error("Failed to load static ffmpeg/ffprobe paths", e);
+}
+
+// Set ffmpeg and ffprobe paths
+if (ffmpegPath) {
+	ffmpeg.setFfmpegPath(ffmpegPath.replace("app.asar", "app.asar.unpacked"));
+}
+if (ffprobePath) {
+	const pathStr =
+		typeof ffprobePath === "string" ? ffprobePath : ffprobePath.path;
+	if (pathStr) {
+		ffmpeg.setFfprobePath(pathStr.replace("app.asar", "app.asar.unpacked"));
+	}
+}
 
 // Define global __dirname and __filename for dependencies that might expect them
 (globalThis as any).__dirname = __dirname;
@@ -132,9 +155,9 @@ ipcMain.handle("get-recordings", () => {
 	return getRecordings();
 });
 
-ipcMain.handle("get-audio-duration", async (_event, filePath) => {
+ipcMain.handle("get-audio-duration", async (_event: any, filePath: string) => {
 	return new Promise((resolve, reject) => {
-		ffmpeg.ffprobe(filePath, (err, metadata) => {
+		ffmpeg.ffprobe(filePath, (err: any, metadata: any) => {
 			if (err) return reject(err);
 			resolve(metadata.format.duration);
 		});

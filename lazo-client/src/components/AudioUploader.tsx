@@ -43,6 +43,7 @@ export interface AnalysisResult {
 	action_items: string[];
 	risk_assessment: RiskAssessment;
 	entities: { name: string; type: string }[];
+	key_moments?: { timestamp: number; label: string }[];
 }
 
 export interface Biometry {
@@ -56,6 +57,7 @@ export interface ProcessSessionResponse {
 	analysis: AnalysisResult;
 	biometry?: Biometry;
 	localDuration?: number;
+	noteFormat?: string;
 }
 
 interface AudioUploaderProps {

@@ -15,11 +15,16 @@
     "@aws-sdk/client-bedrock-runtime": "^3.962.0",
     "@aws-sdk/client-s3": "^3.962.0",
     "@aws-sdk/client-transcribe": "^3.723.0",
+    "@deepgram/sdk": "^4.11.3",
     "@supabase/supabase-js": "^2.47.10",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "multer": "^2.0.2"
+    "groq-sdk": "^0.37.0",
+    "mercadopago": "^2.11.0",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

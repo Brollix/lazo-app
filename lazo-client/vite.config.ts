@@ -16,7 +16,8 @@ export default defineConfig(({ mode }) => {
 		server: {
 			proxy: {
 				"/api": {
-					target: env.API_PROXY_TARGET || "http://localhost:3000",
+					target:
+						env.API_PROXY_TARGET || "https://d2xdgw8apwt2qd.cloudfront.net",
 					changeOrigin: true,
 					secure: false,
 				},
@@ -31,7 +32,12 @@ export default defineConfig(({ mode }) => {
 					vite: {
 						build: {
 							rollupOptions: {
-								external: ["better-sqlite3"],
+								external: [
+									"better-sqlite3",
+									"ffmpeg-static",
+									"ffprobe-static",
+									"fluent-ffmpeg",
+								],
 							},
 						},
 					},

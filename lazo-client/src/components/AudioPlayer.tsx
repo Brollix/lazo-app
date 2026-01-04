@@ -15,7 +15,12 @@ import {
 	Replay10,
 	Forward10,
 	Speed,
+	PushPin,
 } from "@mui/icons-material";
+import {
+	components as themeComponents,
+	getExtendedColors,
+} from "../styles.theme";
 
 import { Biometry } from "./AudioUploader";
 
@@ -24,6 +29,7 @@ interface AudioPlayerProps {
 	onReady?: () => void;
 	onTimeUpdate?: (currentTime: number) => void;
 	biometry?: Biometry;
+	markers?: { timestamp: number; label: string }[];
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -31,8 +37,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 	onReady,
 	onTimeUpdate,
 	biometry,
+	markers = [],
 }) => {
 	const theme = useTheme();
+	const extendedColors = getExtendedColors(theme.palette.mode);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const wavesurfer = useRef<WaveSurfer | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
@@ -56,12 +64,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 					: "rgba(255, 255, 255, 0.2)",
 			progressColor: theme.palette.primary.main,
 			cursorColor: theme.palette.primary.main,
-			barWidth: 2,
-			barGap: 3,
-			barRadius: 3,
-			height: 48,
+			barWidth: themeComponents.audioPlayer.barWidth,
+			barGap: themeComponents.audioPlayer.barGap,
+			barRadius: themeComponents.audioPlayer.barRadius,
+			height: themeComponents.audioPlayer.waveHeight,
 			normalize: true,
-			minPxPerSec: 50,
+			minPxPerSec: themeComponents.audioPlayer.minPxPerSec,
 			url: url,
 		});
 
@@ -101,6 +109,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 		const nextSpeed = speeds[nextSpeedIndex];
 		setPlaybackRate(nextSpeed);
 		wavesurfer.current?.setPlaybackRate(nextSpeed);
+	};
+
+	const seekTo = (time: number) => {
+		wavesurfer.current?.setTime(time);
+		wavesurfer.current?.play();
 	};
 
 	const formatTime = (seconds: number) => {
@@ -194,20 +207,67 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 					{/* Silence Markers Overlay */}
 					{biometry?.silences.map((s, i) => (
 						<Box
-							key={i}
+							key={`silence-${i}`}
 							sx={{
 								position: "absolute",
 								top: 0,
 								left: `${(s.start / duration) * 100}%`,
 								width: `${(s.duration / duration) * 100}%`,
 								height: "100%",
-								bgcolor: "rgba(255, 0, 0, 0.1)",
-								borderLeft: "1px dashed rgba(255, 0, 0, 0.3)",
-								borderRight: "1px dashed rgba(255, 0, 0, 0.3)",
+								bgcolor: extendedColors.semantic.dangerBg,
+								borderLeft: `1px dashed ${extendedColors.semantic.dangerBorder}`,
+								borderRight: `1px dashed ${extendedColors.semantic.dangerBorder}`,
 								pointerEvents: "none",
 								zIndex: 1,
 							}}
 						/>
+					))}
+
+					{/* Important Markers Overlay */}
+					{markers.map((m, i) => (
+						<Box
+							key={`marker-${i}`}
+							onClick={(e) => {
+								e.stopPropagation();
+								seekTo(m.timestamp);
+							}}
+							title={m.label}
+							sx={{
+								position: "absolute",
+								top: -4,
+								left: `${(m.timestamp / duration) * 100}%`,
+								width: "2px",
+								height: "calc(100% + 8px)",
+								bgcolor: "secondary.main",
+								cursor: "pointer",
+								zIndex: 10,
+								"&::after": {
+									content: '""',
+									position: "absolute",
+									top: -8,
+									left: -6,
+									width: 14,
+									height: 14,
+									bgcolor: "secondary.main",
+									borderRadius: "50%",
+									boxShadow: 2,
+								},
+								"&:hover": {
+									bgcolor: "primary.main",
+									"&::after": { bgcolor: "primary.main" },
+								},
+							}}
+						>
+							<PushPin
+								sx={{
+									fontSize: 10,
+									color: "white",
+									position: "absolute",
+									top: -6,
+									left: -4,
+								}}
+							/>
+						</Box>
 					))}
 				</Box>
 

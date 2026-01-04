@@ -11,6 +11,7 @@ import {
 	Avatar,
 } from "@mui/material";
 import { colors, shadows } from "../styles.theme";
+import { SubscriptionModal } from "./SubscriptionModal";
 
 interface SettingsProps {
 	open: boolean;
@@ -18,11 +19,27 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
-	// Mock User Data
+	const [showSubModal, setShowSubModal] = React.useState(false);
+	const [userProfile, setUserProfile] = React.useState<any>(null);
+
+	// Fetch user plan and credits
+	React.useEffect(() => {
+		if (open) {
+			// In a real app, userId would come from context
+			fetch("http://localhost:3000/api/user-plan/demo-user")
+				.then((res) => res.json())
+				.then((data) => setUserProfile(data));
+		}
+	}, [open]);
+
 	const user = {
 		name: "Paciente de prueba",
 		email: "demo@lazo.app",
-		plan: "Suscripción Pro",
+		plan:
+			userProfile?.plan_type === "free"
+				? "Plan Gratuito"
+				: `Plan ${userProfile?.plan_type}`,
+		credits: userProfile?.credits_remaining || 0,
 	};
 
 	return (
@@ -101,8 +118,30 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 								{user.plan}
 							</Typography>
 						</Box>
+						{userProfile?.plan_type === "free" && (
+							<Box sx={{ ml: 2 }}>
+								<Typography variant="caption" color="text.secondary">
+									{user.credits} créditos restantes
+								</Typography>
+							</Box>
+						)}
 					</Box>
+					<Button
+						variant="outlined"
+						fullWidth
+						sx={{ mt: 2, borderRadius: 2 }}
+						onClick={() => setShowSubModal(true)}
+					>
+						Gestionar Suscripción
+					</Button>
 				</Box>
+
+				<SubscriptionModal
+					open={showSubModal}
+					onClose={() => setShowSubModal(false)}
+					userId="demo-user"
+					userEmail={user.email}
+				/>
 
 				{/* Section 2: Folder Watcher */}
 				<Box sx={{ mb: 2 }}>

@@ -67,7 +67,17 @@ import {
 import {
 	processTranscriptWithClaude,
 	performAiAction,
+	transcribeAudio,
 } from "./services/aiService";
+import {
+	getPrices,
+	createSubscriptionPreference,
+} from "./services/subscriptionService";
+import {
+	getUserProfile,
+	decrementCredits,
+	updateUserPlan,
+} from "./services/dbService";
 
 // Configure Multer to store files in memory
 const upload = multer({ storage: multer.memoryStorage() });
@@ -100,6 +110,19 @@ app.post(
 				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}`
 			);
 
+			const userId = req.body.userId || "anonymous"; // Should come from Auth header
+			const profile = await getUserProfile(userId);
+
+			if (profile.plan_type === "free" && profile.credits_remaining <= 0) {
+				return res.status(403).json({
+					message: "Créditos agotados. Suscríbete para continuar.",
+				});
+			}
+
+			console.log(
+				`[${sessionId}] User: ${userId}, Plan: ${profile.plan_type}, Credits: ${profile.credits_remaining}`
+			);
+
 			// Initialize status
 			sessionStore.set(sessionId, { status: "processing" });
 
@@ -109,83 +132,60 @@ app.post(
 				sessionId: sessionId,
 			});
 
-			// Run processing in background (FIRE AND FORGET from request perspective)
+			// Run processing in background
 			(async () => {
 				try {
 					console.log(
-						`[${sessionId}] Received file: ${req.file.originalname} (${req.file.size} bytes). Format: ${noteFormat}. Input Lang: ${inputLanguage}, Output Lang: ${outputLanguage}`
+						`[${sessionId}] Transcribing with ${profile.plan_type} settings...`
 					);
 
-					// 1. Upload to S3
-					const fileName = `${sessionId}-${req.file.originalname}`;
-					const mimeType = req.file.mimetype;
-					const s3Uri = await uploadAudioToS3(
+					const transcriptionResult = await transcribeAudio(
 						req.file.buffer,
-						fileName,
-						mimeType
+						profile.plan_type as any,
+						req.file.mimetype
 					);
-					console.log(`[${sessionId}] Uploaded to S3: ${s3Uri}`);
 
-					// 2. Start Transcription Job
-					const useMedical = inputLanguage === "en-US";
-					const jobName = useMedical
-						? `medical-job-${sessionId}`
-						: `standard-job-${sessionId}`;
-
-					if (useMedical) {
-						await startMedicalTranscriptionJob(jobName, s3Uri, inputLanguage);
+					// Helper: extract text and basic diarization logic
+					let transcriptText = "";
+					if (profile.plan_type === "ultra") {
+						transcriptText = (transcriptionResult as any).results.channels[0]
+							.alternatives[0].transcript;
 					} else {
-						await startTranscriptionJob(jobName, s3Uri, inputLanguage);
+						transcriptText = (transcriptionResult as any).text;
 					}
-					console.log(`[${sessionId}] Started transcription job: ${jobName}`);
 
-					// 3. Poll for completion
-					let status = "IN_PROGRESS";
-					let transcriptUri = null;
-					let attempts = 0;
-					const maxAttempts = 120;
+					// Decrement credits for free users
+					if (profile.plan_type === "free") {
+						await decrementCredits(userId);
+					}
 
-					while (
-						(status === "IN_PROGRESS" || status === "QUEUED") &&
-						attempts < maxAttempts
-					) {
-						await new Promise((resolve) => setTimeout(resolve, 5000));
+					// Construct timestamped transcript for higher quality analysis (Key Moments)
+					let timestampedTranscript = "";
+					const items = (transcriptionResult as any).results?.items || [];
+					let currentSecond = -1;
 
-						let job: any;
-						if (useMedical) {
-							const response = await getMedicalTranscriptionJobStatus(jobName);
-							job = response.MedicalTranscriptionJob;
-						} else {
-							const response = await getTranscriptionJobStatus(jobName);
-							job = response.TranscriptionJob;
-						}
-
-						if (job) {
-							status = job.TranscriptionJobStatus || "UNKNOWN";
-							attempts++;
-
-							if (status === "COMPLETED") {
-								transcriptUri = job.Transcript?.TranscriptFileUri;
-							} else if (status === "FAILED") {
-								throw new Error(`Transcription failed: ${job.FailureReason}`);
+					items.forEach((item: any) => {
+						if (item.start_time) {
+							const start = Math.floor(parseFloat(item.start_time));
+							if (start !== currentSecond && start % 30 === 0) {
+								// Add marker every 30 seconds
+								const mins = Math.floor(start / 60);
+								const secs = start % 60;
+								timestampedTranscript += `\n[${mins}:${secs
+									.toString()
+									.padStart(2, "0")}] `;
+								currentSecond = start;
 							}
 						}
-					}
-
-					if (!transcriptUri) {
-						throw new Error("Transcription timed out or failed");
-					}
-
-					// 4. Fetch Transcript
-					// Wait a moment for S3 consistency if needed
-					await new Promise((resolve) => setTimeout(resolve, 2000));
-					const transcriptJson = await fetchTranscriptContent(transcriptUri);
-					const transcriptText =
-						transcriptJson.results.transcripts[0].transcript;
+						timestampedTranscript +=
+							item.alternatives[0].content +
+							(item.type === "punctuation" ? "" : " ");
+					});
 
 					// Biometry calculation
 					const segments =
-						transcriptJson.results.speaker_labels?.segments || [];
+						(transcriptionResult as any).results?.speaker_labels?.segments ||
+						[];
 					let patientSeconds = 0;
 					let therapistSeconds = 0;
 					const silences: { start: number; duration: number }[] = [];
@@ -224,7 +224,7 @@ app.post(
 
 					// 5. Process with Claude
 					const analysis = await processTranscriptWithClaude(
-						transcriptText,
+						timestampedTranscript || transcriptText,
 						outputLanguage,
 						noteFormat
 					);
@@ -236,6 +236,7 @@ app.post(
 							transcript: transcriptText,
 							analysis: analysis,
 							biometry: biometry,
+							noteFormat: noteFormat,
 						},
 					});
 					console.log(`[${sessionId}] Processing completed successfully.`);
@@ -290,6 +291,43 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 		console.error("Error en /api/ai-action:", error);
 		res.status(500).json({ error: "Error al procesar la acción de IA" });
 	}
+});
+
+// Subscription Endpoints
+app.get("/api/prices", (req, res) => {
+	res.json(getPrices());
+});
+
+app.get("/api/user-plan/:userId", async (req, res) => {
+	const profile = await getUserProfile(req.params.userId);
+	res.json(profile);
+});
+
+app.post("/api/create-preference", async (req, res) => {
+	const { planId, userId, userEmail } = req.body;
+	try {
+		const preference = await createSubscriptionPreference(
+			planId,
+			userId,
+			userEmail
+		);
+		res.json({ id: preference.id });
+	} catch (error) {
+		res.status(500).json({ error: "Error creating preference" });
+	}
+});
+
+app.post("/api/mercadopago-webhook", async (req, res) => {
+	const { data, type } = req.body;
+	if (type === "payment") {
+		const paymentId = data.id;
+		// Here you would normally fetch the payment from MP and get external_reference (userId)
+		// For this implementation, we'll assume we get the userId and plan from the body or metadata
+		// This part needs MP SDK call to verification
+		console.log(`Webhook received payment: ${paymentId}`);
+		// updateUserPlan(userId, planType);
+	}
+	res.sendStatus(200);
 });
 
 app.listen(port, () => {

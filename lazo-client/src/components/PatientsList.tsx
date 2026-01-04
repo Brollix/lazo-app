@@ -17,13 +17,15 @@ import {
 	DialogContent,
 	DialogActions,
 	TextField,
+	useTheme,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
-import { SettingsDialog } from "./SettingsDialog";
+import { Settings } from "./Settings";
+import { getBackgrounds } from "../styles.theme";
 
 export interface Patient {
 	id: string;
@@ -45,6 +47,8 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	onLogout,
 	onOpenHistory,
 }) => {
+	const theme = useTheme();
+	const backgrounds = getBackgrounds(theme.palette.mode);
 	const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
 	const [open, setOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
@@ -88,10 +92,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					justifyContent: "space-between",
 					borderBottom: "1px solid",
 					borderColor: "divider",
-					bgcolor: (theme) =>
-						theme.palette.mode === "light"
-							? "rgba(255, 255, 255, 0.8)"
-							: "rgba(26, 26, 26, 0.8)", // 80% opacity
+					bgcolor: backgrounds.glass.modal,
 					backdropFilter: "blur(12px)",
 					position: "sticky",
 					top: 0,
@@ -213,10 +214,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					</Button>
 				</DialogActions>
 			</Dialog>
-			<SettingsDialog
-				open={settingsOpen}
-				onClose={() => setSettingsOpen(false)}
-			/>
+			<Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 		</Box>
 	);
 };

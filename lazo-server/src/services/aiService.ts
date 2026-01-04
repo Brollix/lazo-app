@@ -2,6 +2,9 @@ import {
 	BedrockRuntimeClient,
 	InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import { Groq } from "groq-sdk";
+import { createClient } from "@deepgram/sdk";
+import { File } from "node:buffer";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -20,6 +23,16 @@ const client = new BedrockRuntimeClient({
 	region: MODEL_REGION,
 	// Credentials will be picked up from the IAM Role or .env automatically
 });
+
+// Initialize Groq
+const groq = new Groq({
+	apiKey: process.env.GROQ_API_KEY || "YOUR_GROQ_API_KEY",
+});
+
+// Initialize Deepgram
+const deepgram = createClient(
+	process.env.DEEPGRAM_API_KEY || "YOUR_DEEPGRAM_API_KEY"
+);
 
 export const processTranscriptWithClaude = async (
 	transcriptText: string,
@@ -84,10 +97,13 @@ export const processTranscriptWithClaude = async (
       },
       "entities": [
          { "name": "Entity Name", "type": "Persona|Proyecto|Ubicación|Otro" }
+      ],
+      "key_moments": [
+         { "timestamp": 12.5, "label": "Short descriptive label of what happened" }
       ]
     }
     
-    Final check: Ensure the output is valid JSON.`;
+    Final check: Ensure the output is valid JSON and timestamps are in seconds (numerical).`;
 
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
@@ -221,5 +237,51 @@ export const performAiAction = async (
 	} catch (error) {
 		console.error("Error performing AI action:", error);
 		throw error;
+	}
+};
+
+/**
+ * Unified Transcription Service
+ * Standard (Free/Pro): Groq (Whisper-v3) or AWS (current fallback)
+ * Ultra: Deepgram (Nova-2)
+ */
+export const transcribeAudio = async (
+	fileBuffer: Buffer,
+	planType: "free" | "pro" | "ultra" = "free",
+	mimeType: string = "audio/wav"
+) => {
+	if (planType === "ultra") {
+		console.log("[AI] Using Deepgram (Ultra) for transcription...");
+		const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+			fileBuffer,
+			{
+				model: "nova-2",
+				smart_format: true,
+				diarize: true,
+				language: "es",
+			}
+		);
+
+		if (error) throw error;
+		return result;
+	} else {
+		console.log("[AI] Using Groq (Pro/Free) for transcription...");
+		// Note: Groq expects a File object or ReadStream. For simplicity in memory:
+		// We'll use a hack to pass the buffer as a file-like object
+		// or use AWS as fallback if Groq Key is not set.
+
+		if (process.env.GROQ_API_KEY) {
+			// Groq SDK expects a File-like object. We'll create one compatible with Node.js
+			const file = new File([fileBuffer], "audio.wav", { type: mimeType });
+
+			const transcription = await groq.audio.transcriptions.create({
+				file: file as any,
+				model: "whisper-large-v3",
+				response_format: "verbose_json",
+			});
+			return transcription;
+		}
+
+		throw new Error("No transcription provider configured for this plan");
 	}
 };
