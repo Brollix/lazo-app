@@ -18,11 +18,7 @@ const MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0";
 
 const client = new BedrockRuntimeClient({
 	region: MODEL_REGION,
-	// Fail fast if network is the issue (e.g. no NAT Gateway for cross-region calls)
-	requestHandler: {
-		connectionTimeout: 10000,
-		socketTimeout: 120000, // 2 minutes for processing
-	} as any, // Cast to any to avoid strict type checking on the handler internal signature if needed
+	// Credentials will be picked up from the IAM Role or .env automatically
 });
 
 export const processTranscriptWithClaude = async (
@@ -30,9 +26,6 @@ export const processTranscriptWithClaude = async (
 	targetLanguage: string = "Spanish", // Default to Spanish
 	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP"
 ) => {
-	console.log(
-		`[Bedrock] Preparing to invoke model: ${MODEL_ID} in region ${MODEL_REGION}`
-	);
 	const prompt = `You are an expert AI assistant for "Lazo", an app for tracking therapy sessions.
     
     Processing Task:
@@ -107,7 +100,6 @@ export const processTranscriptWithClaude = async (
 	};
 
 	try {
-		console.log("[Bedrock] Sending invocation command...");
 		const command = new InvokeModelCommand({
 			modelId: MODEL_ID,
 			contentType: "application/json",
@@ -116,8 +108,6 @@ export const processTranscriptWithClaude = async (
 		});
 
 		const response = await client.send(command);
-		console.log("[Bedrock] Response received successfully.");
-
 		const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
 		// Extract content from Bedrock Claude response structure
@@ -145,12 +135,6 @@ export const processTranscriptWithClaude = async (
 		return { error: "Unexpected response format", raw: responseBody };
 	} catch (error: any) {
 		console.error("Error invoking Bedrock:", error);
-		if (error.name === "TimeoutError" || error.code === "ETIMEDOUT") {
-			return {
-				error:
-					"Bedrock Connection Timed Out. Likely network issue or no route to us-east-1.",
-			};
-		}
 		if (error.name === "AccessDeniedException") {
 			return {
 				error:

@@ -156,30 +156,110 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		formData.append("noteFormat", noteFormat);
 
 		try {
-			// Start processing immediately after upload starts
-			// In a real app, you might want separate states for upload vs processing
 			setStatus("processing");
 
+			// Use Vite proxy in dev mode if VITE_API_URL is not set
 			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
-			const response = await fetch(`${apiUrl}/api/process-session`, {
+			const baseUrl = apiUrl || ""; // Empty string uses relative path (Vite proxy)
+			const processUrl = `${baseUrl}/api/process-session`;
+
+			console.log("Subiendo audio a API:", processUrl);
+			const response = await fetch(processUrl, {
 				method: "POST",
 				body: formData,
 			});
 
-			if (!response.ok) {
-				throw new Error(`Server error: ${response.statusText}`);
+			// Accept both 200 and 202 status codes
+			if (response.status !== 200 && response.status !== 202) {
+				const errorText = await response.text();
+				throw new Error(
+					`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+				);
 			}
 
-			const data: ProcessSessionResponse = await response.json();
-			setResult(data);
-			setStatus("completed");
-			onAnalysisComplete?.(data);
-			if (file) {
-				onAudioSelected?.(file);
+			const initResponse = await response.json();
+
+			// If we got a sessionId, we need to poll for results
+			if (initResponse.sessionId) {
+				const sessionId = initResponse.sessionId;
+				console.log("Procesamiento iniciado, sessionId:", sessionId);
+
+				// Poll for results
+				const pollInterval = 3000; // Poll every 3 seconds
+				const maxPollAttempts = 120; // Max 6 minutes
+				let attempts = 0;
+
+				const pollForResults = async (): Promise<void> => {
+					while (attempts < maxPollAttempts) {
+						await new Promise((resolve) => setTimeout(resolve, pollInterval));
+						attempts++;
+
+						try {
+							const statusUrl = `${baseUrl}/api/session/${sessionId}`;
+							const statusResponse = await fetch(statusUrl);
+
+							if (!statusResponse.ok) {
+								if (statusResponse.status === 404 && attempts < 5) {
+									// Session might not be ready yet, continue polling
+									continue;
+								}
+								throw new Error(
+									`Error al verificar estado: ${statusResponse.statusText}`
+								);
+							}
+
+							const sessionData = await statusResponse.json();
+
+							if (sessionData.status === "completed" && sessionData.data) {
+								// Build the response in the expected format
+								const data: ProcessSessionResponse = {
+									message: "Procesamiento completado",
+									transcript: sessionData.data.transcript || "",
+									analysis: sessionData.data.analysis,
+									biometry: sessionData.data.biometry,
+								};
+
+								setResult(data);
+								setStatus("completed");
+								onAnalysisComplete?.(data);
+								if (file) {
+									onAudioSelected?.(file);
+								}
+								return;
+							} else if (sessionData.status === "error") {
+								throw new Error(
+									sessionData.error || "Error durante el procesamiento"
+								);
+							}
+							// If still processing, continue polling
+						} catch (pollError: any) {
+							// If it's a network error and we haven't tried many times, continue
+							if (attempts < 10 && pollError.message?.includes("fetch")) {
+								continue;
+							}
+							throw pollError;
+						}
+					}
+
+					throw new Error(
+						"Tiempo de espera agotado. El procesamiento está tomando más tiempo del esperado."
+					);
+				};
+
+				await pollForResults();
+			} else {
+				// Direct response (legacy support)
+				const data: ProcessSessionResponse = initResponse;
+				setResult(data);
+				setStatus("completed");
+				onAnalysisComplete?.(data);
+				if (file) {
+					onAudioSelected?.(file);
+				}
 			}
 		} catch (error: any) {
-			console.error("Upload failed", error);
-			setErrorMessage(error.message || "Something went wrong");
+			console.error("Error en la subida", error);
+			setErrorMessage(error.message || "Algo salió mal al procesar la sesión");
 			setStatus("error");
 		}
 	};
