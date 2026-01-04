@@ -20,8 +20,10 @@
     "better-sqlite3": "^12.5.0",
     "chokidar": "^5.0.0",
     "fluent-ffmpeg": "^2.1.3",
+    "framer-motion": "^12.23.26",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
     "wavesurfer.js": "^7.12.1"
   },
   "devDependencies": {

@@ -1,0 +1,6 @@
+# Enforce LF line endings for shell scripts to avoid "command not found" errors on Linux
+*.sh text eol=lf
+
+# Ensure Docker related files always use LF 
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf

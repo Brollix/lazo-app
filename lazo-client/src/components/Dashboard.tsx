@@ -18,6 +18,7 @@ import {
 import { Settings } from "./Settings";
 import { Patient } from "./PatientsList";
 import { AudioPlayer } from "./AudioPlayer";
+import { AudioUploader } from "./AudioUploader";
 import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 
@@ -174,38 +175,7 @@ export const Dashboard: React.FC<{
 							borderBottom: "1px solid rgba(0,0,0,0.05)",
 						}}
 					>
-						{audioFile ? (
-							<AudioPlayer url={audioFile} />
-						) : (
-							<Box
-								onDrop={handleDrop}
-								onDragOver={handleDragOver}
-								sx={{
-									border: "2px dashed rgba(0,0,0,0.1)",
-									borderRadius: 3,
-									p: 3,
-									textAlign: "center",
-									color: "text.secondary",
-									cursor: "pointer",
-									transition: "all 0.2s",
-									"&:hover": {
-										borderColor: "primary.main",
-										bgcolor: "rgba(33, 150, 243, 0.02)",
-									},
-								}}
-								onClick={() => setAudioFile(DEMO_AUDIO_URL)} // Click to demo for now
-							>
-								<CloudUpload
-									sx={{ fontSize: 40, color: "text.disabled", mb: 1 }}
-								/>
-								<Typography variant="body2" fontWeight={600}>
-									Arrastrá aquí tu grabación de Zoom o MP3
-								</Typography>
-								<Typography variant="caption" color="text.disabled">
-									o haz click para simular carga
-								</Typography>
-							</Box>
-						)}
+						{audioFile ? <AudioPlayer url={audioFile} /> : <AudioUploader />}
 					</Box>
 
 					{/* Middle: AI Assistant Header */}
