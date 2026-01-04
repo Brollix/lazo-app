@@ -8,6 +8,7 @@ import {
 	StartTranscriptionJobCommand,
 	GetTranscriptionJobCommand,
 	MediaFormat,
+	LanguageCode,
 } from "@aws-sdk/client-transcribe";
 // cleaned up unused import
 import dotenv from "dotenv";
@@ -42,10 +43,14 @@ export const uploadAudioToS3 = async (
 	return `s3://${bucketName}/${fileName}`;
 };
 
-export const startTranscriptionJob = async (jobName: string, s3Uri: string) => {
+export const startTranscriptionJob = async (
+	jobName: string,
+	s3Uri: string,
+	languageCode: string = "es-US" // Default to US Spanish
+) => {
 	const command = new StartTranscriptionJobCommand({
 		TranscriptionJobName: jobName,
-		LanguageCode: "es-ES", // Assuming Spanish based on user language ("lazo-app", "como empiezo")
+		LanguageCode: languageCode as LanguageCode,
 		Media: { MediaFileUri: s3Uri },
 		// OutputBucketName: process.env.AWS_S3_BUCKET_NAME, // Optional: if we want Transcribe to write the JSON to our bucket
 	});

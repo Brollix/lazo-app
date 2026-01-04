@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import Store from "electron-store";
 // import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -26,12 +27,13 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 	? path.join(process.env.APP_ROOT, "public")
 	: RENDERER_DIST;
 
-import { initDatabase } from "./database";
+import { initDatabase, addRecording, getRecordings } from "./database";
 
-import { initWatcher } from "./watcher";
+import { startWatcher, setOnFileDetected } from "./watcher";
+
+const store = new Store();
 
 let win: BrowserWindow | null;
-let watcher: any;
 
 // Initialize DB
 try {
@@ -53,14 +55,27 @@ function createWindow() {
 		// 	icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
 		webPreferences: {
 			preload: path.join(__dirname, "preload.cjs"),
-			sandbox: false, // needed for some node integrations if we use them in preload, though contextIsolation is true by default
+			// sandbox: false, // needed for some node integrations if we use them in preload, though contextIsolation is true by default
+			contextIsolation: true,
+			nodeIntegration: false,
 		},
 	});
 
-	// Init watcher
+	// Set up watcher callback
+	setOnFileDetected((filePath) => {
+		console.log("New file detected in main:", filePath);
+		addRecording(filePath);
+		win?.webContents.send("file-detected", filePath);
+	});
+
+	// Init watcher with saved path or default
+	const savedPath = store.get("watchPath") as string;
+	const defaultPath = path.join(app.getPath("documents"), "Zoom");
+	const watchPath = savedPath || defaultPath;
+
 	try {
-		watcher = initWatcher();
-		console.log("Watcher initialized:", watcher ? "Yes" : "No");
+		console.log("Starting watcher on:", watchPath);
+		startWatcher(watchPath);
 	} catch (e) {
 		console.error("Failed to init watcher", e);
 	}
@@ -87,6 +102,29 @@ ipcMain.on("window-maximize", () => {
 	}
 });
 ipcMain.on("window-close", () => win?.close());
+
+// Watcher IPC
+ipcMain.handle("select-folder", async () => {
+	if (!win) return null;
+	const result = await dialog.showOpenDialog(win, {
+		properties: ["openDirectory"],
+	});
+	if (result.canceled || result.filePaths.length === 0) {
+		return null;
+	}
+	const selectedPath = result.filePaths[0];
+	store.set("watchPath", selectedPath);
+	startWatcher(selectedPath);
+	return selectedPath;
+});
+
+ipcMain.handle("get-watch-path", () => {
+	return store.get("watchPath") || path.join(app.getPath("documents"), "Zoom");
+});
+
+ipcMain.handle("get-recordings", () => {
+	return getRecordings();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

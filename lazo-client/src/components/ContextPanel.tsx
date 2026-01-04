@@ -11,24 +11,20 @@ import {
 	Accordion,
 	AccordionSummary,
 	AccordionDetails,
-	Chip,
 	Tooltip,
 } from "@mui/material";
-import {
-	Psychology,
-	ExpandMore,
-	History,
-	Add,
-	ContentCopy,
-} from "@mui/icons-material";
+import { Psychology, ExpandMore, History, Add } from "@mui/icons-material";
+
+import { AnalysisResult } from "./AudioUploader";
 
 export const ContextPanel: React.FC<{
 	onAddToNote: (text: string) => void;
-}> = ({ onAddToNote }) => {
+	analysisData?: AnalysisResult;
+}> = ({ onAddToNote, analysisData }) => {
 	const [expanded, setExpanded] = useState<string | false>(false);
 
 	const handleChange =
-		(panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+		(panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
 			setExpanded(isExpanded ? panel : false);
 		};
 
@@ -41,8 +37,12 @@ export const ContextPanel: React.FC<{
 				flexDirection: "column",
 				borderRadius: 3,
 				overflow: "hidden",
-				border: "1px solid rgba(0,0,0,0.04)",
-				boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
+				border: "1px solid",
+				borderColor: "divider",
+				boxShadow: (theme) =>
+					theme.palette.mode === "light"
+						? "0 2px 12px rgba(0,0,0,0.02)"
+						: "0 2px 12px rgba(0,0,0,0.3)",
 				height: "100%", // Fit column height
 			}}
 		>
@@ -50,8 +50,9 @@ export const ContextPanel: React.FC<{
 			<Box
 				sx={{
 					p: 2,
-					borderBottom: "1px solid rgba(0,0,0,0.04)",
-					bgcolor: "#fafafa",
+					borderBottom: "1px solid",
+					borderColor: "divider",
+					bgcolor: "background.default",
 				}}
 			>
 				<Stack direction="row" alignItems="center" gap={1}>
@@ -72,7 +73,7 @@ export const ContextPanel: React.FC<{
 			</Box>
 
 			{/* Content */}
-			<Box sx={{ flexGrow: 1, overflowY: "auto", bgcolor: "white" }}>
+			<Box sx={{ flexGrow: 1, overflowY: "auto", bgcolor: "background.paper" }}>
 				{/* Previous Session Accordion */}
 				<Accordion
 					expanded={expanded === "panel1"}
@@ -86,7 +87,7 @@ export const ContextPanel: React.FC<{
 				>
 					<AccordionSummary
 						expandIcon={<ExpandMore />}
-						sx={{ bgcolor: "#F5F7FA", minHeight: 48 }}
+						sx={{ bgcolor: "background.default", minHeight: 48 }}
 					>
 						<Stack direction="row" alignItems="center" gap={1}>
 							<History fontSize="small" color="action" />
@@ -128,7 +129,7 @@ export const ContextPanel: React.FC<{
 					</AccordionDetails>
 				</Accordion>
 
-				{/* Active Memory List */}
+				{/* Analyzed Entities List */}
 				<Box sx={{ p: 2, pb: 1 }}>
 					<Typography
 						variant="caption"
@@ -141,28 +142,16 @@ export const ContextPanel: React.FC<{
 							display: "block",
 						}}
 					>
-						Memoria Activa
+						Entidades Detectadas
 					</Typography>
 				</Box>
 				<List sx={{ p: 0 }}>
-					{[
-						{
-							primary: "12 de Marzo",
-							secondary: "Fecha clave: Aniversario",
-						},
-						{
-							primary: "Madre",
-							secondary: "Mención: Conflicto reciente",
-						},
-						{
-							primary: "Medicación",
-							secondary: "Sertralina 50mg (Olvido recurrente)",
-						},
-					].map((item, index) => (
+					{analysisData?.entities.map((item, index) => (
 						<ListItem
 							key={index}
 							sx={{
-								borderBottom: "1px solid rgba(0,0,0,0.03)",
+								borderBottom: "1px solid",
+								borderColor: "divider",
 								py: 1.5,
 								"&:hover .action-btn": { opacity: 1 },
 							}}
@@ -173,9 +162,7 @@ export const ContextPanel: React.FC<{
 										edge="end"
 										size="small"
 										sx={{ opacity: 0, transition: "opacity 0.2s" }}
-										onClick={() =>
-											onAddToNote(`${item.primary}: ${item.secondary}`)
-										}
+										onClick={() => onAddToNote(`${item.name}: ${item.type}`)}
 									>
 										<Add fontSize="small" />
 									</IconButton>
@@ -185,17 +172,25 @@ export const ContextPanel: React.FC<{
 							<ListItemText
 								primary={
 									<Typography variant="body2" fontWeight={600}>
-										{item.primary}
+										{item.name}
 									</Typography>
 								}
 								secondary={
 									<Typography variant="caption" color="text.secondary">
-										{item.secondary}
+										{item.type}
 									</Typography>
 								}
 							/>
 						</ListItem>
 					))}
+					{!analysisData && (
+						<Typography
+							variant="body2"
+							sx={{ p: 2, color: "text.secondary", fontStyle: "italic" }}
+						>
+							Sin datos de análisis aún.
+						</Typography>
+					)}
 				</List>
 			</Box>
 		</Paper>

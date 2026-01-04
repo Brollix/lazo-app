@@ -9,5 +9,8 @@
   "scripts": {
     "dev:client": "npm run dev --workspace=lazo-client",
     "dev:server": "npm run dev --workspace=lazo-server"
+  },
+  "dependencies": {
+    "react-markdown": "^10.1.0"
   }
 }

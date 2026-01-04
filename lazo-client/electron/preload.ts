@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
 		const [channel, ...omit] = args;
 		return ipcRenderer.invoke(channel, ...omit);
 	},
+	selectFolder: () => ipcRenderer.invoke("select-folder"),
+	getWatchPath: () => ipcRenderer.invoke("get-watch-path"),
+	getRecordings: () => ipcRenderer.invoke("get-recordings"),
 
 	// You can expose other APTs you need here.
 	// ...

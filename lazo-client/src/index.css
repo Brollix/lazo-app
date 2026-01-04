@@ -3,9 +3,9 @@
 	line-height: 1.5;
 	font-weight: 400;
 
-	color-scheme: light dark;
-	color: rgba(255, 255, 255, 0.87);
-	background-color: #f4f1de; /* Match theme background */
+	color-scheme: light; /* Enforce light mode mostly for this theme */
+	color: #3d405b; /* Dark Slate text */
+	background-color: #f4f1de; /* Cream background */
 
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
@@ -13,46 +13,32 @@
 	-moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar (Discord-like) */
+/* Custom Scrollbar (Terracotta Themed) */
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-	background-color: #2f3136; /* Darker track */
-	border-radius: 4px;
+	background-color: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-	background-color: #202225; /* Even darker thumb */
+	background-color: rgba(61, 64, 91, 0.2); /* Dark Slate low opacity */
 	border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background-color: #40444b; /* Lighter on hover */
-}
-
-/* Light Mode Scrollbar adjustments */
-@media (prefers-color-scheme: light) {
-	::-webkit-scrollbar-track {
-		background-color: #e0e0e0;
-	}
-	::-webkit-scrollbar-thumb {
-		background-color: #bdbdbd;
-	}
-	::-webkit-scrollbar-thumb:hover {
-		background-color: #9e9e9e;
-	}
+	background-color: rgba(224, 122, 95, 0.6); /* Terracotta opacity */
 }
 
 a {
 	font-weight: 500;
-	color: #646cff;
+	color: #e07a5f; /* Terracotta */
 	text-decoration: inherit;
 }
 a:hover {
-	color: #535bf2;
+	color: #3d405b; /* Dark Slate */
 }
 
 body {
@@ -60,41 +46,16 @@ body {
 	min-width: 320px;
 	min-height: 100vh;
 	overflow: hidden; /* Prevent window scroll */
+	background-color: #f4f1de; /* Ensure body matches theme */
 }
 
 h1 {
 	font-size: 3.2em;
 	line-height: 1.1;
+	color: #3d405b;
 }
 
+/* Remove default button styles to let MUI handle it, or style minimally */
 button {
-	border-radius: 8px;
-	border: 1px solid transparent;
-	padding: 0.6em 1.2em;
-	font-size: 1em;
-	font-weight: 500;
 	font-family: inherit;
-	background-color: #1a1a1a;
-	cursor: pointer;
-	transition: border-color 0.25s;
-}
-button:hover {
-	border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-	outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-	:root {
-		color: #213547;
-		background-color: #ffffff;
-	}
-	a:hover {
-		color: #747bff;
-	}
-	button {
-		background-color: #f9f9f9;
-	}
 }

@@ -37,3 +37,7 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# AI & IDE Rules
+.ai_rules
+.cursorrules

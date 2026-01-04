@@ -1,30 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
 	Box,
 	Paper,
 	Typography,
 	TextField,
 	Button,
+	Chip,
 	IconButton,
 	Stack,
+	Avatar,
+	Dialog,
+	DialogTitle,
+	DialogContent,
 } from "@mui/material";
 import {
 	SmartToy,
 	Mic,
 	ChevronLeft,
 	Settings as SettingsIcon,
+	Assignment,
+	TaskAlt,
+	Psychology,
+	Category,
+	Send,
 	CloudUpload,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
-import { Patient } from "./PatientsList";
-import { AudioPlayer } from "./AudioPlayer";
-import { AudioUploader } from "./AudioUploader";
+
+import { AudioUploader, ProcessSessionResponse } from "./AudioUploader";
 import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
+import { Patient } from "./PatientsList";
+import { AudioPlayer } from "./AudioPlayer";
+import { getColors } from "../styles.theme";
+import ReactMarkdown from "react-markdown";
 
-// Mock Audio URL - In prod this comes from the watcher/backend
-const DEMO_AUDIO_URL =
-	"https://actions.google.com/sounds/v1/science_fiction/digital_typing.ogg"; // Short sample
+interface ChatMessage {
+	id: string;
+	sender: "user" | "bot";
+	content: React.ReactNode;
+	actions?: React.ReactNode;
+	timestamp: Date;
+}
 
 export const Dashboard: React.FC<{
 	onLogout: () => void;
@@ -34,29 +51,156 @@ export const Dashboard: React.FC<{
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
+	const [sessionData, setSessionData] = useState<ProcessSessionResponse | null>(
+		null
+	);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [inputValue, setInputValue] = useState("");
+	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
+	const messagesEndRef = useRef<HTMLDivElement>(null);
 
-	const handleTimestampClick = (timestamp: number) => {
-		// Find existing instance or raise event
-		// For prototype, we'll try to find the audio player instance via a global event bus or context if we had one.
-		// But since AudioPlayer is right here, we will handle communication via Ref or Context in a real app.
-		// For now, if we click a timestamp, we essentially want the AudioPlayer to seek.
-		// We'll simulate loading the file if not loaded.
-		if (!audioFile) setAudioFile(DEMO_AUDIO_URL);
+	const scrollToBottom = () => {
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	};
 
-	const handleDrop = (e: React.DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		// In a real app we'd process the file list here
-		if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-			// Mock loading local file (would need URL.createObjectURL for real preview)
-			setAudioFile(DEMO_AUDIO_URL);
+	useEffect(() => {
+		scrollToBottom();
+	}, [messages]);
+
+	const addMessage = (
+		sender: "user" | "bot",
+		content: React.ReactNode,
+		actions?: React.ReactNode
+	) => {
+		setMessages((prev) => [
+			...prev,
+			{
+				id: Date.now().toString() + Math.random(),
+				sender,
+				content,
+				actions,
+				timestamp: new Date(),
+			} as ChatMessage,
+		]);
+	};
+
+	const handleAnalysisComplete = (data: ProcessSessionResponse) => {
+		setSessionData(data);
+
+		// Show analyzed greeting with chips as requested
+		addMessage(
+			"bot",
+			`He analizado el audio de **${
+				patient?.name || "Paciente Demo"
+			} (45 min)**. ¿Por dónde quieres empezar?`,
+			<Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+				<Button
+					variant="outlined"
+					size="small"
+					onClick={() => handleQuickAction("soap")}
+					sx={{ borderRadius: 2, textTransform: "none" }}
+				>
+					Generar Nota
+				</Button>
+				<Button
+					variant="outlined"
+					size="small"
+					onClick={() => handleQuickAction("tasks")}
+					sx={{ borderRadius: 2, textTransform: "none" }}
+				>
+					Extraer Tareas
+				</Button>
+				<Button
+					variant="outlined"
+					size="small"
+					onClick={() => handleQuickAction("sentiment")}
+					sx={{ borderRadius: 2, textTransform: "none" }}
+				>
+					Análisis de Sentimiento
+				</Button>
+			</Stack>
+		);
+
+		// We don't auto-generate SOAP here anymore as per new flow,
+		// but we keep the data for when the user clicks the button.
+	};
+
+	const generateSoapNote = (data: ProcessSessionResponse) => {
+		const newContent = `Subjetivo:\n${
+			data.analysis.summary
+		}\n\nObjetivo:\n- Sentimiento: ${
+			data.analysis.sentiment
+		}\n- Temas: ${data.analysis.topics.join(
+			", "
+		)}\n\nEvaluación:\n\nPlan:\n${data.analysis.action_items
+			.map((i) => `- ${i}`)
+			.join("\n")}`;
+
+		setSoapContent(newContent);
+		return newContent;
+	};
+
+	const handleAudioSelected = (file: File) => {
+		const url = URL.createObjectURL(file);
+		setAudioFile(url);
+	};
+
+	const handleSendMessage = () => {
+		if (!inputValue.trim()) return;
+		addMessage("user", inputValue);
+		setInputValue("");
+
+		// Mock response for now
+		setTimeout(() => {
+			addMessage(
+				"bot",
+				"Entendido. ¿Necesitas ayuda con algo más sobre esta sesión?"
+			);
+		}, 1000);
+	};
+
+	const handleQuickAction = (
+		action: "soap" | "tasks" | "entities" | "sentiment"
+	) => {
+		if (!sessionData) return;
+
+		switch (action) {
+			case "soap":
+				generateSoapNote(sessionData);
+				addMessage(
+					"bot",
+					`### Nota SOAP Generada\n\nHe redactado la nota clínica basada en el audio. Ya puedes verla y editarla en el panel de la izquierda.`
+				);
+				break;
+			case "tasks":
+				const tasks = sessionData.analysis.action_items
+					.map((t) => `- ${t}`)
+					.join("\n");
+				setSoapContent((prev) => prev + `\n\n### Tareas Detectadas:\n${tasks}`);
+				addMessage(
+					"bot",
+					`### Tareas Extraídas\n\nHe detectado las siguientes tareas y las he agregado a la nota:\n\n${tasks}`
+				);
+				break;
+			case "entities":
+				const entities = sessionData.analysis.entities || [];
+				const entitiesMd = entities
+					.map((e) => `- **${e.name}** (${e.type})`)
+					.join("\n");
+				addMessage(
+					"bot",
+					`### Entidades Detectadas\n\n${
+						entitiesMd || "No se detectaron entidades específicas."
+					}`
+				);
+				break;
+			case "sentiment":
+				addMessage(
+					"bot",
+					`### Análisis de Sentimiento\n\nEl tono general de la conversación fue predominantemente **${sessionData.analysis.sentiment}**.`
+				);
+				break;
 		}
-	};
-
-	const handleDragOver = (e: React.DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
 	};
 
 	return (
@@ -80,7 +224,10 @@ export const Dashboard: React.FC<{
 					justifyContent: "space-between",
 					borderBottom: "1px solid",
 					borderColor: "divider",
-					bgcolor: "rgba(255,255,255,0.8)",
+					bgcolor: (theme) =>
+						theme.palette.mode === "light"
+							? "rgba(255, 255, 255, 0.8)"
+							: "rgba(15, 17, 22, 0.8)", // 80% opacity
 					backdropFilter: "blur(12px)",
 					position: "sticky",
 					top: 0,
@@ -124,12 +271,12 @@ export const Dashboard: React.FC<{
 					sx={{
 						textTransform: "none",
 						borderRadius: 2,
-						borderColor: "rgba(0,0,0,0.1)",
+						borderColor: "divider",
 						color: "text.secondary",
 						"&:hover": {
 							borderColor: "primary.main",
 							color: "primary.main",
-							bgcolor: "rgba(33, 150, 243, 0.04)",
+							bgcolor: "action.hover",
 						},
 					}}
 				>
@@ -162,122 +309,250 @@ export const Dashboard: React.FC<{
 						flexDirection: "column",
 						borderRadius: 3,
 						overflow: "hidden",
-						border: "1px solid rgba(0,0,0,0.04)",
-						boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
-						bgcolor: "#fafafa",
+						border: "1px solid",
+						borderColor: "divider",
+						boxShadow: (theme) =>
+							theme.palette.mode === "light"
+								? "0 4px 20px rgba(0,0,0,0.04)"
+								: "0 4px 20px rgba(0,0,0,0.4)",
+						bgcolor: "background.paper",
 					}}
 				>
-					{/* Top Section: Audio Player or Listen State */}
+					{/* Top Section: Audio Player or New Session Button */}
 					<Box
 						sx={{
 							p: 2,
-							bgcolor: "white",
-							borderBottom: "1px solid rgba(0,0,0,0.05)",
+							bgcolor: "background.paper",
+							borderBottom: "1px solid",
+							borderColor: "divider",
+							flexShrink: 0,
 						}}
 					>
-						{audioFile ? <AudioPlayer url={audioFile} /> : <AudioUploader />}
+						{audioFile ? (
+							<AudioPlayer url={audioFile} />
+						) : (
+							<Button
+								fullWidth
+								variant="outlined"
+								startIcon={<CloudUpload />}
+								onClick={() => setOpenUploadModal(true)}
+								sx={{
+									py: 2,
+									borderRadius: 3,
+									borderStyle: "dashed",
+									borderWidth: 2,
+									"&:hover": {
+										borderStyle: "dashed",
+										borderWidth: 2,
+										bgcolor: (theme) =>
+											theme.palette.mode === "light"
+												? "primary.light"
+												: "rgba(102, 60, 48, 0.1)",
+									},
+								}}
+							>
+								Subir Audio de Sesión
+							</Button>
+						)}
 					</Box>
 
-					{/* Middle: AI Assistant Header */}
+					{/* Middle: AI Assistant Header & Quick Actions */}
 					<Box
 						sx={{
-							p: 2,
-							borderBottom: "1px solid rgba(0,0,0,0.04)",
-							bgcolor: "#fafafa",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
+							p: 1.5,
+							borderBottom: "1px solid",
+							borderColor: "divider",
+							bgcolor: "background.default",
+							flexShrink: 0,
 						}}
 					>
-						<Stack direction="row" alignItems="center" gap={1}>
-							<SmartToy color="primary" fontSize="small" />
-							<Typography
-								variant="subtitle2"
-								sx={{
-									fontWeight: 700,
-									color: "primary.main",
-									textTransform: "uppercase",
-									fontSize: "0.75rem",
-									letterSpacing: "0.05em",
-								}}
-							>
-								Asistente IA
-							</Typography>
-						</Stack>
-						{!audioFile && (
-							<Box
-								sx={{
-									px: 1.5,
-									py: 0.5,
-									bgcolor: "rgba(76, 175, 80, 0.1)",
-									borderRadius: 4,
-									display: "flex",
-									alignItems: "center",
-									gap: 0.5,
-								}}
-							>
-								<Mic sx={{ fontSize: 14, color: "success.main" }} />
+						<Box
+							sx={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
+								mb: sessionData ? 1.5 : 0,
+							}}
+						>
+							<Stack direction="row" alignItems="center" gap={1}>
+								<SmartToy color="primary" fontSize="small" />
 								<Typography
-									variant="caption"
-									sx={{ color: "success.main", fontWeight: 600 }}
+									variant="subtitle2"
+									sx={{
+										fontWeight: 700,
+										color: "primary.main",
+										textTransform: "uppercase",
+										fontSize: "0.75rem",
+										letterSpacing: "0.05em",
+									}}
 								>
-									Escuchando
+									Asistente IA
 								</Typography>
-							</Box>
+							</Stack>
+							{!audioFile && (
+								<Box
+									sx={{
+										px: 1.5,
+										py: 0.5,
+										bgcolor: (theme) =>
+											theme.palette.mode === "light"
+												? `${getColors("light").softGreen}1A`
+												: "rgba(129, 178, 154, 0.15)",
+										borderRadius: 4,
+										display: "flex",
+										alignItems: "center",
+										gap: 0.5,
+									}}
+								>
+									<Mic sx={{ fontSize: 14, color: "success.main" }} />
+									<Typography
+										variant="caption"
+										sx={{ color: "success.main", fontWeight: 600 }}
+									>
+										Escuchando
+									</Typography>
+								</Box>
+							)}
+						</Box>
+
+						{/* Quick Actions Toolbar */}
+						{sessionData && (
+							<Stack
+								direction="row"
+								spacing={1}
+								sx={{ overflowX: "auto", pb: 0.5 }}
+							>
+								<Chip
+									icon={<Assignment fontSize="small" />}
+									label="Nota SOAP"
+									onClick={() => handleQuickAction("soap")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+								/>
+								<Chip
+									icon={<TaskAlt fontSize="small" />}
+									label="Tareas"
+									onClick={() => handleQuickAction("tasks")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+								/>
+								<Chip
+									icon={<Category fontSize="small" />}
+									label="Entidades"
+									onClick={() => handleQuickAction("entities")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+								/>
+								<Chip
+									icon={<Psychology fontSize="small" />}
+									label="Sentimiento"
+									onClick={() => handleQuickAction("sentiment")}
+									size="small"
+									clickable
+									color="primary"
+									variant="outlined"
+								/>
+							</Stack>
 						)}
 					</Box>
 
 					{/* Chat Area */}
 					<Box
 						sx={{
-							flexGrow: 1,
+							flex: 1, // Take all remaining space
 							p: 3,
-							bgcolor: "white",
+							bgcolor: "background.paper",
 							overflowY: "auto",
 							display: "flex",
 							flexDirection: "column",
 							gap: 2,
 						}}
 					>
-						{/* Mock Messages */}
-						<Box
-							sx={{ alignSelf: "flex-start", maxWidth: "80%" }}
-							onClick={() => handleTimestampClick(15)}
-						>
-							<Paper
-								elevation={0}
-								sx={{
-									p: 2,
-									bgcolor: "#F5F7FA",
-									borderRadius: "12px 12px 12px 2px",
-									cursor: "pointer",
-									"&:hover": { bgcolor: "#E3F2FD" },
-								}}
+						{messages.length === 0 ? (
+							<Typography
+								variant="body2"
+								color="text.secondary"
+								align="center"
+								sx={{ mt: 4 }}
 							>
-								<Typography variant="body2" sx={{ color: "text.primary" }}>
-									El paciente mencionó ansiedad al inicio de la sesión.
-									<Box
-										component="span"
+								Sube el audio de la sesión para que pueda ayudarte a redactar la
+								nota clínica.
+							</Typography>
+						) : (
+							messages.map((msg) => (
+								<Box
+									key={msg.id}
+									sx={{
+										alignSelf:
+											msg.sender === "user" ? "flex-end" : "flex-start",
+										maxWidth: "85%",
+										display: "flex",
+										gap: 1.5,
+									}}
+								>
+									{msg.sender === "bot" && (
+										<Avatar
+											sx={{ width: 28, height: 28, bgcolor: "primary.main" }}
+										>
+											<SmartToy sx={{ fontSize: 16 }} />
+										</Avatar>
+									)}
+									<Paper
+										elevation={0}
 										sx={{
-											fontSize: "0.75em",
-											color: "primary.main",
-											ml: 1,
-											fontWeight: 600,
+											p: 2,
+											bgcolor:
+												msg.sender === "user"
+													? "primary.main"
+													: "background.default",
+											color: msg.sender === "user" ? "white" : "text.primary",
+											borderRadius:
+												msg.sender === "user"
+													? "12px 12px 2px 12px"
+													: "2px 12px 12px 12px",
 										}}
 									>
-										0:15
-									</Box>
-								</Typography>
-							</Paper>
-						</Box>
+										{typeof msg.content === "string" ? (
+											<Box
+												sx={{
+													"& p": { m: 0, fontSize: "0.875rem" },
+													"& h3": {
+														m: "0 0 8px 0",
+														fontSize: "1rem",
+														fontWeight: 700,
+													},
+													"& ul": { m: "8px 0", pl: 2 },
+												}}
+											>
+												<ReactMarkdown>{msg.content}</ReactMarkdown>
+											</Box>
+										) : (
+											msg.content
+										)}
+										{msg.actions && <Box sx={{ mt: 1 }}>{msg.actions}</Box>}
+									</Paper>
+								</Box>
+							))
+						)}
+						<div ref={messagesEndRef} />
 					</Box>
 
 					{/* Input Area */}
 					<Box
 						sx={{
 							p: 2,
-							borderTop: "1px solid rgba(0,0,0,0.04)",
-							bgcolor: "white",
+							borderTop: "1px solid",
+							borderColor: "divider",
+							bgcolor: "background.paper",
+							display: "flex",
+							gap: 1,
+							flexShrink: 0,
 						}}
 					>
 						<TextField
@@ -285,15 +560,32 @@ export const Dashboard: React.FC<{
 							placeholder="Pregúntale a lazo..."
 							size="small"
 							variant="outlined"
+							value={inputValue}
+							onChange={(e) => setInputValue(e.target.value)}
+							onKeyPress={(e) => {
+								if (e.key === "Enter") handleSendMessage();
+							}}
 							sx={{
 								"& .MuiOutlinedInput-root": {
 									borderRadius: 2,
-									bgcolor: "#F8F9FA",
-									"& fieldset": { borderColor: "rgba(0,0,0,0.08)" },
+									bgcolor: "background.default",
+									"& fieldset": { borderColor: "divider" },
 									"&:hover fieldset": { borderColor: "primary.main" },
 								},
 							}}
 						/>
+						<IconButton
+							color="primary"
+							onClick={handleSendMessage}
+							disabled={!inputValue.trim()}
+							sx={{
+								bgcolor: inputValue.trim() ? "primary.main" : "transparent",
+								color: inputValue.trim() ? "white" : "action.disabled",
+								"&:hover": { bgcolor: "primary.dark" },
+							}}
+						>
+							<Send />
+						</IconButton>
 					</Box>
 				</Paper>
 
@@ -302,8 +594,31 @@ export const Dashboard: React.FC<{
 					onAddToNote={(text) => {
 						setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
 					}}
+					analysisData={sessionData ? sessionData.analysis : undefined}
 				/>
 			</Box>
+
+			{/* Audio Upload Modal */}
+			<Dialog
+				open={openUploadModal}
+				onClose={() => setOpenUploadModal(false)}
+				maxWidth="sm"
+				fullWidth
+				PaperProps={{
+					sx: {
+						borderRadius: 4,
+						bgcolor: "background.paper",
+						backgroundImage: "none",
+					},
+				}}
+			>
+				<DialogContent sx={{ p: 0 }}>
+					<AudioUploader
+						onAnalysisComplete={handleAnalysisComplete}
+						onAudioSelected={handleAudioSelected}
+					/>
+				</DialogContent>
+			</Dialog>
 		</Box>
 	);
 };

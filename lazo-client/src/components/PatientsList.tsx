@@ -21,6 +21,9 @@ import {
 import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AddIcon from "@mui/icons-material/Add";
+import SettingsIcon from "@mui/icons-material/Settings";
+import HistoryIcon from "@mui/icons-material/History";
+import { SettingsDialog } from "./SettingsDialog";
 
 export interface Patient {
 	id: string;
@@ -40,14 +43,17 @@ const INITIAL_PATIENTS: Patient[] = [
 interface PatientsListProps {
 	onSelectPatient: (patient: Patient) => void;
 	onLogout: () => void;
+	onOpenHistory: () => void;
 }
 
 export const PatientsList: React.FC<PatientsListProps> = ({
 	onSelectPatient,
 	onLogout,
+	onOpenHistory,
 }) => {
 	const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
 	const [open, setOpen] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [newPatientName, setNewPatientName] = useState("");
 	const [newPatientAge, setNewPatientAge] = useState("");
 
@@ -88,7 +94,10 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					justifyContent: "space-between",
 					borderBottom: "1px solid",
 					borderColor: "divider",
-					bgcolor: "rgba(255,255,255,0.8)",
+					bgcolor: (theme) =>
+						theme.palette.mode === "light"
+							? "rgba(255, 255, 255, 0.8)"
+							: "rgba(26, 26, 26, 0.8)", // 80% opacity
 					backdropFilter: "blur(12px)",
 					position: "sticky",
 					top: 0,
@@ -104,9 +113,21 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				>
 					lazo
 				</Typography>
-				<IconButton onClick={onLogout} color="default">
-					<LogoutIcon />
-				</IconButton>
+				<Box>
+					<IconButton onClick={onOpenHistory} color="default" sx={{ mr: 1 }}>
+						<HistoryIcon />
+					</IconButton>
+					<IconButton
+						onClick={() => setSettingsOpen(true)}
+						color="default"
+						sx={{ mr: 1 }}
+					>
+						<SettingsIcon />
+					</IconButton>
+					<IconButton onClick={onLogout} color="default">
+						<LogoutIcon />
+					</IconButton>
+				</Box>
 			</Paper>
 
 			<Container maxWidth="md" sx={{ mt: 4, mb: 4, flex: 1, overflow: "auto" }}>
@@ -125,7 +146,8 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				<Paper
 					elevation={0}
 					sx={{
-						border: "1px solid rgba(0,0,0,0.08)",
+						border: "1px solid",
+						borderColor: "divider",
 						borderRadius: 3,
 						overflow: "hidden",
 					}}
@@ -197,6 +219,10 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					</Button>
 				</DialogActions>
 			</Dialog>
+			<SettingsDialog
+				open={settingsOpen}
+				onClose={() => setSettingsOpen(false)}
+			/>
 		</Box>
 	);
 };

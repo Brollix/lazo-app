@@ -10,6 +10,7 @@ import {
 	Typography,
 	Avatar,
 } from "@mui/material";
+import { colors, shadows } from "../styles.theme";
 
 interface SettingsProps {
 	open: boolean;
@@ -21,7 +22,7 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 	const user = {
 		name: "Paciente Demo",
 		email: "demo@lazo.app",
-		plan: "Pro Subscription",
+		plan: "Suscripción Pro",
 	};
 
 	return (
@@ -34,7 +35,9 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 				sx: {
 					borderRadius: 3,
 					p: 1,
-					boxShadow: "0 24px 48px rgba(0,0,0,0.1)",
+					boxShadow: shadows.card,
+					border: 1,
+					borderColor: "divider",
 				},
 			}}
 		>
@@ -87,7 +90,7 @@ export const Settings: React.FC<SettingsProps> = ({ open, onClose }) => {
 							sx={{
 								px: 1.5,
 								py: 0.5,
-								bgcolor: "rgba(33, 150, 243, 0.1)", // Could be primary.light with opacity
+								bgcolor: `${colors.terracotta}1A`, // 10% opacity theme color
 								borderRadius: 4,
 							}}
 						>

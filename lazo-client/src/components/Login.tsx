@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Typography, TextField, Button, Paper } from "@mui/material";
 // import { createClient } from "@supabase/supabase-js";
+import { colors } from "../styles.theme";
 
 // Placeholder Supabase init - usually done in a service
 // const supabaseUrl =
@@ -29,7 +30,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				alignItems: "center",
 				justifyContent: "center",
 				background: (theme) =>
-					`linear-gradient(135deg, ${theme.palette.background.default} 0%, #FFFFFF 100%)`,
+					`linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
 			}}
 		>
 			<Paper

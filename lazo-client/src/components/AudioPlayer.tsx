@@ -1,19 +1,13 @@
-import React, {
-	useEffect,
-	useRef,
-	useState,
-	useMemo,
-	useCallback,
-} from "react";
+import React, { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import {
 	Box,
 	IconButton,
 	Paper,
 	Typography,
-	Slider,
 	Stack,
 	Chip,
+	useTheme,
 } from "@mui/material";
 import {
 	PlayArrow,
@@ -26,16 +20,15 @@ import {
 interface AudioPlayerProps {
 	url: string;
 	onReady?: () => void;
-	onSeek?: (time: number) => void;
 	onTimeUpdate?: (currentTime: number) => void;
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 	url,
 	onReady,
-	onSeek,
 	onTimeUpdate,
 }) => {
+	const theme = useTheme();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const wavesurfer = useRef<WaveSurfer | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
@@ -47,11 +40,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 	useEffect(() => {
 		if (!containerRef.current) return;
 
+		if (wavesurfer.current) {
+			wavesurfer.current.destroy();
+		}
+
 		wavesurfer.current = WaveSurfer.create({
 			container: containerRef.current,
-			waveColor: "#E0E0E0",
-			progressColor: "#2196F3",
-			cursorColor: "#2196F3",
+			waveColor:
+				theme.palette.mode === "light"
+					? theme.palette.grey[300]
+					: "rgba(255, 255, 255, 0.2)",
+			progressColor: theme.palette.primary.main,
+			cursorColor: theme.palette.primary.main,
 			barWidth: 2,
 			barGap: 3,
 			barRadius: 3,
@@ -73,15 +73,15 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
 		wavesurfer.current.on("play", () => setIsPlaying(true));
 		wavesurfer.current.on("pause", () => setIsPlaying(false));
-		wavesurfer.current.on("seek", (time) => {
-			setCurrentTime(wavesurfer.current?.getCurrentTime() || 0); // Update local state immediately
-			onSeek?.(time);
+
+		wavesurfer.current.on("interaction", () => {
+			setCurrentTime(wavesurfer.current?.getCurrentTime() || 0);
 		});
 
 		return () => {
 			wavesurfer.current?.destroy();
 		};
-	}, [url]);
+	}, [url, theme.palette.mode]);
 
 	const handlePlayPause = () => {
 		wavesurfer.current?.playPause();
@@ -105,21 +105,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 		return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 	};
 
-	// Expose specific methods via ref if needed, or effect for external control
-	// For this simplified version we'll just handle internal state
-
 	return (
 		<Paper
 			elevation={0}
 			sx={{
 				p: 2,
 				borderRadius: 3,
-				bgcolor: "#fafafa",
-				border: "1px solid rgba(0,0,0,0.04)",
+				bgcolor: "background.paper",
+				border: 1,
+				borderColor: "divider",
 			}}
 		>
 			<Stack spacing={2}>
-				{/* Header / Meta */}
 				<Box
 					sx={{
 						display: "flex",
@@ -131,7 +128,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 						variant="subtitle2"
 						sx={{ fontWeight: 600, color: "text.primary" }}
 					>
-						Zoom_Reunion_Juan_Perez.mp3
+						Grabación de Sesión
 					</Typography>
 					<Chip
 						label={`${playbackRate}x`}
@@ -143,10 +140,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 					/>
 				</Box>
 
-				{/* Waveform */}
 				<Box ref={containerRef} sx={{ width: "100%" }} />
 
-				{/* Controls */}
 				<Box
 					sx={{
 						display: "flex",
@@ -170,7 +165,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 							sx={{
 								mx: 1,
 								bgcolor: "primary.main",
-								color: "white",
+								color: "primary.contrastText",
 								"&:hover": { bgcolor: "primary.dark" },
 							}}
 						>

@@ -11,42 +11,98 @@ import {
 	Chip,
 	Paper,
 	Button,
+	TextField,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import DescriptionIcon from "@mui/icons-material/Description";
-import { GlassCard, StyledDropzone, gradients } from "./UploaderStyles";
+import { GlassCard, StyledDropzone } from "./UploaderStyles";
+import { getGradients } from "../styles.theme";
+import { useTheme } from "@mui/material/styles";
 
 // Define the response structure
-interface AnalysisResult {
+export interface AnalysisResult {
 	summary: string;
 	topics: string[];
-	sentiment: "positive" | "neutral" | "negative";
+	sentiment: string; // Expanded to include: Positivo, Negativo, Neutral, Ansioso, Triste, Enojado, Confundido, Esperanzado, Abrumado, Frustrado
 	action_items: string[];
 	entities: { name: string; type: string }[];
 }
 
-interface ProcessSessionResponse {
+export interface ProcessSessionResponse {
 	message: string;
 	transcript: string;
 	analysis: AnalysisResult;
 }
 
-export const AudioUploader: React.FC = () => {
+interface AudioUploaderProps {
+	onAnalysisComplete?: (data: ProcessSessionResponse) => void;
+	onAudioSelected?: (file: File) => void;
+}
+
+// Helper functions for sentiment display
+const getSentimentLabel = (sentiment: string): string => {
+	const labels: Record<string, string> = {
+		Positivo: "POSITIVO",
+		Negativo: "NEGATIVO",
+		Neutral: "NEUTRAL",
+		Ansioso: "ANSIOSO",
+		Triste: "TRISTE",
+		Enojado: "ENOJADO",
+		Confundido: "CONFUNDIDO",
+		Esperanzado: "ESPERANZADO",
+		Abrumado: "ABRUMADO",
+		Frustrado: "FRUSTRADO",
+	};
+	return labels[sentiment] || sentiment.toUpperCase();
+};
+
+const getSentimentColor = (
+	sentiment: string
+): "success" | "error" | "warning" | "info" | "default" => {
+	const colors: Record<
+		string,
+		"success" | "error" | "warning" | "info" | "default"
+	> = {
+		Positivo: "success",
+		Negativo: "error",
+		Neutral: "default",
+		Ansioso: "warning",
+		Triste: "info",
+		Enojado: "error",
+		Confundido: "warning",
+		Esperanzado: "success",
+		Abrumado: "warning",
+		Frustrado: "error",
+	};
+	return colors[sentiment] || "default";
+};
+
+export const AudioUploader: React.FC<AudioUploaderProps> = ({
+	onAnalysisComplete,
+	onAudioSelected,
+}) => {
+	const theme = useTheme();
+	const gradients = getGradients(theme.palette.mode as "light" | "dark");
+
 	const [file, setFile] = useState<File | null>(null);
 	const [status, setStatus] = useState<
 		"idle" | "uploading" | "processing" | "completed" | "error"
 	>("idle");
 	const [result, setResult] = useState<ProcessSessionResponse | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string>("");
+	const [inputLang, setInputLang] = useState<string>("es-US");
+	const [outputLang, setOutputLang] = useState<string>("Spanish");
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
-			setFile(acceptedFiles[0]);
+			const selectedFile = acceptedFiles[0];
+			setFile(selectedFile);
 			setStatus("idle");
 			setResult(null);
+			// Wait for upload to invoke onAudioSelected
 		}
 	}, []);
 
@@ -65,19 +121,19 @@ export const AudioUploader: React.FC = () => {
 
 		const formData = new FormData();
 		formData.append("audio", file);
+		formData.append("inputLanguage", inputLang);
+		formData.append("outputLanguage", outputLang);
 
 		try {
 			// Start processing immediately after upload starts
 			// In a real app, you might want separate states for upload vs processing
 			setStatus("processing");
 
-			const response = await fetch(
-				"http://localhost:3000/api/process-session",
-				{
-					method: "POST",
-					body: formData,
-				}
-			);
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/process-session`, {
+				method: "POST",
+				body: formData,
+			});
 
 			if (!response.ok) {
 				throw new Error(`Server error: ${response.statusText}`);
@@ -86,6 +142,10 @@ export const AudioUploader: React.FC = () => {
 			const data: ProcessSessionResponse = await response.json();
 			setResult(data);
 			setStatus("completed");
+			onAnalysisComplete?.(data);
+			if (file) {
+				onAudioSelected?.(file);
+			}
 		} catch (error: any) {
 			console.error("Upload failed", error);
 			setErrorMessage(error.message || "Something went wrong");
@@ -96,13 +156,13 @@ export const AudioUploader: React.FC = () => {
 	const getStatusMessage = () => {
 		switch (status) {
 			case "uploading":
-				return "Uploading audio to secure storage...";
+				return "Subiendo audio a almacenamiento seguro...";
 			case "processing":
-				return "AI is analyzing your session (Transcribing & Extracting)...";
+				return "La IA está analizando tu sesión (Transcribiendo y Extrayendo)...";
 			case "completed":
-				return "Analysis Complete!";
+				return "¡Análisis completado!";
 			case "error":
-				return "Error processing session";
+				return "Error procesando la sesión";
 			default:
 				return "";
 		}
@@ -118,7 +178,7 @@ export const AudioUploader: React.FC = () => {
 						exit={{ opacity: 0, y: -20 }}
 						key="upload-area"
 					>
-						<GlassCard>
+						<GlassCard sx={{ p: 4 }}>
 							<Typography
 								variant="h4"
 								gutterBottom
@@ -130,32 +190,65 @@ export const AudioUploader: React.FC = () => {
 									fontWeight: "bold",
 								}}
 							>
-								New Session Analysis
+								Análisis de Nueva Sesión
 							</Typography>
 
 							<Typography variant="body1" color="text.secondary" paragraph>
-								Upload your therapy session or voice note to get instant AI
-								insights.
+								Sube tu sesión de terapia o nota de voz para obtener insights
+								instantáneos de IA.
 							</Typography>
 
-							<StyledDropzone {...getRootProps({ isDragActive })}>
+							<Box display="flex" gap={2} mb={3}>
+								<TextField
+									select
+									label="Idioma del Audio"
+									value={inputLang}
+									onChange={(e) => setInputLang(e.target.value)}
+									SelectProps={{
+										native: true,
+									}}
+									fullWidth
+									variant="outlined"
+								>
+									<option value="es-US">Español (EE.UU.)</option>
+									<option value="es-ES">Español (España)</option>
+									<option value="en-US">Inglés (EE.UU.)</option>
+								</TextField>
+
+								<TextField
+									select
+									label="Idioma del Análisis"
+									value={outputLang}
+									onChange={(e) => setOutputLang(e.target.value)}
+									SelectProps={{
+										native: true,
+									}}
+									fullWidth
+									variant="outlined"
+								>
+									<option value="Spanish">Español</option>
+									<option value="English">Inglés</option>
+								</TextField>
+							</Box>
+
+							<StyledDropzone {...getRootProps({ isDragActive })} sx={{ p: 6 }}>
 								<input {...getInputProps()} />
 								<CloudUploadIcon
-									sx={{ fontSize: 60, color: "#764ba2", mb: 2 }}
+									sx={{ fontSize: 60, color: "primary.main", mb: 2 }}
 								/>
 								{isDragActive ? (
 									<Typography variant="h6" color="primary">
-										Drop the audio here...
+										Suelta el audio aquí...
 									</Typography>
 								) : (
 									<Box>
-										<Typography variant="h6">
+										<Typography variant="h6" sx={{ color: "text.primary" }}>
 											{file
 												? file.name
-												: "Drag & drop audio here, or click to select"}
+												: "Arrastra y suelta el audio aquí, o haz clic para seleccionar"}
 										</Typography>
 										<Typography variant="caption" color="text.secondary">
-											Supports MP3, WAV, OGG, M4A
+											Soporta MP3, WAV, OGG, M4A
 										</Typography>
 									</Box>
 								)}
@@ -165,7 +258,7 @@ export const AudioUploader: React.FC = () => {
 								<Box sx={{ mt: 4, textAlign: "center" }}>
 									<CircularProgress
 										size={24}
-										sx={{ mr: 2, color: "#764ba2" }}
+										sx={{ mr: 2, color: "primary.main" }}
 									/>
 									<Typography variant="body2" component="span">
 										{getStatusMessage()}
@@ -196,7 +289,7 @@ export const AudioUploader: React.FC = () => {
 											fontSize: "1.1rem",
 										}}
 									>
-										Analyze Session
+										Analizar Sesión
 									</Button>
 								</Box>
 							)}
@@ -211,10 +304,10 @@ export const AudioUploader: React.FC = () => {
 						<GlassCard>
 							<Box display="flex" alignItems="center" mb={3}>
 								<CheckCircleIcon
-									sx={{ color: "#38ef7d", fontSize: 40, mr: 2 }}
+									sx={{ color: "success.main", fontSize: 40, mr: 2 }}
 								/>
 								<Typography variant="h4" sx={{ fontWeight: "bold" }}>
-									Session Insights
+									Insights de la Sesión
 								</Typography>
 							</Box>
 
@@ -225,12 +318,14 @@ export const AudioUploader: React.FC = () => {
 									sx={{
 										p: 3,
 										borderRadius: "15px",
-										background: "rgba(255,255,255,0.5)",
+										bgcolor: "background.default",
+										border: "1px solid",
+										borderColor: "divider",
 									}}
 								>
 									<Box display="flex" alignItems="center" mb={2}>
 										<DescriptionIcon color="primary" sx={{ mr: 1 }} />
-										<Typography variant="h6">Summary</Typography>
+										<Typography variant="h6">Resumen</Typography>
 									</Box>
 									<Typography variant="body1" color="text.secondary">
 										{result.analysis.summary}
@@ -244,35 +339,31 @@ export const AudioUploader: React.FC = () => {
 										sx={{
 											p: 3,
 											borderRadius: "15px",
-											background: "rgba(255,255,255,0.5)",
+											bgcolor: "background.default",
+											border: "1px solid",
+											borderColor: "divider",
 											mb: 3,
 										}}
 									>
 										<Box display="flex" alignItems="center" mb={2}>
 											<AnalyticsIcon color="secondary" sx={{ mr: 1 }} />
-											<Typography variant="h6">Analysis</Typography>
+											<Typography variant="h6">Análisis</Typography>
 										</Box>
 
 										<Box mb={2}>
 											<Typography variant="subtitle2" gutterBottom>
-												Sentiment
+												Sentimiento
 											</Typography>
 											<Chip
-												label={result.analysis.sentiment.toUpperCase()}
-												color={
-													result.analysis.sentiment === "positive"
-														? "success"
-														: result.analysis.sentiment === "negative"
-														? "error"
-														: "default"
-												}
+												label={getSentimentLabel(result.analysis.sentiment)}
+												color={getSentimentColor(result.analysis.sentiment)}
 												sx={{ fontWeight: "bold" }}
 											/>
 										</Box>
 
 										<Box>
 											<Typography variant="subtitle2" gutterBottom>
-												Key Topics
+												Temas Clave
 											</Typography>
 											<Box display="flex" flexWrap="wrap" gap={1}>
 												{result.analysis.topics.map((topic, i) => (
@@ -294,7 +385,7 @@ export const AudioUploader: React.FC = () => {
 								result.analysis.action_items.length > 0 && (
 									<Box mt={3}>
 										<Typography variant="h6" gutterBottom>
-											Action Items
+											Acciones a Tomar
 										</Typography>
 										<List dense>
 											{result.analysis.action_items.map((item, i) => (
@@ -308,13 +399,14 @@ export const AudioUploader: React.FC = () => {
 
 							<Box mt={4} textAlign="center">
 								<Button
+									variant="outlined"
 									onClick={() => {
 										setFile(null);
 										setResult(null);
 										setStatus("idle");
 									}}
 								>
-									Analyze Another Session
+									Analizar Otra Sesión
 								</Button>
 							</Box>
 						</GlassCard>

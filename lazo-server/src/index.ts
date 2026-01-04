@@ -9,9 +9,16 @@ const port = process.env.PORT || 3000;
 
 app.use(
 	cors({
-		origin: "*", // Allow all origins for testing
+		origin: true, // This echoes back the request origin, which is more reliable than "*" for some cases
 		methods: ["GET", "POST", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization"],
+		allowedHeaders: [
+			"Content-Type",
+			"Authorization",
+			"X-Requested-With",
+			"Accept",
+			"Origin",
+		],
+		credentials: true,
 	})
 );
 
@@ -41,8 +48,12 @@ app.post(
 				return res.status(400).json({ message: "No audio file provided" });
 			}
 
+			// 0. Extract language preferences (default to Spanish/Spanish)
+			const inputLanguage = req.body.inputLanguage || "es-US";
+			const outputLanguage = req.body.outputLanguage || "Spanish";
+
 			console.log(
-				`Received file: ${req.file.originalname} (${req.file.size} bytes)`
+				`Received file: ${req.file.originalname} (${req.file.size} bytes). Input Lang: ${inputLanguage}, Output Lang: ${outputLanguage}`
 			);
 
 			// 1. Upload to S3
@@ -53,7 +64,7 @@ app.post(
 
 			// 2. Start Transcription Job
 			const jobName = `job-${Date.now()}`;
-			await startTranscriptionJob(jobName, s3Uri);
+			await startTranscriptionJob(jobName, s3Uri, inputLanguage);
 			console.log(`Started transcription job: ${jobName}`);
 
 			// 3. Poll for completion (Simple polling for MVP)
@@ -97,7 +108,10 @@ app.post(
 			console.log("Transcript extracted available. Sending to Claude...");
 
 			// 5. Process with Claude
-			const analysis = await processTranscriptWithClaude(transcriptText);
+			const analysis = await processTranscriptWithClaude(
+				transcriptText,
+				outputLanguage
+			);
 
 			// 6. Return Result
 			res.json({

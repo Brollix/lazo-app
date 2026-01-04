@@ -8,7 +8,6 @@ import {
 	Fab,
 	Tooltip,
 	IconButton,
-	Divider,
 } from "@mui/material";
 import {
 	EditNote,
@@ -17,6 +16,7 @@ import {
 	FormatListBulleted,
 	Title,
 } from "@mui/icons-material";
+import { getColors } from "../styles.theme";
 
 interface SoapNoteEditorProps {
 	content: string;
@@ -44,16 +44,21 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 				flexDirection: "column",
 				borderRadius: 3,
 				overflow: "hidden",
-				border: "1px solid rgba(0,0,0,0.04)",
-				boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
+				border: "1px solid",
+				borderColor: "divider",
+				boxShadow: (theme) =>
+					theme.palette.mode === "light"
+						? "0 2px 12px rgba(0,0,0,0.02)"
+						: "0 2px 12px rgba(0,0,0,0.3)",
 				position: "relative",
 			}}
 		>
 			<Box
 				sx={{
 					p: 1.5,
-					borderBottom: "1px solid rgba(0,0,0,0.04)",
-					bgcolor: "#fafafa",
+					borderBottom: "1px solid",
+					borderColor: "divider",
+					bgcolor: "background.default",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -77,38 +82,58 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 
 				{/* Mini Toolbar */}
 				<Stack direction="row" spacing={0.5}>
-					<IconButton size="small" onClick={() => insertText("**bold**")}>
+					<IconButton
+						sx={{ color: "text.secondary" }}
+						size="small"
+						onClick={() => insertText("**bold**")}
+					>
 						<FormatBold fontSize="small" />
 					</IconButton>
-					<IconButton size="small" onClick={() => insertText("\n- ")}>
+					<IconButton
+						sx={{ color: "text.secondary" }}
+						size="small"
+						onClick={() => insertText("\n- ")}
+					>
 						<FormatListBulleted fontSize="small" />
 					</IconButton>
-					<IconButton size="small" onClick={() => insertText("\n## ")}>
+					<IconButton
+						sx={{ color: "text.secondary" }}
+						size="small"
+						onClick={() => insertText("\n## ")}
+					>
 						<Title fontSize="small" />
 					</IconButton>
 				</Stack>
 			</Box>
 
-			<TextField
-				multiline
-				fullWidth
-				value={content}
-				onChange={(e) => onChange(e.target.value)}
-				placeholder="Escribe el informe clínico aquí..."
-				sx={{
-					flexGrow: 1,
-					bgcolor: "white",
-					"& .MuiInputBase-root": {
+			<Box sx={{ flexGrow: 1, position: "relative", overflow: "hidden" }}>
+				<TextField
+					multiline
+					fullWidth
+					value={content}
+					onChange={(e) => onChange(e.target.value)}
+					placeholder="Escribe el informe clínico aquí..."
+					sx={{
 						height: "100%",
-						alignItems: "flex-start",
-						p: 3,
-						fontSize: "0.95rem",
-						lineHeight: 1.6,
-						fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-					},
-					"& .MuiOutlinedInput-notchedOutline": { border: "none" },
-				}}
-			/>
+						bgcolor: "background.paper",
+						"& .MuiInputBase-root": {
+							height: "100%",
+							display: "flex",
+							flexDirection: "column",
+							p: 0,
+							fontSize: "0.95rem",
+							lineHeight: 1.6,
+							fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+							"& textarea": {
+								p: 3,
+								height: "100% !important",
+								overflowY: "auto !important",
+							},
+						},
+						"& .MuiOutlinedInput-notchedOutline": { border: "none" },
+					}}
+				/>
+			</Box>
 
 			{/* FAB */}
 			<Box sx={{ position: "absolute", bottom: 24, right: 24 }}>
@@ -117,7 +142,12 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 						color="primary"
 						aria-label="save"
 						onClick={onSave}
-						sx={{ boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)" }}
+						sx={{
+							boxShadow: (theme) =>
+								`0 4px 12px ${
+									getColors(theme.palette.mode as "light" | "dark").terracotta
+								}4D`,
+						}} // 30% opacity terracotta
 					>
 						<Save />
 					</Fab>

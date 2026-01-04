@@ -1,52 +1,61 @@
-import { Box, styled, Typography } from "@mui/material";
+import { Box, styled, Theme } from "@mui/material";
+import { getColors, getGradients, getShadows } from "../styles.theme";
 
-// Modern Gradient Constants
-export const gradients = {
-	primary: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-	success: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
-	warning: "linear-gradient(135deg, #fce38a 0%, #f38181 100%)",
-	background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-	glass: "rgba(255, 255, 255, 0.25)",
-};
+// Helper to get theme mode from MUI theme
+const getMode = (theme: Theme) => theme.palette.mode || "light";
 
-export const shadows = {
-	card: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-	soft: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-};
+export const GlassCard = styled(Box)(({ theme }) => {
+	const mode = getMode(theme);
+	const gradients = getGradients(mode);
+	const shadows = getShadows(mode);
+	const colors = getColors(mode);
 
-export const GlassCard = styled(Box)(({ theme }) => ({
-	background: gradients.glass,
-	backdropFilter: "blur(10px)",
-	borderRadius: "20px",
-	border: "1px solid rgba(255, 255, 255, 0.18)",
-	boxShadow: shadows.card,
-	padding: theme.spacing(4),
-	transition: "transform 0.3s ease-in-out",
-	"&:hover": {
-		transform: "translateY(-5px)",
-	},
-}));
+	return {
+		background: gradients.glass,
+		backdropFilter: "blur(10px)",
+		borderRadius: "20px",
+		border: `1px solid ${colors.glassBorder}`,
+		boxShadow: shadows.card,
+		padding: theme.spacing(4),
+		transition: "transform 0.3s ease-in-out",
+		"&:hover": {
+			transform: "translateY(-5px)",
+		},
+	};
+});
 
-export const StyledDropzone = styled(Box)<{ isDragActive: boolean }>(
-	({ theme, isDragActive }) => ({
+export const StyledDropzone = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isDragActive",
+})<{ isDragActive: boolean }>(({ theme, isDragActive }) => {
+	const mode = getMode(theme);
+	const colors = getColors(mode);
+
+	return {
 		border: "2px dashed",
-		borderColor: isDragActive ? "#764ba2" : "rgba(255, 255, 255, 0.5)",
+		borderColor: isDragActive
+			? colors.terracotta
+			: mode === "light"
+			? "rgba(0,0,0,0.1)"
+			: "rgba(255,255,255,0.1)",
 		borderRadius: "20px",
 		padding: theme.spacing(6),
 		textAlign: "center",
 		cursor: "pointer",
 		transition: "all 0.3s ease",
-		backgroundColor: isDragActive ? "rgba(118, 75, 162, 0.1)" : "transparent",
+		backgroundColor: isDragActive ? `${colors.terracotta}1A` : "transparent",
 		"&:hover": {
-			borderColor: "#764ba2",
-			backgroundColor: "rgba(118, 75, 162, 0.05)",
+			borderColor: colors.terracotta,
+			backgroundColor: `${colors.terracotta}0D`,
 		},
-	})
-);
+	};
+});
 
-export const statusColors = {
-	uploading: "#667eea",
-	processing: "#fce38a",
-	completed: "#38ef7d",
-	error: "#ff6b6b",
+export const getStatusColors = (mode: "light" | "dark") => {
+	const colors = getColors(mode);
+	return {
+		uploading: colors.terracotta,
+		processing: colors.deepOrange,
+		completed: colors.softGreen,
+		error: colors.status.error,
+	};
 };

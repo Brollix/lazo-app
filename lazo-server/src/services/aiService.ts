@@ -21,13 +21,18 @@ const client = new BedrockRuntimeClient({
 	// Credentials will be picked up from the IAM Role or .env automatically
 });
 
-export const processTranscriptWithClaude = async (transcriptText: string) => {
+export const processTranscriptWithClaude = async (
+	transcriptText: string,
+	targetLanguage: string = "Spanish" // Default to Spanish
+) => {
 	const prompt = `You are an expert AI assistant for "Lazo", an app for tracking therapy sessions and projects.
     
     Processing Task:
     Analyze the following transcription of a voice note and extract structured data into JSON format.
     The voice note may contain information about a therapy session, a creative project, or general thoughts.
     
+    IMPORTANT: The output JSON values (summary, topics, sentiment, action_items, entities) MUST be written in ${targetLanguage}, regardless of the input language.
+
     Transcript:
     "${transcriptText}"
     
@@ -35,12 +40,14 @@ export const processTranscriptWithClaude = async (transcriptText: string) => {
     {
       "summary": "Brief summary of the content",
       "topics": ["topic1", "topic2"],
-      "sentiment": "positive|neutral|negative",
+      "sentiment": "Positivo|Negativo|Neutral|Ansioso|Triste|Enojado|Confundido|Esperanzado|Abrumado|Frustrado",
       "action_items": ["action1", "action2"],
       "entities": [
          { "name": "Entity Name", "type": "Person|Project|Location|Other" }
       ]
     }
+    
+    For sentiment, select the MOST DOMINANT emotional state from the list above. Use the exact spelling as shown.
     
     Ensure the output is valid JSON and nothing else. Do not add markdown blocks like \`\`\`json.`;
 
