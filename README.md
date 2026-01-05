@@ -4,24 +4,22 @@ Este es un repositorio privado para la aplicación **Lazo**.
 
 ## Descripción General
 
-Lazo es una aplicación compuesta por un cliente de escritorio y un servidor backend. El proyecto está estructurado como un monorepo utilizando **npm workspaces**.
+Lazo es una aplicación web compuesta por un cliente (frontend) y un servidor backend. El proyecto está estructurado como un monorepo utilizando **npm workspaces**.
 
 ### Componentes
 
-1.  **lazo-client**: Aplicación de escritorio construida con Electron, React y Vite.
-2.  **lazo-server**: Servidor backend construido con Node.js y Express.
+1.  **client**: Aplicación web construida con React y Vite.
+2.  **server**: Servidor backend construido con Node.js y Express.
 
 ## Tecnologías Principales
 
 **Cliente:**
 
-- Electron
 - React + Vite
 - TypeScript
 - Material UI
 - Supabase Client
 - Wavesurfer.js (Procesamiento de audio)
-- SQLite (better-sqlite3)
 
 **Servidor:**
 
@@ -30,6 +28,7 @@ Lazo es una aplicación compuesta por un cliente de escritorio y un servidor bac
 - Supabase
 - Anthropic AI SDK
 - AWS SDK (Transcribe)
+- Groq SDK (Whisper)
 
 ## Configuración e Instalación
 
@@ -59,8 +58,8 @@ El `package.json` raíz contiene scripts para facilitar la ejecución de ambos e
 
 ```
 lazo-app/
-├── lazo-client/      # Código fuente de la aplicación Electron/React
-├── lazo-server/      # Código fuente del servidor Express
+├── client/           # Código fuente del frontend React
+├── server/           # Código fuente del servidor Express
 ├── package.json      # Configuración del workspace
 └── README.md
 ```
