@@ -1,0 +1,44 @@
+{
+  "name": "lazo-client",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "0.1.1",
+  "description": "Lazo Client Application",
+  "author": "Lazo Team",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@supabase/supabase-js": "^2.89.0",
+    "@types/crypto-js": "^4.2.2",
+    "axios": "^1.6.7",
+    "crypto-js": "^4.2.0",
+    "date-fns": "^3.3.1",
+    "framer-motion": "^12.23.26",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
+    "wavesurfer.js": "^7.12.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.6"
+  },
+  "main": "dist/index.html"
+}

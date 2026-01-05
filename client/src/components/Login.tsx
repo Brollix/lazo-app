@@ -1,0 +1,242 @@
+import React, { useState } from "react";
+import {
+	Box,
+	Typography,
+	TextField,
+	Button,
+	Paper,
+	Link,
+	Alert,
+	CircularProgress,
+} from "@mui/material";
+import { supabase } from "../supabaseClient";
+import { EncryptionService } from "../services/encryptionService";
+
+export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+	const [isSignUp, setIsSignUp] = useState(false);
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [fullName, setFullName] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const handleAuth = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setLoading(true);
+		setError(null);
+
+		try {
+			if (isSignUp) {
+				if (!fullName.trim()) {
+					throw new Error("Por favor ingresa tu nombre completo");
+				}
+				if (password !== confirmPassword) {
+					throw new Error("Las contraseñas no coinciden");
+				}
+				if (password.length < 6) {
+					throw new Error("La contraseña debe tener al menos 6 caracteres");
+				}
+
+				const { data, error } = await supabase.auth.signUp({
+					email,
+					password,
+				});
+
+				if (error) throw error;
+
+				// Save full name to profiles table
+				if (data.user) {
+					const { error: profileError } = await supabase
+						.from("profiles")
+						.update({ full_name: fullName.trim() })
+						.eq("id", data.user.id);
+
+					if (profileError) {
+						console.error("Error saving full name:", profileError);
+					}
+				}
+
+				// Automatically login or set key if auto-login happens
+				EncryptionService.setKey(password);
+
+				alert(
+					"Registro exitoso! Por favor verifica tu correo o inicia sesión."
+				);
+				setIsSignUp(false);
+			} else {
+				const { error } = await supabase.auth.signInWithPassword({
+					email,
+					password,
+				});
+
+				if (error) throw error;
+
+				// Store encryption key
+				EncryptionService.setKey(password);
+				onLogin();
+			}
+		} catch (err: any) {
+			console.error("Auth error:", err);
+			if (
+				err.message === "Invalid login credentials" ||
+				err.code === "invalid_credentials"
+			) {
+				setError("La cuenta no existe. Por favor, crea una para comenzar.");
+			} else {
+				setError(err.message || "Ha ocurrido un error");
+			}
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	return (
+		<Box
+			sx={{
+				height: "100vh",
+				width: "100vw",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				background: (theme) =>
+					`linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
+			}}
+		>
+			<Paper
+				elevation={3}
+				sx={{
+					p: 6,
+					width: 400,
+					borderRadius: 4,
+					textAlign: "center",
+				}}
+			>
+				{/* Brand Section */}
+				<Box sx={{ mb: 4 }}>
+					<Typography variant="h2" color="primary" sx={{ mb: 1 }}>
+						lazo
+					</Typography>
+					<Typography variant="body1" color="text.secondary">
+						Tu soporte clínico inteligente.
+					</Typography>
+				</Box>
+
+				{error && (
+					<Alert
+						severity="error"
+						sx={{ mb: 2 }}
+						action={
+							error.includes("crea una") ? (
+								<Button
+									color="inherit"
+									size="small"
+									onClick={() => {
+										setIsSignUp(true);
+										setError(null);
+										setPassword("");
+										setConfirmPassword("");
+										setFullName("");
+									}}
+								>
+									CREAR CUENTA
+								</Button>
+							) : null
+						}
+					>
+						{error}
+					</Alert>
+				)}
+
+				<form onSubmit={handleAuth}>
+					{isSignUp && (
+						<TextField
+							fullWidth
+							label="Nombre Completo"
+							variant="outlined"
+							margin="normal"
+							value={fullName}
+							onChange={(e) => setFullName(e.target.value)}
+							disabled={loading}
+							autoComplete="name"
+						/>
+					)}
+					<TextField
+						fullWidth
+						label="Correo"
+						variant="outlined"
+						margin="normal"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						disabled={loading}
+					/>
+					<TextField
+						fullWidth
+						label="Contraseña"
+						type="password"
+						variant="outlined"
+						margin="normal"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						disabled={loading}
+					/>
+
+					{isSignUp && (
+						<TextField
+							fullWidth
+							label="Confirmar Contraseña"
+							type="password"
+							variant="outlined"
+							margin="normal"
+							value={confirmPassword}
+							onChange={(e) => setConfirmPassword(e.target.value)}
+							disabled={loading}
+							error={password !== confirmPassword && confirmPassword !== ""}
+							helperText={
+								password !== confirmPassword && confirmPassword !== ""
+									? "Las contraseñas no coinciden"
+									: ""
+							}
+						/>
+					)}
+
+					<Button
+						fullWidth
+						variant="contained"
+						size="large"
+						type="submit"
+						disabled={loading}
+						sx={{ mt: 4, py: 1.5, fontSize: "1.1rem" }}
+					>
+						{loading ? (
+							<CircularProgress size={24} color="inherit" />
+						) : isSignUp ? (
+							"Crear Cuenta"
+						) : (
+							"Ingresar"
+						)}
+					</Button>
+				</form>
+
+				<Box sx={{ mt: 3 }}>
+					<Link
+						component="button"
+						variant="body2"
+						onClick={() => {
+							setIsSignUp(!isSignUp);
+							setError(null);
+							setPassword("");
+							setConfirmPassword("");
+							setFullName("");
+						}}
+						disabled={loading}
+					>
+						{isSignUp
+							? "¿Ya tienes una cuenta? Inicia sesión"
+							: "¿No tienes cuenta? Regístrate"}
+					</Link>
+				</Box>
+			</Paper>
+		</Box>
+	);
+};
