@@ -1,27 +1,26 @@
 #!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status
+set -e
 
-echo "🚀 Starting deployment for Lazo Server..."
+echo "🚀 Starting Server Deployment..."
 
-echo "📥 Pulling latest changes..."
-git pull
+# 1. Update source code
+echo "📥 Pulling latest changes from GitHub..."
+git pull origin master
 
-# Check if docker is running
-if ! docker info > /dev/null 2>&1; then
-  echo "❌ Error: Docker is not running. Please start Docker Desktop."
-  exit 1
-fi
+# 2. Cleanup Docker environment (Remove dangling images and stopped containers)
+echo "🧹 Cleaning up old Docker resources..."
+docker system prune -f
 
-echo "⬇️  Stopping currently running containers..."
-docker compose down
-
+# 3. Rebuild and Restart Services
 echo "🏗️  Building and starting services..."
+docker compose down
 docker compose up --build -d
 
+# 4. Verification
 echo "✅ Backend deployed successfully!"
-echo "Checking service status..."
+echo "------------------------------------------------"
 docker compose ps
+echo "------------------------------------------------"
 
-echo "📜 Streaming logs (Press Ctrl+C to stop viewing logs, server will continue running)..."
-echo "--------------------------------------------------------------------------------"
-docker compose logs -f
+echo "📜 Last 20 lines of logs:"
+docker compose logs --tail 20

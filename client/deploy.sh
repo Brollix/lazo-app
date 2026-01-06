@@ -1,0 +1,45 @@
+#!/bin/bash
+set -e
+
+# Configuration
+PROJECT_ROOT="/home/ubuntu/lazo-app"
+CLIENT_DIR="$PROJECT_ROOT/client"
+DEPLOY_DIR="/var/www/lazo/client"
+
+echo "🚀 Starting Client Deployment..."
+
+# 1. Update source code
+echo "📥 Pulling latest changes from GitHub..."
+cd $PROJECT_ROOT
+git pull origin master
+
+# 2. Build the application
+echo "📦 Installing dependencies and building..."
+cd $CLIENT_DIR
+npm install
+npm run build
+
+# 3. Deploy to Nginx directory
+echo "🚚 Moving build artifacts to $DEPLOY_DIR..."
+sudo mkdir -p $DEPLOY_DIR
+sudo rm -rf $DEPLOY_DIR/*
+sudo cp -r dist/* $DEPLOY_DIR/
+
+# 4. Nginx Configuration (if updated)
+if [ -f "nginx.conf" ]; then
+    echo "⚙️  Updating Nginx configuration..."
+    sudo cp nginx.conf /etc/nginx/sites-available/client
+    sudo ln -sf /etc/nginx/sites-available/client /etc/nginx/sites-enabled/
+fi
+
+# 5. Restart Nginx
+echo "🔄 Restarting Nginx..."
+sudo nginx -t
+sudo systemctl restart nginx
+
+# 6. Cleanup
+echo "🧹 Cleaning up build artifacts..."
+# We keep dist/ for reference, but could remove node_modules if space is tight
+# npm prune --production
+
+echo "✅ Client deployed successfully to https://soylazo.com"
