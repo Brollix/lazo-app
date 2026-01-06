@@ -398,8 +398,9 @@ export const Dashboard: React.FC<{
 				elevation={0}
 				square
 				sx={{
-					height: themeComponents.dashboard.headerHeight,
-					px: 3,
+					height: { xs: "auto", sm: themeComponents.dashboard.headerHeight },
+					px: { xs: 2, sm: 3 },
+					py: { xs: 1.5, sm: 0 },
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -413,7 +414,13 @@ export const Dashboard: React.FC<{
 				}}
 			>
 				{/* Left: Back button */}
-				<Box sx={{ display: "flex", alignItems: "center", minWidth: 120 }}>
+				<Box
+					sx={{
+						display: { xs: "flex", sm: "flex" },
+						alignItems: "center",
+						minWidth: { xs: "auto", sm: 120 },
+					}}
+				>
 					{onBack && (
 						<IconButton onClick={onBack} size="small">
 							<ChevronLeft />
@@ -429,6 +436,7 @@ export const Dashboard: React.FC<{
 							fontWeight: typographyExtended.fontWeights.bold,
 							letterSpacing: typographyExtended.letterSpacing.tight,
 							color: "text.primary",
+							fontSize: { xs: "1.25rem", sm: "1.5rem", md: "2rem" },
 						}}
 					>
 						{patient ? patient.name : "Nueva Sesión"}
@@ -441,13 +449,13 @@ export const Dashboard: React.FC<{
 						display: "flex",
 						alignItems: "center",
 						gap: 1,
-						minWidth: 120,
+						minWidth: { xs: "auto", sm: 120 },
 						justifyContent: "flex-end",
 					}}
 				>
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
-						size="medium"
+						size="small"
 						sx={{ borderRadius: 2 }}
 					>
 						<SettingsIcon />
@@ -461,9 +469,16 @@ export const Dashboard: React.FC<{
 				onLogout={onLogout}
 			/>
 
-			{/* Main Content - 3 Column Layout */}
+			{/* Main Content - Responsive Layout */}
 			<Box
-				sx={{ flexGrow: 1, display: "flex", p: 2, gap: 2, overflow: "hidden" }}
+				sx={{
+					flexGrow: 1,
+					display: "flex",
+					flexDirection: { xs: "column", lg: "row" },
+					p: { xs: 1, sm: 2 },
+					gap: { xs: 1, sm: 2 },
+					overflow: { xs: "auto", lg: "hidden" },
+				}}
 			>
 				{/* Column 1: SOAP Editor (Left) */}
 				<SoapNoteEditor

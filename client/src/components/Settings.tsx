@@ -114,15 +114,17 @@ export const Settings: React.FC<SettingsProps> = ({
 		<Dialog
 			open={open}
 			onClose={onClose}
-			maxWidth="sm"
+			maxWidth="xs"
 			fullWidth
 			PaperProps={{
 				sx: {
 					borderRadius: 3,
-					p: 1,
+					p: { xs: 1, sm: 1.5 },
 					boxShadow: shadows.card,
 					border: 1,
 					borderColor: "divider",
+					m: { xs: 1, sm: 2 },
+					maxWidth: { xs: "calc(100% - 16px)", sm: 480 },
 				},
 			}}
 		>
@@ -132,9 +134,16 @@ export const Settings: React.FC<SettingsProps> = ({
 					alignItems: "center",
 					justifyContent: "space-between",
 					pb: 1,
+					px: 2,
+					pt: 2,
 				}}
 			>
-				<Typography variant="h6" fontWeight="bold" component="div">
+				<Typography
+					variant="h6"
+					fontWeight="bold"
+					component="div"
+					sx={{ fontSize: "1.1rem" }}
+				>
 					Configuración
 				</Typography>
 				<IconButton onClick={toggleTheme} size="small" sx={{ borderRadius: 2 }}>
@@ -142,7 +151,7 @@ export const Settings: React.FC<SettingsProps> = ({
 				</IconButton>
 			</DialogTitle>
 
-			<DialogContent>
+			<DialogContent sx={{ px: 2, pb: 1 }}>
 				{loading ? (
 					<Box
 						sx={{
@@ -161,7 +170,7 @@ export const Settings: React.FC<SettingsProps> = ({
 				) : userProfile ? (
 					<>
 						{/* Section 1: User Profile */}
-						<Box sx={{ mb: 4, mt: 1 }}>
+						<Box sx={{ mb: 3, mt: 0.5 }}>
 							<Typography
 								variant="subtitle2"
 								color="text.secondary"
@@ -178,43 +187,73 @@ export const Settings: React.FC<SettingsProps> = ({
 								sx={{
 									display: "flex",
 									alignItems: "center",
-									gap: 2,
-									p: 2,
+									gap: 1.5,
+									p: 1.5,
 									bgcolor: "background.default",
-									borderRadius: 3,
+									borderRadius: 2,
 								}}
 							>
 								<Avatar
-									sx={{ width: 56, height: 56, bgcolor: "primary.light" }}
+									sx={{
+										width: 48,
+										height: 48,
+										bgcolor: "primary.light",
+									}}
 								>
 									{getInitials(userProfile.full_name, userProfile.email)}
 								</Avatar>
-								<Box>
-									<Typography variant="subtitle1" fontWeight="bold">
+								<Box sx={{ flex: 1, minWidth: 0 }}>
+									<Typography
+										variant="subtitle1"
+										fontWeight="bold"
+										sx={{ fontSize: "0.95rem" }}
+									>
 										{displayName}
 									</Typography>
-									<Typography variant="body2" color="text.secondary">
+									<Typography
+										variant="body2"
+										color="text.secondary"
+										sx={{
+											fontSize: "0.8rem",
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+										}}
+									>
 										{userProfile.email}
 									</Typography>
 								</Box>
-								<Box sx={{ flexGrow: 1 }} />
 								<Box
 									sx={{
-										px: 1.5,
-										py: 0.5,
-										bgcolor: `${colors.terracotta}1A`, // 10% opacity theme color
-										borderRadius: 4,
+										display: "flex",
+										flexDirection: { xs: "row", sm: "column" },
+										gap: 1,
+										alignItems: { xs: "center", sm: "flex-end" },
 									}}
 								>
+									<Box
+										sx={{
+											px: 1.5,
+											py: 0.5,
+											bgcolor: `${colors.terracotta}1A`,
+											borderRadius: 4,
+										}}
+									>
+										<Typography
+											variant="caption"
+											sx={{
+												color: "primary.main",
+												fontWeight: 700,
+												fontSize: { xs: "0.7rem", sm: "0.75rem" },
+											}}
+										>
+											{planDisplay}
+										</Typography>
+									</Box>
 									<Typography
 										variant="caption"
-										sx={{ color: "primary.main", fontWeight: 700 }}
+										color="text.secondary"
+										sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}
 									>
-										{planDisplay}
-									</Typography>
-								</Box>
-								<Box sx={{ ml: 2 }}>
-									<Typography variant="caption" color="text.secondary">
 										Créditos: {userProfile.credits_remaining}
 									</Typography>
 								</Box>
@@ -222,7 +261,8 @@ export const Settings: React.FC<SettingsProps> = ({
 							<Button
 								variant="outlined"
 								fullWidth
-								sx={{ mt: 2, borderRadius: 2 }}
+								size="small"
+								sx={{ mt: 1.5, borderRadius: 2 }}
 								onClick={() => setShowSubModal(true)}
 							>
 								Gestionar Suscripción
@@ -239,7 +279,14 @@ export const Settings: React.FC<SettingsProps> = ({
 				) : null}
 			</DialogContent>
 
-			<DialogActions sx={{ p: 2, pt: 0, justifyContent: "space-between" }}>
+			<DialogActions
+				sx={{
+					p: { xs: 1.5, sm: 2 },
+					pt: 0,
+					flexDirection: { xs: "column", sm: "row" },
+					gap: { xs: 1, sm: 0 },
+				}}
+			>
 				{onLogout && (
 					<Button
 						onClick={() => {
@@ -248,7 +295,8 @@ export const Settings: React.FC<SettingsProps> = ({
 						}}
 						variant="outlined"
 						color="error"
-						sx={{ borderRadius: 2, px: 3 }}
+						size="small"
+						sx={{ borderRadius: 2 }}
 					>
 						Cerrar Sesión
 					</Button>
@@ -258,7 +306,8 @@ export const Settings: React.FC<SettingsProps> = ({
 					onClick={onClose}
 					variant="contained"
 					disableElevation
-					sx={{ borderRadius: 2, px: 3 }}
+					size="small"
+					sx={{ borderRadius: 2 }}
 				>
 					Cerrar
 				</Button>

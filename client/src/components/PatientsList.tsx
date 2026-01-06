@@ -212,8 +212,9 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				elevation={0}
 				square
 				sx={{
-					height: 64,
-					px: 3,
+					height: { xs: "auto", sm: 64 },
+					px: { xs: 2, sm: 3 },
+					py: { xs: 1.5, sm: 0 },
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -231,27 +232,52 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					sx={{
 						fontWeight: 700,
 						color: "primary.main",
+						fontSize: { xs: "1.1rem", sm: "1.25rem" },
 					}}
 				>
 					lazo
 				</Typography>
-				<Box>
+				<Box sx={{ display: "flex", gap: 1 }}>
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
 						color="default"
-						sx={{ mr: 1 }}
+						size="small"
 					>
 						<SettingsIcon />
 					</IconButton>
-					<IconButton onClick={onLogout} color="default">
+					<IconButton onClick={onLogout} color="default" size="small">
 						<LogoutIcon />
 					</IconButton>
 				</Box>
 			</Paper>
 
-			<Container maxWidth="md" sx={{ mt: 4, mb: 4, flex: 1, overflow: "auto" }}>
-				<Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-					<Typography variant="h5" sx={{ fontWeight: 600 }}>
+			<Container
+				maxWidth="md"
+				sx={{
+					mt: { xs: 2, sm: 4 },
+					mb: { xs: 2, sm: 4 },
+					flex: 1,
+					overflow: "auto",
+					px: { xs: 2, sm: 3 },
+				}}
+			>
+				<Box
+					sx={{
+						display: "flex",
+						justifyContent: "space-between",
+						mb: 3,
+						flexDirection: { xs: "column", sm: "row" },
+						gap: { xs: 2, sm: 0 },
+						alignItems: { xs: "stretch", sm: "center" },
+					}}
+				>
+					<Typography
+						variant="h5"
+						sx={{
+							fontWeight: 600,
+							fontSize: { xs: "1.25rem", sm: "1.5rem" },
+						}}
+					>
 						Mis Pacientes
 					</Typography>
 					<Button

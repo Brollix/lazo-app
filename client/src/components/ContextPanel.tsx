@@ -25,8 +25,8 @@ export const ContextPanel: React.FC<{
 		<Paper
 			elevation={0}
 			sx={{
-				flex: 3, // 30%
-				display: "flex",
+				flex: { xs: "0 0 auto", lg: 3 }, // Hidden on mobile by default, visible on desktop
+				display: { xs: "none", lg: "flex" }, // Hide on mobile, show on desktop
 				flexDirection: "column",
 				borderRadius: 3,
 				overflow: "hidden",

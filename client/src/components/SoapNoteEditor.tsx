@@ -39,7 +39,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 		<Paper
 			elevation={0}
 			sx={{
-				flex: isFocused ? 1 : 3, // Adjust based on focus
+				flex: isFocused ? 1 : { xs: "1 1 auto", lg: 3 }, // Responsive flex
 				display: "flex",
 				flexDirection: "column",
 				borderRadius: 3,
@@ -50,12 +50,13 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 					getExtendedShadows(theme.palette.mode as "light" | "dark").editor,
 				position: "relative",
 				transition: "all 0.3s ease",
+				minHeight: { xs: "300px", lg: "auto" }, // Minimum height on mobile
 				...(isFocused && {
 					position: "fixed",
-					top: 80,
-					left: 20,
-					right: 20,
-					bottom: 20,
+					top: { xs: 60, sm: 80 },
+					left: { xs: 10, sm: 20 },
+					right: { xs: 10, sm: 20 },
+					bottom: { xs: 10, sm: 20 },
 					zIndex: 1000,
 					m: 0,
 				}),

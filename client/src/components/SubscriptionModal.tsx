@@ -104,22 +104,35 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	const PlanCard = ({ title, price, features, planId, color }: any) => (
 		<Card
 			sx={{
-				minHeight: 480,
+				minHeight: { xs: "auto", sm: 480 },
 				display: "flex",
 				flexDirection: "column",
 				borderRadius: borderRadius.md,
 				boxShadow: shadows.card,
 				border: components.subscriptionCard.borderWidth,
 				borderColor: "transparent",
-				"&:hover": { borderColor: color, transform: "translateY(-4px)" },
+				"&:hover": {
+					borderColor: color,
+					transform: { xs: "none", sm: "translateY(-4px)" },
+				},
 				transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
 				bgcolor: "background.paper",
 			}}
 		>
 			<CardContent
-				sx={{ p: 3, flexGrow: 1, display: "flex", flexDirection: "column" }}
+				sx={{
+					p: { xs: 2, sm: 3 },
+					flexGrow: 1,
+					display: "flex",
+					flexDirection: "column",
+				}}
 			>
-				<Typography variant="h5" fontWeight="bold" gutterBottom>
+				<Typography
+					variant="h5"
+					fontWeight="bold"
+					gutterBottom
+					sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
+				>
 					{title}
 				</Typography>
 				<Box sx={{ mb: 1 }}>
@@ -127,7 +140,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						variant="h3"
 						fontWeight="bold"
 						component="span"
-						sx={{ color: color }}
+						sx={{ color: color, fontSize: { xs: "1.75rem", sm: "2.5rem" } }}
 					>
 						{planId === "free"
 							? "Gratis"
@@ -239,20 +252,31 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					borderRadius: borderRadius.lg,
 					bgcolor: "background.default",
 					maxHeight: "95vh",
-					width: "95%",
-					maxWidth: "1100px !important",
+					width: { xs: "100%", sm: "95%" },
+					maxWidth: { xs: "100%", sm: "1100px !important" },
+					m: { xs: 0, sm: 2 },
 					"&::-webkit-scrollbar": { display: "none" },
 					msOverflowStyle: "none",
 					scrollbarWidth: "none",
 				},
 			}}
 		>
-			<Box sx={{ textAlign: "center", pt: 6, pb: 2 }}>
+			<Box
+				sx={{
+					textAlign: "center",
+					pt: { xs: 3, sm: 6 },
+					pb: 2,
+					px: { xs: 2, sm: 0 },
+				}}
+			>
 				<Typography
 					variant="h3"
 					component="h1"
 					fontWeight="bold"
-					sx={{ color: colors.terracotta }}
+					sx={{
+						color: colors.terracotta,
+						fontSize: { xs: "1.75rem", sm: "2.5rem" },
+					}}
 				>
 					Elige tu Plan Lazo
 				</Typography>
@@ -260,16 +284,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					variant="h6"
 					component="p"
 					color="text.secondary"
-					sx={{ mt: 1, fontWeight: 400 }}
+					sx={{
+						mt: 1,
+						fontWeight: 400,
+						fontSize: { xs: "0.875rem", sm: "1.25rem" },
+					}}
 				>
 					Soluciones inteligentes para cada etapa de tu práctica.
 				</Typography>
 			</Box>
 			<DialogContent
 				sx={{
-					pb: 6,
-					px: 4,
-					overflow: "hidden", // Hide actual scroll
+					pb: { xs: 3, sm: 6 },
+					px: { xs: 2, sm: 4 },
+					overflow: "auto",
 					display: "flex",
 					flexDirection: "column",
 					alignItems: "center",
@@ -278,13 +306,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				<Box
 					sx={{
 						display: "flex",
-						gap: 3,
+						flexDirection: { xs: "column", md: "row" },
+						gap: { xs: 2, sm: 3 },
 						mt: 1,
 						justifyContent: "center",
-						alignItems: "flex-start",
+						alignItems: { xs: "stretch", md: "flex-start" },
 					}}
 				>
-					<Box sx={{ flex: "1 1 0", maxWidth: 400 }}>
+					<Box
+						sx={{
+							flex: "1 1 0",
+							maxWidth: { xs: "100%", md: 400 },
+							width: "100%",
+						}}
+					>
 						<PlanCard
 							title="Plan Gratis"
 							price={0}
@@ -299,7 +334,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							]}
 						/>
 					</Box>
-					<Box sx={{ flex: "1 1 0", maxWidth: 400 }}>
+					<Box
+						sx={{
+							flex: "1 1 0",
+							maxWidth: { xs: "100%", md: 400 },
+							width: "100%",
+						}}
+					>
 						<PlanCard
 							title="Plan Pro"
 							price={proPriceARS}
@@ -315,7 +356,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							]}
 						/>
 					</Box>
-					<Box sx={{ flex: "1 1 0", maxWidth: 400 }}>
+					<Box
+						sx={{
+							flex: "1 1 0",
+							maxWidth: { xs: "100%", md: 400 },
+							width: "100%",
+						}}
+					>
 						<PlanCard
 							title="Plan Ultra"
 							price={ultraPriceARS}

@@ -162,7 +162,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 		<Paper
 			elevation={0}
 			sx={{
-				p: 2,
+				p: { xs: 1.5, sm: 2 },
 				borderRadius: 3,
 				bgcolor: "background.paper",
 				border: 1,

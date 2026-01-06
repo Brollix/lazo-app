@@ -129,23 +129,36 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				justifyContent: "center",
 				background: (theme) =>
 					`linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
+				px: { xs: 2, sm: 0 }, // Add horizontal padding on mobile
 			}}
 		>
 			<Paper
 				elevation={3}
 				sx={{
-					p: 6,
-					width: 400,
+					p: { xs: 3, sm: 4, md: 6 }, // Responsive padding
+					width: "100%",
+					maxWidth: { xs: "100%", sm: 400 }, // Responsive width
 					borderRadius: 4,
 					textAlign: "center",
 				}}
 			>
 				{/* Brand Section */}
-				<Box sx={{ mb: 4 }}>
-					<Typography variant="h2" color="primary" sx={{ mb: 1 }}>
+				<Box sx={{ mb: { xs: 3, md: 4 } }}>
+					<Typography
+						variant="h2"
+						color="primary"
+						sx={{
+							mb: 1,
+							fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" }, // Responsive font size
+						}}
+					>
 						lazo
 					</Typography>
-					<Typography variant="body1" color="text.secondary">
+					<Typography
+						variant="body1"
+						color="text.secondary"
+						sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+					>
 						Tu soporte clínico inteligente.
 					</Typography>
 				</Box>
@@ -245,7 +258,11 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 						size="large"
 						type="submit"
 						disabled={loading}
-						sx={{ mt: 4, py: 1.5, fontSize: "1.1rem" }}
+						sx={{
+							mt: { xs: 3, md: 4 },
+							py: { xs: 1.2, md: 1.5 },
+							fontSize: { xs: "1rem", md: "1.1rem" },
+						}}
 					>
 						{loading ? (
 							<CircularProgress size={24} color="inherit" />
