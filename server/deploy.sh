@@ -4,8 +4,9 @@ set -e
 echo "🚀 Starting Server Deployment..."
 
 # 1. Update source code
-echo "📥 Pulling latest changes from GitHub..."
-git pull origin master
+echo "📥 Fetching latest changes from GitHub..."
+git fetch origin master
+git reset --hard origin/master
 
 # 2. Cleanup Docker environment (Remove dangling images and stopped containers)
 echo "🧹 Cleaning up old Docker resources..."

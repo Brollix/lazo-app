@@ -9,9 +9,10 @@ DEPLOY_DIR="/var/www/lazo/client"
 echo "🚀 Starting Client Deployment..."
 
 # 1. Update source code
-echo "📥 Pulling latest changes from GitHub..."
+echo "📥 Fetching latest changes from GitHub..."
 cd $PROJECT_ROOT
-git pull origin master
+git fetch origin master
+git reset --hard origin/master
 
 # 2. Build the application (using Docker to avoid host dependencies)
 echo "📦 Building application using Docker..."
