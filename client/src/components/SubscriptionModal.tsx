@@ -36,38 +36,37 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	const theme = useTheme();
 	const extendedColors = getExtendedColors(theme.palette.mode);
 	const [dolarRate, setDolarRate] = useState<number>(1950);
+	const [prices, setPrices] = useState({ pro: 0, ultra: 0 });
 	const [loading, setLoading] = useState(false);
-	// loadingPrices state removed
 
 	const apiUrl = import.meta.env.VITE_API_URL;
 
-	// Precios en USD
-	const proPriceUSD = 10;
-	const ultraPriceUSD = 30; // No se usa, Ultra está en "Próximamente"
-
-	// Calcular precios en ARS
-	const proPriceARS = Math.round(proPriceUSD * dolarRate);
-	const ultraPriceARS = Math.round(ultraPriceUSD * dolarRate);
+	// Precios locales (fallback si la API falla)
+	const proPriceARS = prices.pro || Math.round(10 * dolarRate);
+	const ultraPriceARS = prices.ultra || Math.round(30 * dolarRate);
 
 	useEffect(() => {
 		if (open) {
-			fetch("https://dolarapi.com/v1/dolares/tarjeta")
+			// Fetch prices from our backend
+			fetch(`${apiUrl}/api/prices`)
 				.then((res) => res.json())
 				.then((data) => {
-					console.log("Dolar API response:", data);
-					// Calcular promedio entre compra y venta
-					const promedio = Math.round((data.compra + data.venta) / 2);
-					console.log(
-						`Dólar Tarjeta - Compra: ${data.compra}, Venta: ${data.venta}, Promedio: ${promedio}`
-					);
-					setDolarRate(promedio);
+					console.log("Backend prices:", data);
+					setPrices({ pro: data.pro, ultra: data.ultra });
+					if (data.rate) setDolarRate(data.rate);
 				})
 				.catch((err) => {
-					console.error("Error fetching dolar rate:", err);
-					// Mantener el valor por defecto de 1950
+					console.error("Error fetching prices from backend:", err);
+					// Fallback: Try to fetch dolar rate directly if backend fails
+					fetch("https://dolarapi.com/v1/dolares/tarjeta")
+						.then((res) => res.json())
+						.then((data) => {
+							const promedio = Math.round((data.compra + data.venta) / 2);
+							setDolarRate(promedio);
+						});
 				});
 		}
-	}, [open]);
+	}, [open, apiUrl]);
 
 	const handleSubscribe = async (planId: "free" | "pro" | "ultra") => {
 		if (planId === "free") {
@@ -156,14 +155,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						"Funcionalidades avanzadas en desarrollo"
 					) : planId !== "free" ? (
 						<>
-							USD ${planId === "pro" ? 10 : 30} × Dólar Tarjeta
+							{price === 50 ? (
+								<Typography
+									component="span"
+									variant="body2"
+									sx={{ fontWeight: "bold", color: "primary.main" }}
+								>
+									Precio especial de prueba
+								</Typography>
+							) : (
+								<>
+									USD ${planId === "pro" ? 10 : 30} × Dólar Tarjeta
+									<br />
+									(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
+								</>
+							)}
 							<br />
 							<Typography
 								component="span"
 								variant="caption"
-								sx={{ opacity: 0.8 }}
+								sx={{ opacity: 0.8, fontSize: "0.7rem" }}
 							>
-								(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
+								{planId === "pro" && price === 50
+									? "Temporalmente 50 pesos para validación"
+									: `USD $${planId === "pro" ? 10 : 30} aprox.`}
 							</Typography>
 						</>
 					) : (
@@ -223,7 +238,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				sx: {
 					borderRadius: borderRadius.lg,
 					bgcolor: "background.default",
-					maxHeight: "90vh",
+					maxHeight: "95vh",
+					width: "95%",
+					maxWidth: "1100px !important",
+					"&::-webkit-scrollbar": { display: "none" },
+					msOverflowStyle: "none",
+					scrollbarWidth: "none",
 				},
 			}}
 		>
@@ -245,7 +265,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					Soluciones inteligentes para cada etapa de tu práctica.
 				</Typography>
 			</Box>
-			<DialogContent sx={{ pb: 6, px: 4, overflow: "visible" }}>
+			<DialogContent
+				sx={{
+					pb: 6,
+					px: 4,
+					overflow: "hidden", // Hide actual scroll
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+				}}
+			>
 				<Box
 					sx={{
 						display: "flex",
