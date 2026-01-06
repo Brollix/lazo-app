@@ -13,11 +13,13 @@ echo "📥 Pulling latest changes from GitHub..."
 cd $PROJECT_ROOT
 git pull origin master
 
-# 2. Build the application
-echo "📦 Installing dependencies and building..."
-cd $CLIENT_DIR
-npm install
-npm run build
+# 2. Build the application (using Docker to avoid host dependencies)
+echo "📦 Building application using Docker..."
+docker run --rm \
+    -v "$CLIENT_DIR":/app \
+    -w /app \
+    node:20-alpine \
+    sh -c "npm install && npm run build"
 
 # 3. Deploy to Nginx directory
 echo "🚚 Moving build artifacts to $DEPLOY_DIR..."
