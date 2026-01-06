@@ -5,8 +5,12 @@ echo "🚀 Starting Server Deployment..."
 
 # 1. Update source code
 echo "📥 Fetching latest changes from GitHub..."
+# Clean up any corrupted refs and stash local changes
+git remote prune origin
+git stash --include-untracked || true
 git fetch origin master
 git reset --hard origin/master
+git clean -fd
 
 # 2. Cleanup Docker environment (Remove dangling images and stopped containers)
 echo "🧹 Cleaning up old Docker resources..."

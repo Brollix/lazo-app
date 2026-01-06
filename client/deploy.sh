@@ -11,8 +11,12 @@ echo "🚀 Starting Client Deployment..."
 # 1. Update source code
 echo "📥 Fetching latest changes from GitHub..."
 cd $PROJECT_ROOT
+# Clean up any corrupted refs and stash local changes
+git remote prune origin
+git stash --include-untracked || true
 git fetch origin master
 git reset --hard origin/master
+git clean -fd
 
 # 2. Build the application (using Docker to avoid host dependencies)
 echo "📦 Building application using Docker..."
