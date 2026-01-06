@@ -24,6 +24,7 @@ docker run --rm \
 
 # 3. Deploy to Nginx directory
 echo "🚚 Moving build artifacts to $DEPLOY_DIR..."
+cd $CLIENT_DIR
 sudo mkdir -p $DEPLOY_DIR
 sudo rm -rf $DEPLOY_DIR/*
 sudo cp -r dist/* $DEPLOY_DIR/
