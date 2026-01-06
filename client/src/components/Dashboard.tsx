@@ -26,6 +26,7 @@ import {
 	AddCircleOutline,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
+import { SubscriptionModal } from "./SubscriptionModal";
 import {
 	getBackgrounds,
 	getExtendedShadows,
@@ -61,11 +62,15 @@ export const Dashboard: React.FC<{
 	onLogout: () => void;
 	patient: Patient | null;
 	onBack?: () => void;
-}> = ({ onLogout, patient, onBack }) => {
+	userId?: string;
+}> = ({ onLogout, patient, onBack, userId }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
 	const extendedShadows = getExtendedShadows(theme.palette.mode);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+	const [userAppPlan, setUserAppPlan] = useState<string | null>(null);
+	const [userEmail, setUserEmail] = useState<string>("");
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
 	const [sessionData, setSessionData] = useState<ProcessSessionResponse | null>(
@@ -91,6 +96,20 @@ export const Dashboard: React.FC<{
 	useEffect(() => {
 		scrollToBottom();
 	}, [messages]);
+
+	useEffect(() => {
+		if (userId) {
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			fetch(`${apiUrl}/api/user-plan/${userId}`)
+				.then((res) => res.json())
+				.then((data) => {
+					setUserAppPlan(data.plan_type);
+					// Fallback to empty string if email is missing
+					setUserEmail(data.email || "");
+				})
+				.catch((err) => console.error("Error fetching user plan:", err));
+		}
+	}, [userId]);
 
 	const addMessage = (
 		sender: "user" | "bot",
@@ -384,6 +403,14 @@ export const Dashboard: React.FC<{
 		}
 	};
 
+	const handleUploadCheck = () => {
+		if (!userAppPlan) {
+			setSubscriptionModalOpen(true);
+		} else {
+			setOpenUploadModal(true);
+		}
+	};
+
 	return (
 		<Box
 			sx={{
@@ -467,6 +494,28 @@ export const Dashboard: React.FC<{
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
+			/>
+
+			<SubscriptionModal
+				open={subscriptionModalOpen}
+				onClose={() => {
+					setSubscriptionModalOpen(false);
+					// Re-fetch plan to see if they subscribed
+					if (userId) {
+						const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+						fetch(`${apiUrl}/api/user-plan/${userId}`)
+							.then((res) => res.json())
+							.then((data) => {
+								setUserAppPlan(data.plan_type);
+								// Auto-open upload modal if they now have a plan
+								if (data.plan_type) {
+									setOpenUploadModal(true);
+								}
+							});
+					}
+				}}
+				userId={userId || ""}
+				userEmail={userEmail}
 			/>
 
 			{/* Main Content - Responsive Layout */}
@@ -585,7 +634,7 @@ export const Dashboard: React.FC<{
 								fullWidth
 								variant="outlined"
 								startIcon={<CloudUpload />}
-								onClick={() => setOpenUploadModal(true)}
+								onClick={handleUploadCheck}
 								sx={{
 									py: 2,
 									borderRadius: 3,
@@ -878,6 +927,7 @@ export const Dashboard: React.FC<{
 						onAudioSelected={handleAudioSelected}
 						onClose={() => setOpenUploadModal(false)}
 						patientName={patient?.name}
+						userId={userId}
 					/>
 				</DialogContent>
 			</Dialog>

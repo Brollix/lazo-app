@@ -27,6 +27,7 @@ function App() {
 		const savedMode = localStorage.getItem("themeMode");
 		return savedMode === "dark" || savedMode === "light" ? savedMode : "light";
 	});
+	const [userId, setUserId] = useState<string | undefined>(undefined);
 
 	const theme = useMemo(() => createAppTheme(themeMode), [themeMode]);
 
@@ -44,6 +45,7 @@ function App() {
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			if (session) {
 				setCurrentView("list");
+				setUserId(session.user.id);
 			}
 		});
 
@@ -53,9 +55,11 @@ function App() {
 		} = supabase.auth.onAuthStateChange((_event, session) => {
 			if (session) {
 				setCurrentView("list");
+				setUserId(session.user.id);
 			} else {
 				setCurrentView("login");
 				setSelectedPatient(null);
+				setUserId(undefined);
 			}
 		});
 
@@ -107,6 +111,7 @@ function App() {
 								onLogout={handleLogout}
 								patient={selectedPatient}
 								onBack={handleBackToList}
+								userId={userId}
 							/>
 						)}
 					</Box>

@@ -401,6 +401,32 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 	res.sendStatus(200);
 });
 
+app.post("/api/select-free-plan", async (req, res) => {
+	const { userId } = req.body;
+	if (!userId) {
+		return res.status(400).json({ error: "UserId requerido" });
+	}
+
+	try {
+		const profile = await getUserProfile(userId);
+		// If they already have a plan (and it's not null/empty), we shouldn't reset credits lightly.
+		// But for now, we assume this is called only when checking if plan is missing.
+		// Let's allow switching to free if they have NO plan.
+		if (profile.plan_type) {
+			return res
+				.status(400)
+				.json({ error: "El usuario ya tiene un plan asignado." });
+		}
+
+		// Update to Free plan with 3 credits
+		await updateUserPlan(userId, "free", 3);
+		res.json({ success: true, message: "Plan gratuito asignado" });
+	} catch (error: any) {
+		console.error("Error selecting free plan:", error);
+		res.status(500).json({ error: "Error al asignar plan gratuito" });
+	}
+});
+
 app.listen(port, () => {
 	console.log(`Lazo Server listening at http://localhost:${port}`);
 });

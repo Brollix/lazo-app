@@ -19,6 +19,10 @@ import {
 	TextField,
 	useTheme,
 	CircularProgress,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -34,6 +38,7 @@ export interface Patient {
 	id: string;
 	name: string;
 	age: number;
+	gender?: string;
 	lastVisit: string;
 }
 
@@ -55,9 +60,11 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [newPatientName, setNewPatientName] = useState("");
 	const [newPatientAge, setNewPatientAge] = useState("");
+	const [newPatientGender, setNewPatientGender] = useState("");
 	const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editAge, setEditAge] = useState("");
+	const [editGender, setEditGender] = useState("");
 
 	// Fetch patients on mount
 	React.useEffect(() => {
@@ -122,6 +129,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			const patientData = {
 				name: newPatientName,
 				age: parseInt(newPatientAge) || 0,
+				gender: newPatientGender,
 				lastVisit: new Date().toISOString().split("T")[0],
 			};
 
@@ -146,6 +154,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			setOpen(false);
 			setNewPatientName("");
 			setNewPatientAge("");
+			setNewPatientGender("");
 		} catch (error) {
 			console.error("Error creating patient:", error);
 			alert("Error al crear el paciente");
@@ -165,6 +174,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			const patientData = {
 				name: editName,
 				age: parseInt(editAge) || 0,
+				gender: editGender,
 				lastVisit: editingPatient.lastVisit,
 			};
 
@@ -185,6 +195,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			setEditingPatient(null);
 			setEditName("");
 			setEditAge("");
+			setEditGender("");
 		} catch (error) {
 			console.error("Error updating patient:", error);
 			alert("Error al actualizar el paciente");
@@ -195,6 +206,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 		setEditingPatient(patient);
 		setEditName(patient.name);
 		setEditAge(patient.age.toString());
+		setEditGender(patient.gender || "");
 		setEditOpen(true);
 	};
 
@@ -373,6 +385,19 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 						value={newPatientAge}
 						onChange={(e) => setNewPatientAge(e.target.value)}
 					/>
+					<FormControl fullWidth margin="dense">
+						<InputLabel>Género</InputLabel>
+						<Select
+							value={newPatientGender}
+							label="Género"
+							onChange={(e) => setNewPatientGender(e.target.value)}
+						>
+							<MenuItem value="Masculino">Masculino</MenuItem>
+							<MenuItem value="Femenino">Femenino</MenuItem>
+							<MenuItem value="No Binario">No Binario</MenuItem>
+							<MenuItem value="Otro">Otro</MenuItem>
+						</Select>
+					</FormControl>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setOpen(false)}>Cancelar</Button>
@@ -404,6 +429,19 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 						value={editAge}
 						onChange={(e) => setEditAge(e.target.value)}
 					/>
+					<FormControl fullWidth margin="dense">
+						<InputLabel>Género</InputLabel>
+						<Select
+							value={editGender}
+							label="Género"
+							onChange={(e) => setEditGender(e.target.value)}
+						>
+							<MenuItem value="Masculino">Masculino</MenuItem>
+							<MenuItem value="Femenino">Femenino</MenuItem>
+							<MenuItem value="No Binario">No Binario</MenuItem>
+							<MenuItem value="Otro">Otro</MenuItem>
+						</Select>
+					</FormControl>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setEditOpen(false)}>Cancelar</Button>

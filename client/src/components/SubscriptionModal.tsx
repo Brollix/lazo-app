@@ -70,7 +70,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
 	const handleSubscribe = async (planId: "free" | "pro" | "ultra") => {
 		if (planId === "free") {
-			onClose();
+			try {
+				setLoading(true);
+				const response = await fetch(`${apiUrl}/api/select-free-plan`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ userId }),
+				});
+
+				if (!response.ok) {
+					console.error("Error setting free plan");
+					// Optionally show error
+				}
+				onClose();
+			} catch (error) {
+				console.error("Error selecting free plan:", error);
+			} finally {
+				setLoading(false);
+			}
 			return;
 		}
 		setLoading(true);
@@ -232,7 +249,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					) : planId === "ultra" ? (
 						"Próximamente"
 					) : planId === "free" ? (
-						"Empezar Gratis"
+						"Continuar Gratis"
 					) : (
 						"Elegir Plan"
 					)}

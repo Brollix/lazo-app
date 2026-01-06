@@ -64,6 +64,7 @@ interface AudioUploaderProps {
 	onAudioSelected?: (file: File) => void;
 	onClose?: () => void;
 	patientName?: string;
+	userId?: string;
 }
 
 // Helper functions for sentiment display
@@ -111,6 +112,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	onAudioSelected,
 	onClose,
 	patientName,
+	userId,
 }) => {
 	const theme = useTheme();
 	const gradients = getGradients(theme.palette.mode as "light" | "dark");
@@ -162,6 +164,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		formData.append("noteFormat", noteFormat);
 		if (patientName) {
 			formData.append("patientName", patientName);
+		}
+		if (userId) {
+			formData.append("userId", userId);
 		}
 
 		try {
