@@ -18,6 +18,7 @@ echo "📦 Building application using Docker..."
 docker run --rm \
     -v "$CLIENT_DIR":/app \
     -w /app \
+    -e NODE_OPTIONS="--max-old-space-size=1024" \
     node:20-alpine \
     sh -c "npm install && npm run build"
 
