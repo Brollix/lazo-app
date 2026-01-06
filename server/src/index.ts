@@ -209,9 +209,6 @@ app.post(
 					});
 
 					// Biometry calculation
-					const segments =
-						(transcriptionResult as any).results?.speaker_labels?.segments ||
-						[];
 					let patientSeconds = 0;
 					let therapistSeconds = 0;
 					const silences: { start: number; duration: number }[] = [];
