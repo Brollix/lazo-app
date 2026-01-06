@@ -1,25 +1,25 @@
-name: Deploy Client to EC2
+name: Deploy Server to EC2
 
 on:
   push:
     branches:
       - master
     paths:
-      - "client/**"
-      - ".github/workflows/deploy-client.yml"
+      - "server/**"
+      - ".github/workflows/deploy-server.yml"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy Client
+      - name: Deploy Server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/lazo-app/client
+            cd ~/lazo-app/server
             chmod +x deploy.sh
             ./deploy.sh
