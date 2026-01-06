@@ -1,0 +1,61 @@
+name: Deploy Client to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - ".github/workflows/deploy-client.yml"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build client
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          MP_PUBLIC_KEY: ${{ secrets.MP_PUBLIC_KEY }}
+        run: npm run build:client
+
+      - name: Comprimir dist
+        run: tar -czf client-dist.tar.gz -C client dist
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "client-dist.tar.gz,client/nginx.conf"
+          target: "/tmp"
+
+      - name: Deploy and Restart Nginx
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mkdir -p /var/www/lazo/client
+            sudo tar -xzf /tmp/client-dist.tar.gz -C /var/www/lazo/client --strip-components=1
+            sudo cp /tmp/client/nginx.conf /etc/nginx/sites-available/lazo-client
+            sudo ln -sf /etc/nginx/sites-available/lazo-client /etc/nginx/sites-enabled/
+            sudo nginx -t && sudo systemctl restart nginx
+            rm /tmp/client-dist.tar.gz
+            rm -rf /tmp/client

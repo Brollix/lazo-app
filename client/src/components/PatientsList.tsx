@@ -24,7 +24,6 @@ import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
-import HistoryIcon from "@mui/icons-material/History";
 import EditIcon from "@mui/icons-material/Edit";
 import { Settings } from "./Settings";
 import { getBackgrounds } from "../styles.theme";
@@ -41,13 +40,11 @@ export interface Patient {
 interface PatientsListProps {
 	onSelectPatient: (patient: Patient) => void;
 	onLogout: () => void;
-	onOpenHistory: () => void;
 }
 
 export const PatientsList: React.FC<PatientsListProps> = ({
 	onSelectPatient,
 	onLogout,
-	onOpenHistory,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -239,9 +236,6 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					lazo
 				</Typography>
 				<Box>
-					<IconButton onClick={onOpenHistory} color="default" sx={{ mr: 1 }}>
-						<HistoryIcon />
-					</IconButton>
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
 						color="default"

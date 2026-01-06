@@ -3,7 +3,6 @@ import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { createAppTheme } from "./theme";
 import { Login } from "./components/Login";
 import { Dashboard } from "./components/Dashboard";
-import { RecordingsHistory } from "./components/RecordingsHistory";
 import { PatientsList, Patient } from "./components/PatientsList";
 import { supabase } from "./supabaseClient";
 
@@ -21,7 +20,7 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 function App() {
 	const [currentView, setCurrentView] = useState<
-		"login" | "list" | "dashboard" | "recordings"
+		"login" | "list" | "dashboard"
 	>("login");
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 	const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -101,11 +100,7 @@ function App() {
 							<PatientsList
 								onSelectPatient={handleSelectPatient}
 								onLogout={handleLogout}
-								onOpenHistory={() => setCurrentView("recordings")}
 							/>
-						)}
-						{currentView === "recordings" && (
-							<RecordingsHistory onBack={() => setCurrentView("list")} />
 						)}
 						{currentView === "dashboard" && (
 							<Dashboard
