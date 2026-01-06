@@ -22,8 +22,9 @@ CREATE OR REPLACE FUNCTION decrement_credits(user_id UUID)
 RETURNS void AS $$
 BEGIN
   UPDATE public.profiles
-  SET credits_remaining = credits_remaining - 1
-  WHERE id = user_id AND plan_type = 'free' AND credits_remaining > 0;
+  SET credits_remaining = credits_remaining - 1,
+      updated_at = timezone('utc'::text, now())
+  WHERE id = user_id AND credits_remaining > 0;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

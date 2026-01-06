@@ -1,12 +1,12 @@
 import axios from "axios";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import cron from "node-cron";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 // MercadoPago Configuration
-const client = new MercadoPagoConfig({
+export const client = new MercadoPagoConfig({
 	accessToken: process.env.MP_ACCESS_TOKEN || "",
 });
 
@@ -43,12 +43,15 @@ cron.schedule("0 0 * * *", () => {
 fetchDolarTarjeta();
 
 export const getPrices = () => {
-	const proUsd = 15;
+	// Temporarily overriding price for production testing as requested by user
+	const proUsd = 0.025; // This will result in ~50 ARS with a 2000 rate, but we'll force 50 below if needed
 	const ultraUsd = 30;
+
+	const proPrice = 50; // FORCED FOR TESTING
 
 	return {
 		rate: currentDolarRate,
-		pro: Math.round(proUsd * currentDolarRate),
+		pro: proPrice,
 		ultra: Math.round(ultraUsd * currentDolarRate),
 		updatedAt: new Date().toISOString(),
 	};
@@ -138,8 +141,17 @@ export const createSubscriptionPreference = async (
 				payer: preferenceBody.payer,
 				back_urls: preferenceBody.back_urls,
 				notification_url: preferenceBody.notification_url,
+				metadata: {
+					user_id: userId,
+					plan_id: planId,
+				},
 			})
 		);
+
+		preferenceBody.metadata = {
+			user_id: userId,
+			plan_id: planId,
+		};
 
 		const response = await preference.create({
 			body: preferenceBody,
@@ -159,5 +171,16 @@ export const createSubscriptionPreference = async (
 				err.message || String(err)
 			} -- TokenPrefix: ${tokenPrefix} -- Stack: ${err.stack}`
 		);
+	}
+};
+
+export const getPaymentDetails = async (paymentId: string) => {
+	const payment = new Payment(client);
+	try {
+		const result = await payment.get({ id: paymentId });
+		return result;
+	} catch (error) {
+		console.error("[Subscription] Error getting payment details:", error);
+		throw error;
 	}
 };

@@ -72,6 +72,7 @@ import {
 import {
 	getPrices,
 	createSubscriptionPreference,
+	getPaymentDetails,
 } from "./services/subscriptionService";
 import {
 	getUserProfile,
@@ -349,15 +350,53 @@ app.post("/api/create-preference", async (req, res) => {
 	}
 });
 
+import { MercadoPagoConfig, Payment } from "mercadopago";
+const mpClient = new MercadoPagoConfig({
+	accessToken: process.env.MP_ACCESS_TOKEN || "",
+});
+
 app.post("/api/mercadopago-webhook", async (req, res) => {
 	const { data, type } = req.body;
+	console.log(`[Webhook] Received event type: ${type}`);
+
 	if (type === "payment") {
 		const paymentId = data.id;
-		// Here you would normally fetch the payment from MP and get external_reference (userId)
-		// For this implementation, we'll assume we get the userId and plan from the body or metadata
-		// This part needs MP SDK call to verification
-		console.log(`Webhook received payment: ${paymentId}`);
-		// updateUserPlan(userId, planType);
+		try {
+			console.log(`[Webhook] Fetching payment details for ID: ${paymentId}`);
+			const payment = await new Payment(mpClient).get({ id: paymentId });
+
+			if (payment.status === "approved") {
+				// Try to get userId from metadata first, then external_reference
+				const userId = payment.metadata?.user_id || payment.external_reference;
+				// Try to get planId from metadata first, then items
+				const planId =
+					payment.metadata?.plan_id || payment.additional_info?.items?.[0]?.id;
+
+				console.log(
+					`[Webhook] Payment APPROVED! User: ${userId}, Plan: ${planId}, Amount: ${payment.transaction_amount}`
+				);
+
+				if (userId && planId) {
+					// Using 50 credits by default as practiced in current implementation
+					await updateUserPlan(userId, planId, 50);
+					console.log(`[Webhook] User ${userId} plan updated to ${planId}`);
+				} else {
+					console.warn(
+						`[Webhook] Missing data in approved payment ${paymentId}. userId: ${userId}, planId: ${planId}`
+					);
+				}
+			} else {
+				console.log(
+					`[Webhook] Payment ${paymentId} status: ${payment.status} (${payment.status_detail})`
+				);
+			}
+		} catch (error: any) {
+			console.error(`[Webhook] Error processing payment ${paymentId}:`, error);
+			// Check if it's a 404 (common during testing with expired/invalid IDs)
+			if (error.status !== 404) {
+				return res.status(500).json({ error: "Internal processing error" });
+			}
+		}
 	}
 	res.sendStatus(200);
 });

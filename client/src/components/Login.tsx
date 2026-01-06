@@ -20,6 +20,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 	const [fullName, setFullName] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState<string | null>(null);
 
 	const handleAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -72,9 +73,17 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
 				if (error) throw error;
 
+				// Success feedback
+				setSuccess("¡Bienvenido! Iniciando sesión...");
+				setLoading(true); // Keep loading state during transition
+
 				// Store encryption key
 				EncryptionService.setKey(password);
-				onLogin();
+
+				// Wait a bit to show success message before redirecting
+				setTimeout(() => {
+					onLogin();
+				}, 1500);
 			}
 		} catch (err: any) {
 			console.error("Auth error:", err);
@@ -82,7 +91,26 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				err.message === "Invalid login credentials" ||
 				err.code === "invalid_credentials"
 			) {
-				setError("La cuenta no existe. Por favor, crea una para comenzar.");
+				// Check if the user exists to give better feedback
+				try {
+					const { data: exists, error: rpcError } = await supabase.rpc(
+						"check_user_exists",
+						{
+							email_to_check: email,
+						}
+					);
+
+					if (rpcError) throw rpcError;
+
+					if (exists) {
+						setError("Contraseña incorrecta. Por favor intentalo de nuevo.");
+					} else {
+						setError("La cuenta no existe. Por favor, crea una para comenzar.");
+					}
+				} catch (rpcErr) {
+					console.error("Error checking user existence:", rpcErr);
+					setError("La cuenta no existe o el correo es inválido.");
+				}
 			} else {
 				setError(err.message || "Ha ocurrido un error");
 			}
@@ -125,7 +153,8 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				{error && (
 					<Alert
 						severity="error"
-						sx={{ mb: 2 }}
+						variant="filled"
+						sx={{ mb: 2, textAlign: "left" }}
 						action={
 							error.includes("crea una") ? (
 								<Button
@@ -139,12 +168,22 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 										setFullName("");
 									}}
 								>
-									CREAR CUENTA
+									REGISTRARSE
 								</Button>
 							) : null
 						}
 					>
 						{error}
+					</Alert>
+				)}
+
+				{success && (
+					<Alert
+						severity="success"
+						variant="filled"
+						sx={{ mb: 2, textAlign: "left" }}
+					>
+						{success}
 					</Alert>
 				)}
 

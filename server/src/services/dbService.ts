@@ -26,28 +26,53 @@ export const getUserProfile = async (userId: string) => {
 };
 
 export const decrementCredits = async (userId: string) => {
-	const { data, error } = await supabase.rpc("decrement_credits", {
+	const { error } = await supabase.rpc("decrement_credits", {
 		user_id: userId,
 	});
 
 	if (error) {
-		console.error("Error decrementing credits:", error);
-		// Fallback for logic if RPC not set up yet
+		console.error("Error decrementing credits via RPC:", error);
+		// Fallback for logic if RPC not set up yet or fails
 		const profile = await getUserProfile(userId);
-		if (profile.plan_type === "free") {
+		if (profile.credits_remaining > 0) {
 			await supabase
 				.from("profiles")
-				.update({ credits_remaining: profile.credits_remaining - 1 })
+				.update({
+					credits_remaining: profile.credits_remaining - 1,
+					updated_at: new Date().toISOString(),
+				})
 				.eq("id", userId);
 		}
 	}
 };
 
-export const updateUserPlan = async (userId: string, plan: string) => {
+export const updateUserPlan = async (
+	userId: string,
+	plan: string,
+	creditsToAdd: number = 50
+) => {
+	console.log(
+		`[DB] Updating plan for ${userId} to ${plan}. Adding ${creditsToAdd} credits.`
+	);
+
+	// Get current profile to sum credits
+	const profile = await getUserProfile(userId);
+	const currentCredits = profile?.credits_remaining || 0;
+	const newCredits = currentCredits + creditsToAdd;
+
 	const { error } = await supabase
 		.from("profiles")
-		.update({ plan_type: plan, credits_remaining: 999999 }) // Unlimited for paid
+		.update({
+			plan_type: plan,
+			credits_remaining: newCredits,
+			updated_at: new Date().toISOString(),
+		})
 		.eq("id", userId);
 
-	if (error) console.error("Error updating user plan:", error);
+	if (error) {
+		console.error("Error updating user plan:", error);
+		throw error;
+	}
+
+	return { plan, credits_remaining: newCredits };
 };
