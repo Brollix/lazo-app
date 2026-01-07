@@ -366,23 +366,54 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 			const payment = await new Payment(mpClient).get({ id: paymentId });
 
 			if (payment.status === "approved") {
-				// Try to get userId from metadata first, then external_reference
-				const userId = payment.metadata?.user_id || payment.external_reference;
-				// Try to get planId from metadata first, then items
-				const planId =
-					payment.metadata?.plan_id || payment.additional_info?.items?.[0]?.id;
+				// Improved extraction logic handling multiple possibilities
+				const userId =
+					payment.metadata?.user_id ||
+					payment.external_reference ||
+					(payment as any).metadata?.userId; // Check for camelCase just in case
 
+				const planId =
+					payment.metadata?.plan_id ||
+					payment.additional_info?.items?.[0]?.id ||
+					(payment as any).metadata?.planId;
+
+				console.log(`[Webhook] Payment APPROVED!`);
+				console.log(`[Webhook] Extracted - User: ${userId}, Plan: ${planId}`);
 				console.log(
-					`[Webhook] Payment APPROVED! User: ${userId}, Plan: ${planId}, Amount: ${payment.transaction_amount}`
+					`[Webhook] Amount: ${payment.transaction_amount}, Currency: ${payment.currency_id}`
+				);
+				console.log(`[Webhook] Full Payment Metadata:`, payment.metadata);
+				console.log(
+					`[Webhook] Full External Reference:`,
+					payment.external_reference
 				);
 
 				if (userId && planId) {
 					// Using 50 credits by default as practiced in current implementation
-					await updateUserPlan(userId, planId, 50);
-					console.log(`[Webhook] User ${userId} plan updated to ${planId}`);
+					try {
+						const result = await updateUserPlan(userId, planId, 50);
+						if (result.rowsUpdated === 0) {
+							console.error(
+								`[Webhook] CRITICAL: Payment approved but NO user updated. UserId '${userId}' might not exist in DB.`
+							);
+						} else {
+							console.log(
+								`[Webhook] SUCCESS: User ${userId} plan updated to ${planId}. Rows affected: ${result.rowsUpdated}`
+							);
+						}
+					} catch (dbError) {
+						console.error(
+							`[Webhook] DB Error updating plan for user ${userId}:`,
+							dbError
+						);
+					}
 				} else {
 					console.warn(
 						`[Webhook] Missing data in approved payment ${paymentId}. userId: ${userId}, planId: ${planId}`
+					);
+					console.log(
+						`[Webhook] Raw Payment Data for Debugging:`,
+						JSON.stringify(payment, null, 2)
 					);
 				}
 			} else {

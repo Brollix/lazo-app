@@ -60,19 +60,24 @@ export const updateUserPlan = async (
 	const currentCredits = profile?.credits_remaining || 0;
 	const newCredits = currentCredits + creditsToAdd;
 
-	const { error } = await supabase
+	const { data, error, count } = await supabase
 		.from("profiles")
 		.update({
 			plan_type: plan,
 			credits_remaining: newCredits,
 			updated_at: new Date().toISOString(),
 		})
-		.eq("id", userId);
+		.eq("id", userId)
+		.select(); // Select to get returned data
 
 	if (error) {
 		console.error("Error updating user plan:", error);
 		throw error;
 	}
 
-	return { plan, credits_remaining: newCredits };
+	return {
+		plan,
+		credits_remaining: newCredits,
+		rowsUpdated: data?.length || 0,
+	};
 };
