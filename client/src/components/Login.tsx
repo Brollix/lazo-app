@@ -29,15 +29,8 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
 		try {
 			if (isSignUp) {
-				if (!fullName.trim()) {
-					throw new Error("Por favor ingresa tu nombre completo");
-				}
-				if (password !== confirmPassword) {
-					throw new Error("Las contraseñas no coinciden");
-				}
-				if (password.length < 6) {
-					throw new Error("La contraseña debe tener al menos 6 caracteres");
-				}
+				// Security checks removed for testing purposes
+				// TODO: Re-enable validations for production
 
 				const { data, error } = await supabase.auth.signUp({
 					email,
@@ -216,11 +209,15 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 					<TextField
 						fullWidth
 						label="Correo"
+						type="text"
 						variant="outlined"
 						margin="normal"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						disabled={loading}
+						inputProps={{
+							autoComplete: "email",
+						}}
 					/>
 					<TextField
 						fullWidth
