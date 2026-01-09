@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Invitación a Lazo</title>
+		<style>
+			body,
+			table,
+			td,
+			a {
+				-webkit-text-size-adjust: 100%;
+				-ms-text-size-adjust: 100%;
+			}
+			table,
+			td {
+				mso-table-lspace: 0pt;
+				mso-table-rspace: 0pt;
+			}
+			img {
+				-ms-interpolation-mode: bicubic;
+				border: 0;
+				height: auto;
+				line-height: 100%;
+				outline: none;
+				text-decoration: none;
+			}
+			body {
+				margin: 0;
+				padding: 0;
+				width: 100% !important;
+				font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+					"Roboto", "Helvetica", "Arial", sans-serif;
+				background-color: #faf9f6;
+			}
+			.email-container {
+				max-width: 600px;
+				margin: 0 auto;
+				background-color: #ffffff;
+			}
+			.header {
+				background: linear-gradient(135deg, #d6684e 0%, #e29578 100%);
+				padding: 48px 40px;
+				text-align: center;
+			}
+			.logo {
+				font-size: 48px;
+				font-weight: 900;
+				color: #ffffff;
+				letter-spacing: -0.04em;
+				margin: 0;
+			}
+			.tagline {
+				font-size: 16px;
+				color: rgba(255, 255, 255, 0.9);
+				margin: 8px 0 0 0;
+				font-weight: 500;
+			}
+			.content {
+				padding: 48px 40px;
+				color: #3d405b;
+			}
+			.greeting {
+				font-size: 24px;
+				font-weight: 700;
+				color: #2d3047;
+				margin: 0 0 24px 0;
+				letter-spacing: -0.02em;
+			}
+			.message {
+				font-size: 16px;
+				line-height: 1.6;
+				color: #3d405b;
+				margin: 0 0 24px 0;
+			}
+			.button-container {
+				text-align: center;
+				margin: 40px 0;
+			}
+			.button {
+				display: inline-block;
+				padding: 16px 40px;
+				background: linear-gradient(135deg, #d6684e 0%, #e29578 100%);
+				color: #ffffff !important;
+				text-decoration: none;
+				border-radius: 12px;
+				font-weight: 700;
+				font-size: 16px;
+				box-shadow: 0 4px 12px rgba(214, 104, 78, 0.3);
+			}
+			.info-box {
+				background-color: #faf9f6;
+				border-left: 4px solid #6b9080;
+				padding: 20px;
+				margin: 32px 0;
+				border-radius: 8px;
+			}
+			.info-box p {
+				margin: 0;
+				font-size: 14px;
+				color: #3d405b;
+				line-height: 1.5;
+			}
+			.footer {
+				background-color: #2d3047;
+				padding: 32px 40px;
+				text-align: center;
+				color: rgba(255, 255, 255, 0.7);
+			}
+			.footer p {
+				margin: 8px 0;
+				font-size: 14px;
+			}
+			.footer a {
+				color: #e29578;
+				text-decoration: none;
+			}
+			@media only screen and (max-width: 600px) {
+				.header,
+				.content,
+				.footer {
+					padding: 32px 24px !important;
+				}
+				.logo {
+					font-size: 36px !important;
+				}
+				.greeting {
+					font-size: 20px !important;
+				}
+				.button {
+					padding: 14px 32px !important;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<table
+			role="presentation"
+			cellspacing="0"
+			cellpadding="0"
+			border="0"
+			width="100%"
+			style="background-color: #faf9f6"
+		>
+			<tr>
+				<td style="padding: 40px 20px">
+					<table
+						role="presentation"
+						class="email-container"
+						cellspacing="0"
+						cellpadding="0"
+						border="0"
+						width="100%"
+					>
+						<tr>
+							<td class="header">
+								<h1 class="logo">lazo</h1>
+								<p class="tagline">Tu soporte clínico inteligente</p>
+							</td>
+						</tr>
+						<tr>
+							<td class="content">
+								<h2 class="greeting">Has sido invitado a Lazo</h2>
+								<p class="message">
+									Un colega te ha invitado a unirte a Lazo, la plataforma de
+									soporte clínico inteligente que está transformando la forma en
+									que los profesionales de la salud documentan sus consultas.
+								</p>
+								<p class="message">
+									Acepta esta invitación para crear tu cuenta y comenzar a
+									optimizar tu práctica médica con notas SOAP automatizadas.
+								</p>
+								<div class="button-container">
+									<a href="{{ .ConfirmationURL }}" class="button">
+										Aceptar invitación
+									</a>
+								</div>
+								<div class="info-box">
+									<p>
+										<strong>¿Qué es Lazo?</strong><br />
+										Lazo te ayuda a generar notas SOAP profesionales
+										automáticamente, ahorrándote tiempo valioso y mejorando la
+										calidad de tu documentación clínica.
+									</p>
+								</div>
+								<p
+									class="message"
+									style="margin-top: 32px; font-size: 14px; color: #81b29a"
+								>
+									Esta invitación expirará en 7 días.
+								</p>
+							</td>
+						</tr>
+						<tr>
+							<td class="footer">
+								<p
+									style="margin-bottom: 16px; font-weight: 600; color: #ffffff"
+								>
+									Lazo - Soporte clínico inteligente
+								</p>
+								<p>
+									¿Necesitas ayuda? Contáctanos en
+									<a href="mailto:support@soylazo.com">support@soylazo.com</a>
+								</p>
+								<p style="margin-top: 24px; font-size: 12px">
+									© 2026 Lazo. Todos los derechos reservados.
+								</p>
+								<p style="font-size: 12px">
+									<a href="https://soylazo.com">soylazo.com</a>
+								</p>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>

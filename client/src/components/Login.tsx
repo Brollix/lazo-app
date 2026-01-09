@@ -51,12 +51,17 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 					}
 				}
 
-				// Automatically login or set key if auto-login happens
-				EncryptionService.setKey(password);
+				// Sign out the user to force them to login manually
+				await supabase.auth.signOut();
 
-				alert(
-					"Registro exitoso! Por favor verifica tu correo o inicia sesión."
+				setSuccess(
+					"Registro exitoso! Por favor verifica tu correo e inicia sesión con tu contraseña."
 				);
+
+				// Clear form and switch to login view
+				setPassword("");
+				setConfirmPassword("");
+				setFullName("");
 				setIsSignUp(false);
 			} else {
 				const { error } = await supabase.auth.signInWithPassword({
