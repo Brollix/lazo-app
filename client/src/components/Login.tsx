@@ -217,7 +217,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 						sx={{
 							mb: 2,
 							textAlign: "center",
-							borderRadius: (theme) => theme.shape.borderRadius / 8,
+							borderRadius: 1,
 							fontSize: { xs: "0.875rem", sm: "0.95rem" },
 							py: { xs: 1.5, sm: 2 },
 							"& .MuiAlert-icon": {

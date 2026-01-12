@@ -12,7 +12,6 @@ import {
 	DialogContent,
 	CircularProgress,
 	useTheme,
-	Divider,
 	List,
 	ListItem,
 	ListItemButton,
@@ -32,10 +31,7 @@ import {
 	AddCircleOutline,
 	History,
 	EventNote,
-	Download,
 	MenuBook,
-	Person as PersonIcon,
-	ChevronRight,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -82,6 +78,7 @@ const formatDuration = (seconds?: number) => {
 
 export const Dashboard: React.FC<{
 	onLogout: () => void;
+	patient: Patient | null;
 	initialSession?: ClinicalSession | null;
 	initialDate?: string;
 	initialTime?: string;
@@ -389,10 +386,6 @@ export const Dashboard: React.FC<{
 			return;
 		}
 
-		if (action === "download") {
-			handleExportTxt();
-			return;
-		}
 
 		setIsActionLoading(true);
 

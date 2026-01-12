@@ -19,10 +19,8 @@ import {
 	Close,
 	Email,
 	Lock,
-	Save,
 	Visibility,
 	VisibilityOff,
-	ArrowForward,
 } from "@mui/icons-material";
 import { supabase } from "../supabaseClient";
 import { colors } from "../styles.theme";
@@ -45,7 +43,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 	const [newPassword, setNewPassword] = React.useState("");
 	const [confirmPassword, setConfirmPassword] = React.useState("");
 	const [showOldPassword, setShowOldPassword] = React.useState(false);
-	const [showNewPassword, setShowNewPassword] = React.useState(false);
+	const [showNewPassword] = React.useState(false);
 	const [loading, setLoading] = React.useState<string | null>(null);
 	const [error, setError] = React.useState<{
 		type: "email" | "password";

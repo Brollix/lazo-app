@@ -21,7 +21,11 @@ import {
 interface SoapNoteEditorProps {
 	content: string;
 	onChange: (value: string) => void;
+	onSave?: () => void;
 	onDownload?: () => void;
+	method?: string;
+	onToggleFocus?: () => void;
+	isFocused?: boolean;
 }
 
 export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({

@@ -25,13 +25,11 @@ import {
 	CardMembership,
 	AccountBalanceWallet,
 	Person,
-	Email,
 	Lock,
 	Save,
-	Edit,
 } from "@mui/icons-material";
 import { ThemeContext } from "../App";
-import { colors, shadows } from "../styles.theme";
+import { colors } from "../styles.theme";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
 import { supabase } from "../supabaseClient";

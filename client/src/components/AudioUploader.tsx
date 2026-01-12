@@ -114,6 +114,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	patientAge,
 	patientGender,
 	userId,
+	onAnalysisComplete,
+	onAudioSelected,
+	onClose,
 }) => {
 	const theme = useTheme();
 	const gradients = getGradients(theme.palette.mode as "light" | "dark");
