@@ -2,8 +2,9 @@ import { useState, useEffect, createContext, useMemo } from "react";
 import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { createAppTheme } from "./theme";
 import { Login } from "./components/Login";
-import { Dashboard } from "./components/Dashboard";
+import { Dashboard, ClinicalSession } from "./components/Dashboard";
 import { PatientsList, Patient } from "./components/PatientsList";
+import { SessionsList } from "./components/SessionsList";
 import { supabase } from "./supabaseClient";
 
 type ThemeMode = "light" | "dark";
@@ -20,9 +21,17 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 function App() {
 	const [currentView, setCurrentView] = useState<
-		"login" | "list" | "dashboard"
+		"login" | "list" | "sessions" | "dashboard"
 	>("login");
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+	const [selectedSession, setSelectedSession] =
+		useState<ClinicalSession | null>(null);
+	const [selectedDate, setSelectedDate] = useState<string | undefined>(
+		undefined
+	);
+	const [selectedTime, setSelectedTime] = useState<string | undefined>(
+		undefined
+	);
 	const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
 		const savedMode = localStorage.getItem("themeMode");
 		return savedMode === "dark" || savedMode === "light" ? savedMode : "light";
@@ -41,29 +50,36 @@ function App() {
 
 	// File detection logic removed for web version
 	useEffect(() => {
-		// Check active session
-		supabase.auth.getSession().then(({ data: { session } }) => {
-			if (session) {
-				setCurrentView("list");
-				setUserId(session.user.id);
-			}
-		});
+		let isMounted = true;
 
-		// Listen for auth changes
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
+		} = supabase.auth.onAuthStateChange((event, session) => {
+			console.log(
+				"App: onAuthStateChange event:",
+				event,
+				"session user:",
+				session?.user?.id
+			);
+
+			if (!isMounted) return;
+
 			if (session) {
-				setCurrentView("list");
+				console.log("App: Session found, switching to list view");
 				setUserId(session.user.id);
+				setCurrentView("list");
 			} else {
+				console.log("App: No session, showing login");
+				setUserId(undefined);
 				setCurrentView("login");
 				setSelectedPatient(null);
-				setUserId(undefined);
 			}
 		});
 
-		return () => subscription.unsubscribe();
+		return () => {
+			isMounted = false;
+			subscription.unsubscribe();
+		};
 	}, []);
 
 	const handleLogin = () => {
@@ -78,12 +94,31 @@ function App() {
 
 	const handleSelectPatient = (patient: Patient) => {
 		setSelectedPatient(patient);
+		setSelectedSession(null);
+		setCurrentView("sessions");
+	};
+
+	const handleSelectSession = (session: ClinicalSession) => {
+		setSelectedSession(session);
+		setCurrentView("dashboard");
+	};
+
+	const handleNewSession = (date: string, time: string) => {
+		setSelectedSession(null);
+		setSelectedDate(date);
+		setSelectedTime(time);
 		setCurrentView("dashboard");
 	};
 
 	const handleBackToList = () => {
 		setCurrentView("list");
 		setSelectedPatient(null);
+		setSelectedSession(null);
+	};
+
+	const handleBackToSessions = () => {
+		setCurrentView("sessions");
+		setSelectedSession(null);
 	};
 
 	return (
@@ -106,11 +141,23 @@ function App() {
 								onLogout={handleLogout}
 							/>
 						)}
+						{currentView === "sessions" && selectedPatient && (
+							<SessionsList
+								patient={selectedPatient}
+								onSelectSession={handleSelectSession}
+								onNewSession={handleNewSession}
+								onBack={handleBackToList}
+								onLogout={handleLogout}
+							/>
+						)}
 						{currentView === "dashboard" && (
 							<Dashboard
 								onLogout={handleLogout}
 								patient={selectedPatient}
-								onBack={handleBackToList}
+								initialSession={selectedSession}
+								initialDate={selectedDate}
+								initialTime={selectedTime}
+								onBack={handleBackToSessions}
 								userId={userId}
 							/>
 						)}

@@ -24,6 +24,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
 	const handleAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
+		console.log("handleAuth called, isSignUp:", isSignUp);
 		setLoading(true);
 		setError(null);
 
@@ -32,12 +33,20 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				// Security checks removed for testing purposes
 				// TODO: Re-enable validations for production
 
+				console.log("Creating account for:", email);
 				const { data, error } = await supabase.auth.signUp({
 					email,
 					password,
+					options: {
+						data: {
+							full_name: fullName.trim(),
+						},
+					},
 				});
 
 				if (error) throw error;
+
+				console.log("Account created, updating profile with full name...");
 
 				// Save full name to profiles table
 				if (data.user) {
@@ -48,6 +57,8 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
 					if (profileError) {
 						console.error("Error saving full name:", profileError);
+					} else {
+						console.log("Full name saved successfully");
 					}
 				}
 
@@ -64,16 +75,51 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				setFullName("");
 				setIsSignUp(false);
 			} else {
-				const { error } = await supabase.auth.signInWithPassword({
-					email,
-					password,
-				});
+				// Attempt login first
+				console.log("Attempting login for:", email);
+
+				const { data: authData, error } =
+					await supabase.auth.signInWithPassword({
+						email,
+						password,
+					});
 
 				if (error) throw error;
 
+				console.log("Login successful, checking profile...");
+
+				// After successful login, check if profile exists
+				if (authData.user) {
+					const { data: profile, error: profileError } = await supabase
+						.from("profiles")
+						.select("id, email, plan_type, credits_remaining")
+						.eq("id", authData.user.id)
+						.maybeSingle();
+
+					console.log("Profile check result:", { profile, profileError });
+
+					// If profile doesn't exist, create it (this handles the case where the trigger didn't run)
+					if (!profile && !profileError) {
+						console.log("Profile not found, creating one...");
+						const { error: insertError } = await supabase
+							.from("profiles")
+							.insert({
+								id: authData.user.id,
+								email: authData.user.email,
+								plan_type: "free",
+								credits_remaining: 3,
+							});
+
+						if (insertError) {
+							console.error("Error creating profile:", insertError);
+							// Don't block login, just log the error
+						}
+					}
+				}
+
 				// Success feedback
+				console.log("Login successful, redirecting...");
 				setSuccess("¡Bienvenido! Iniciando sesión...");
-				setLoading(true); // Keep loading state during transition
 
 				// Store encryption key
 				EncryptionService.setKey(password);
@@ -81,7 +127,10 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				// Wait a bit to show success message before redirecting
 				setTimeout(() => {
 					onLogin();
-				}, 1500);
+				}, 500);
+
+				// Don't set loading to false in finally block for successful login
+				return;
 			}
 		} catch (err: any) {
 			console.error("Auth error:", err);
@@ -165,26 +214,54 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 					<Alert
 						severity="error"
 						variant="filled"
-						sx={{ mb: 2, textAlign: "left" }}
-						action={
-							error.includes("crea una") ? (
-								<Button
-									color="inherit"
-									size="small"
-									onClick={() => {
-										setIsSignUp(true);
-										setError(null);
-										setPassword("");
-										setConfirmPassword("");
-										setFullName("");
-									}}
-								>
-									REGISTRARSE
-								</Button>
-							) : null
-						}
+						sx={{
+							mb: 2,
+							textAlign: "center",
+							borderRadius: (theme) => theme.shape.borderRadius / 8,
+							fontSize: { xs: "0.875rem", sm: "0.95rem" },
+							py: { xs: 1.5, sm: 2 },
+							"& .MuiAlert-icon": {
+								display: "none",
+							},
+							"& .MuiAlert-message": {
+								width: "100%",
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								justifyContent: "center",
+								gap: 1.5,
+								padding: 0,
+							},
+						}}
 					>
-						{error}
+						<Box>{error}</Box>
+						{error.includes("crea una") && (
+							<Button
+								variant="contained"
+								size="small"
+								onClick={() => {
+									setIsSignUp(true);
+									setError(null);
+									setPassword("");
+									setConfirmPassword("");
+									setFullName("");
+								}}
+								sx={{
+									bgcolor: "background.paper",
+									color: "error.main",
+									fontWeight: (theme) => theme.typography.button.fontWeight,
+									px: 2.5,
+									py: 0.75,
+									fontSize: { xs: "0.8rem", sm: "0.875rem" },
+									"&:hover": {
+										bgcolor: (theme) =>
+											theme.palette.mode === "light" ? "grey.100" : "grey.800",
+									},
+								}}
+							>
+								CREAR CUENTA
+							</Button>
+						)}
 					</Alert>
 				)}
 

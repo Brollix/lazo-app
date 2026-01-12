@@ -53,7 +53,8 @@ app.use((req, res, next) => {
 	next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 import multer from "multer";
 import {
@@ -115,6 +116,8 @@ app.post(
 			const outputLanguage = req.body.outputLanguage || "Spanish";
 			const noteFormat = req.body.noteFormat || "SOAP";
 			const patientName = req.body.patientName || "el paciente";
+			const patientAge = req.body.patientAge ? parseInt(req.body.patientAge) : undefined;
+			const patientGender = req.body.patientGender;
 
 			console.log(
 				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}`
@@ -255,11 +258,11 @@ app.post(
 					console.log(`[${sessionId}] Transcript ready. Sending to Claude...`);
 
 					// 5. Process with Claude
-					const analysis = await processTranscriptWithClaude(
-						timestampedTranscript || transcriptText,
 						outputLanguage,
 						noteFormat,
-						patientName
+						patientName,
+						patientAge,
+						patientGender
 					);
 
 					// Store Success Result
@@ -314,11 +317,12 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 		}
 
 		console.log(`Ejecutando acción IA: ${actionType}`);
-		const result = await performAiAction(
 			transcriptText,
 			actionType,
 			targetLanguage || "Spanish",
-			patientName || "el paciente"
+			patientName || "el paciente",
+			req.body.patientAge,
+			req.body.patientGender
 		);
 
 		res.json(result);

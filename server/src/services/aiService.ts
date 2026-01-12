@@ -38,12 +38,16 @@ export const processTranscriptWithClaude = async (
 	transcriptText: string,
 	targetLanguage: string = "Spanish", // Default to Spanish
 	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP",
-	patientName: string = "el paciente"
+	patientName: string = "el paciente",
+	patientAge?: number,
+	patientGender?: string
 ) => {
 	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.
     
     Session Context:
     - Patient Name: ${patientName}
+    ${patientAge ? `- Patient Age: ${patientAge}` : ""}
+    ${patientGender ? `- Patient Gender: ${patientGender}` : ""}
     - Participants: ${patientName} (Patient) and the Therapist.
     
     Processing Task:
@@ -173,7 +177,9 @@ export const performAiAction = async (
 	transcriptText: string,
 	actionType: string,
 	targetLanguage: string = "Spanish",
-	patientName: string = "el paciente"
+	patientName: string = "el paciente",
+	patientAge?: number,
+	patientGender?: string
 ) => {
 	let actionPrompt = "";
 
@@ -208,6 +214,8 @@ export const performAiAction = async (
 
     Context - Recognition Support:
     - Patient: ${patientName}
+    ${patientAge ? `- Patient Age: ${patientAge}` : ""}
+    ${patientGender ? `- Patient Gender: ${patientGender}` : ""}
     The transcription below includes speaker labels (e.g., [spk_0], [spk_1]). 
     IMPORTANT: Identify which speaker is "${patientName}" (the patient) and which is the Therapist.
     

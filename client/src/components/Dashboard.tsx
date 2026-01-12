@@ -12,6 +12,12 @@ import {
 	DialogContent,
 	CircularProgress,
 	useTheme,
+	Divider,
+	List,
+	ListItem,
+	ListItemButton,
+	ListItemText,
+	ListItemIcon,
 } from "@mui/material";
 import {
 	SmartToy,
@@ -24,6 +30,12 @@ import {
 	CloudUpload,
 	Description as DescriptionIcon,
 	AddCircleOutline,
+	History,
+	EventNote,
+	Download,
+	MenuBook,
+	Person as PersonIcon,
+	ChevronRight,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -40,6 +52,8 @@ import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 import { Patient } from "./PatientsList";
 import { AudioPlayer } from "./AudioPlayer";
+import { EncryptionService } from "../services/encryptionService";
+import { supabase } from "../supabaseClient";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -48,6 +62,14 @@ interface ChatMessage {
 	content: React.ReactNode;
 	actions?: React.ReactNode;
 	timestamp: Date;
+}
+
+export interface ClinicalSession {
+	id: string;
+	session_number: number;
+	session_date: string;
+	session_time?: string;
+	encrypted_data: string;
 }
 
 const formatDuration = (seconds?: number) => {
@@ -60,10 +82,20 @@ const formatDuration = (seconds?: number) => {
 
 export const Dashboard: React.FC<{
 	onLogout: () => void;
-	patient: Patient | null;
+	initialSession?: ClinicalSession | null;
+	initialDate?: string;
+	initialTime?: string;
 	onBack?: () => void;
 	userId?: string;
-}> = ({ onLogout, patient, onBack, userId }) => {
+}> = ({
+	onLogout,
+	patient,
+	initialSession,
+	initialDate,
+	initialTime,
+	onBack,
+	userId,
+}) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
 	const extendedShadows = getExtendedShadows(theme.palette.mode);
@@ -83,6 +115,10 @@ export const Dashboard: React.FC<{
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const sessionDataRef = useRef<ProcessSessionResponse | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const [sessions, setSessions] = useState<ClinicalSession[]>([]);
+	const [sessionsLoading, setSessionsLoading] = useState(false);
+	const [showSessionsSidebar, setShowSessionsSidebar] = useState(false);
 
 	// Sync ref with state
 	useEffect(() => {
@@ -110,6 +146,46 @@ export const Dashboard: React.FC<{
 				.catch((err) => console.error("Error fetching user plan:", err));
 		}
 	}, [userId]);
+
+	// Fetch sessions when patient changes
+	useEffect(() => {
+		if (patient?.id) {
+			fetchSessions();
+
+			// If initialSession is provided, load it
+			if (initialSession) {
+				handleLoadSession(initialSession);
+			} else {
+				// Otherwise try draft, but don't auto-open sidebar anymore
+				const draftKey = getStorageKey();
+				if (!draftKey || !localStorage.getItem(draftKey)) {
+					// If no draft and no session, open upload modal
+					setOpenUploadModal(true);
+				}
+			}
+		} else {
+			setSessions([]);
+		}
+	}, [patient?.id, initialSession]);
+
+	const fetchSessions = async () => {
+		if (!patient?.id) return;
+		try {
+			setSessionsLoading(true);
+			const { data, error } = await supabase
+				.from("sessions")
+				.select("id, session_number, session_date, encrypted_data")
+				.eq("patient_id", patient.id)
+				.order("session_number", { ascending: false });
+
+			if (error) throw error;
+			setSessions(data || []);
+		} catch (err) {
+			console.error("Error fetching sessions:", err);
+		} finally {
+			setSessionsLoading(false);
+		}
+	};
 
 	const addMessage = (
 		sender: "user" | "bot",
@@ -313,6 +389,11 @@ export const Dashboard: React.FC<{
 			return;
 		}
 
+		if (action === "download") {
+			handleExportTxt();
+			return;
+		}
+
 		setIsActionLoading(true);
 
 		const actionLabels: Record<string, string> = {
@@ -403,6 +484,142 @@ export const Dashboard: React.FC<{
 		}
 	};
 
+	const handleExportTxt = () => {
+		if (!soapContent) {
+			alert("No hay contenido para exportar.");
+			return;
+		}
+
+		const element = document.createElement("a");
+		const file = new Blob([soapContent], { type: "text/plain" });
+		element.href = URL.createObjectURL(file);
+		const date = new Date().toISOString().split("T")[0];
+		element.download = `Nota_${patient?.name || "Paciente"}_${date}.txt`;
+		document.body.appendChild(element); // Required for this to work in FireFox
+		element.click();
+		document.body.removeChild(element);
+	};
+
+	const handleSaveSession = async () => {
+		if (!patient?.id || !userId) return;
+
+		try {
+			setIsActionLoading(true);
+
+			const key = EncryptionService.getKey();
+			if (!key) {
+				alert("Error de seguridad: No se encontró la clave de encriptación.");
+				return;
+			}
+
+			// 1. Get next session number via RPC
+			const { data: nextNum, error: rpcError } = await supabase.rpc(
+				"get_next_session_number",
+				{ p_patient_id: patient.id }
+			);
+
+			if (rpcError) throw rpcError;
+
+			// 2. Prepare data to encrypt/store
+			const sessionRecord = {
+				clinical_note: soapContent,
+				summary: sessionData?.analysis.summary,
+				topics: sessionData?.analysis.topics,
+				transcript: sessionData?.transcript,
+				session_time:
+					initialTime ||
+					new Date().toTimeString().split(" ")[0].substring(0, 5),
+			};
+
+			const encryptedData = EncryptionService.encryptData(sessionRecord, key);
+
+			// 3. Insert into sessions table
+			const { error: insertError } = await supabase.from("sessions").insert({
+				patient_id: patient.id,
+				user_id: userId,
+				session_number: nextNum,
+				encrypted_data: encryptedData,
+				session_date: initialDate || new Date().toISOString().split("T")[0],
+				session_time:
+					initialTime ||
+					new Date().toTimeString().split(" ")[0].substring(0, 5),
+			});
+
+			if (insertError) throw insertError;
+
+			// 4. Update last visit for patient (requires re-encrypting patient data)
+			const sessionDate = initialDate || new Date().toISOString().split("T")[0];
+			const updatedPatientData = {
+				name: patient.name,
+				age: patient.age,
+				gender: patient.gender,
+				lastVisit: sessionDate, // Use the session date as last visit
+			};
+			const encryptedPatientData = EncryptionService.encryptData(
+				updatedPatientData,
+				key
+			);
+
+			await supabase
+				.from("patients")
+				.update({
+					encrypted_data: encryptedPatientData,
+					updated_at: new Date().toISOString(),
+				})
+				.eq("id", patient.id);
+
+			// 5. Clear draft and refresh
+			setSoapContent("");
+			setSessionData(null);
+			setMessages([]);
+			const draftKey = getStorageKey();
+			if (draftKey) localStorage.removeItem(draftKey);
+
+			await fetchSessions();
+			alert(`✓ Sesión #${nextNum} guardada exitosamente`);
+			if (onBack) onBack(); // Go back to sessions list after save
+		} catch (err: any) {
+			console.error("Error saving session:", err);
+			alert(`Error al guardar sesión: ${err.message}`);
+		} finally {
+			setIsActionLoading(false);
+		}
+	};
+
+	const handleLoadSession = (session: ClinicalSession) => {
+		try {
+			const key = EncryptionService.getKey();
+			if (!key) {
+				alert("Error de seguridad: No se encontró la clave de encriptación.");
+				return;
+			}
+
+			let data;
+			try {
+				data = EncryptionService.decryptData(session.encrypted_data, key);
+			} catch (decryptErr) {
+				console.warn("Decrypt failed, trying JSON parse for old sessions");
+				data = JSON.parse(session.encrypted_data);
+			}
+
+			// Patch session object with time from encrypted data if available
+			if (data.session_time) {
+				session.session_time = data.session_time;
+			}
+
+			setSoapContent(data.clinical_note || "");
+			// Show a message in chat about loaded session
+			addMessage(
+				"bot",
+				`He cargado la **Nota Clínica** de la **Sesión #${session.session_number}** (${session.session_date}).`
+			);
+			setShowSessionsSidebar(false);
+		} catch (err) {
+			console.error("Error parsing session data:", err);
+			alert("Error al cargar la sesión");
+		}
+	};
+
 	const handleUploadCheck = () => {
 		if (!userAppPlan) {
 			setSubscriptionModalOpen(true);
@@ -453,6 +670,17 @@ export const Dashboard: React.FC<{
 							<ChevronLeft />
 						</IconButton>
 					)}
+					<IconButton
+						onClick={() => setShowSessionsSidebar(!showSessionsSidebar)}
+						size="small"
+						sx={{
+							ml: 1,
+							color: showSessionsSidebar ? "primary.main" : "inherit",
+						}}
+						title="Historial de Sesiones"
+					>
+						<History />
+					</IconButton>
 				</Box>
 
 				{/* Center: Patient name */}
@@ -533,31 +761,8 @@ export const Dashboard: React.FC<{
 				<SoapNoteEditor
 					content={soapContent}
 					onChange={setSoapContent}
-					onSave={() => {
-						// Save to localStorage for now
-						const sessionKey = `session_${
-							patient?.id || "default"
-						}_${Date.now()}`;
-						localStorage.setItem(
-							sessionKey,
-							JSON.stringify({
-								patientId: patient?.id,
-								patientName: patient?.name,
-								content: soapContent,
-								method: sessionData?.noteFormat || "SOAP",
-								timestamp: new Date().toISOString(),
-							})
-						);
-
-						// Clear the draft after successful save
-						const draftKey = getStorageKey();
-						if (draftKey) {
-							localStorage.removeItem(draftKey);
-						}
-
-						console.log("Nota guardada exitosamente:", soapContent);
-						alert("✓ Nota clínica guardada exitosamente");
-					}}
+					onSave={handleSaveSession}
+					onDownload={handleExportTxt}
 					method={sessionData?.noteFormat}
 					isFocused={isFocusMode}
 					onToggleFocus={() => setIsFocusMode(!isFocusMode)}
@@ -895,7 +1100,7 @@ export const Dashboard: React.FC<{
 				</Paper>
 
 				{/* Column 3: Context Panel (Right) */}
-				{!isFocusMode && (
+				{!isFocusMode && !showSessionsSidebar && (
 					<ContextPanel
 						onAddToNote={(text) => {
 							setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
@@ -903,6 +1108,92 @@ export const Dashboard: React.FC<{
 						analysisData={sessionData ? sessionData.analysis : undefined}
 						biometry={sessionData ? sessionData.biometry : undefined}
 					/>
+				)}
+
+				{/* Column 3 Alternate: Sessions History Sidebar */}
+				{!isFocusMode && showSessionsSidebar && (
+					<Paper
+						elevation={0}
+						sx={{
+							flex: { xs: "0 0 auto", lg: 3 },
+							display: "flex",
+							flexDirection: "column",
+							borderRadius: 3,
+							overflow: "hidden",
+							border: "1px solid",
+							borderColor: "divider",
+							boxShadow: extendedShadows.panel,
+							height: "100%",
+							bgcolor: backgrounds.glass.panel,
+							backdropFilter: "blur(16px)",
+						}}
+					>
+						<Box
+							sx={{
+								p: 2,
+								borderBottom: "1px solid",
+								borderColor: "divider",
+								bgcolor: "background.default",
+							}}
+						>
+							<Stack direction="row" alignItems="center" gap={1}>
+								<History color="primary" fontSize="small" />
+								<Typography
+									variant="subtitle2"
+									sx={{
+										fontWeight: 700,
+										textTransform: "uppercase",
+										fontSize: "0.75rem",
+										letterSpacing: "0.05em",
+									}}
+								>
+									Historial de Sesiones
+								</Typography>
+							</Stack>
+						</Box>
+						<Box sx={{ flex: 1, overflowY: "auto" }}>
+							{sessionsLoading ? (
+								<Box sx={{ p: 4, textAlign: "center" }}>
+									<CircularProgress size={24} />
+								</Box>
+							) : sessions.length === 0 ? (
+								<Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
+									<MenuBook sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
+									<Typography variant="body2">
+										No hay sesiones registradas aún.
+									</Typography>
+								</Box>
+							) : (
+								<List sx={{ p: 0 }}>
+									{sessions.map((s) => (
+										<ListItem
+											key={s.id}
+											disablePadding
+											sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+										>
+											<ListItemButton
+												onClick={() => handleLoadSession(s)}
+												sx={{ py: 1.5 }}
+											>
+												<ListItemIcon sx={{ minWidth: 40 }}>
+													<EventNote color="action" fontSize="small" />
+												</ListItemIcon>
+												<ListItemText
+													primary={`Sesión #${s.session_number}`}
+													secondary={s.session_date}
+													primaryTypographyProps={{
+														variant: "body2",
+														fontWeight: 600,
+													}}
+													secondaryTypographyProps={{ variant: "caption" }}
+												/>
+											</ListItemButton>
+										</ListItem>
+									))}
+								</List>
+							)}
+						</Box>
+					</Paper>
 				)}
 			</Box>
 
@@ -927,6 +1218,8 @@ export const Dashboard: React.FC<{
 						onAudioSelected={handleAudioSelected}
 						onClose={() => setOpenUploadModal(false)}
 						patientName={patient?.name}
+						patientAge={patient?.age}
+						patientGender={patient?.gender}
 						userId={userId}
 					/>
 				</DialogContent>

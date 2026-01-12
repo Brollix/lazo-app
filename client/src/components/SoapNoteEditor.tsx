@@ -10,7 +10,7 @@ import {
 	IconButton,
 	Chip,
 } from "@mui/material";
-import { EditNote, Save, ChevronLeft } from "@mui/icons-material";
+import { EditNote, Save, ChevronLeft, Download } from "@mui/icons-material";
 import {
 	getColors,
 	getExtendedShadows,
@@ -21,16 +21,14 @@ import {
 interface SoapNoteEditorProps {
 	content: string;
 	onChange: (value: string) => void;
-	onSave: () => void;
-	method?: string;
-	onToggleFocus?: () => void;
-	isFocused?: boolean;
+	onDownload?: () => void;
 }
 
 export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 	content,
 	onChange,
 	onSave,
+	onDownload,
 	method,
 	onToggleFocus,
 	isFocused = false,
@@ -102,6 +100,17 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 								opacity: opacity.high,
 							}}
 						/>
+					)}
+					{onDownload && (
+						<Tooltip title="Exportar como TXT">
+							<IconButton
+								size="small"
+								onClick={onDownload}
+								sx={{ color: "primary.main" }}
+							>
+								<Download fontSize="small" />
+							</IconButton>
+						</Tooltip>
 					)}
 				</Stack>
 

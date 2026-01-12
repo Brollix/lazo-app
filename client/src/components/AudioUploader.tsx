@@ -64,6 +64,8 @@ interface AudioUploaderProps {
 	onAudioSelected?: (file: File) => void;
 	onClose?: () => void;
 	patientName?: string;
+	patientAge?: number;
+	patientGender?: string;
 	userId?: string;
 }
 
@@ -108,10 +110,9 @@ const getSentimentColor = (
 };
 
 export const AudioUploader: React.FC<AudioUploaderProps> = ({
-	onAnalysisComplete,
-	onAudioSelected,
-	onClose,
 	patientName,
+	patientAge,
+	patientGender,
 	userId,
 }) => {
 	const theme = useTheme();
@@ -155,6 +156,14 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const handleUpload = async () => {
 		if (!file) return;
 
+		// Client-side size validation (50MB)
+		const MAX_FILE_SIZE = 50 * 1024 * 1024;
+		if (file.size > MAX_FILE_SIZE) {
+			setErrorMessage("El archivo es demasiado grande (máximo 50MB).");
+			setStatus("error");
+			return;
+		}
+
 		setStatus("uploading");
 
 		const formData = new FormData();
@@ -164,6 +173,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		formData.append("noteFormat", noteFormat);
 		if (patientName) {
 			formData.append("patientName", patientName);
+		}
+		if (patientAge) {
+			formData.append("patientAge", patientAge.toString());
+		}
+		if (patientGender) {
+			formData.append("patientGender", patientGender);
 		}
 		if (userId) {
 			formData.append("userId", userId);
@@ -265,7 +280,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			}
 		} catch (error: any) {
 			console.error("Error en la subida", error);
-			setErrorMessage(error.message || "Algo salió mal al procesar la sesión");
+			let message = error.message || "Algo salió mal al procesar la sesión";
+
+			if (
+				message.includes("Failed to fetch") ||
+				message.includes("net::ERR_FAILED")
+			) {
+				message =
+					"Error de conexión. Esto puede deberse a que el archivo es demasiado grande (límite del servidor excedido) o a un problema de red.";
+			}
+
+			setErrorMessage(message);
 			setStatus("error");
 		}
 	};
