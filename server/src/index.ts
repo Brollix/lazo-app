@@ -116,7 +116,9 @@ app.post(
 			const outputLanguage = req.body.outputLanguage || "Spanish";
 			const noteFormat = req.body.noteFormat || "SOAP";
 			const patientName = req.body.patientName || "el paciente";
-			const patientAge = req.body.patientAge ? parseInt(req.body.patientAge) : undefined;
+			const patientAge = req.body.patientAge
+				? parseInt(req.body.patientAge)
+				: undefined;
 			const patientGender = req.body.patientGender;
 
 			console.log(
@@ -258,6 +260,8 @@ app.post(
 					console.log(`[${sessionId}] Transcript ready. Sending to Claude...`);
 
 					// 5. Process with Claude
+					const analysis = await processTranscriptWithClaude(
+						transcriptText,
 						outputLanguage,
 						noteFormat,
 						patientName,
@@ -317,6 +321,7 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 		}
 
 		console.log(`Ejecutando acción IA: ${actionType}`);
+		const result = await performAiAction(
 			transcriptText,
 			actionType,
 			targetLanguage || "Spanish",
@@ -429,12 +434,14 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 			const payment = await new Payment(mpClient).get({ id: paymentId });
 
 			console.log(`[Webhook] Payment status: ${payment.status}`);
-			console.log(`[Webhook] Preapproval ID: ${payment.preapproval_id}`);
+			// Type assertion needed as preapproval_id exists in API but not in SDK types
+			const paymentData = payment as any;
+			console.log(`[Webhook] Preapproval ID: ${paymentData.preapproval_id}`);
 
-			if (payment.status === "approved" && payment.preapproval_id) {
+			if (payment.status === "approved" && paymentData.preapproval_id) {
 				// This is a recurring subscription payment
 				const userId = payment.external_reference;
-				const mpSubscriptionId = payment.preapproval_id;
+				const mpSubscriptionId = paymentData.preapproval_id;
 
 				console.log(`[Webhook] Recurring payment APPROVED!`);
 				console.log(
@@ -446,11 +453,11 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						// Record payment and renew credits
 						const result = await recordPaymentAndRenewCredits(
 							userId,
-							payment.id.toString(),
+							payment.id?.toString() ?? "",
 							mpSubscriptionId,
 							payment.transaction_amount || 0,
-							payment.status,
-							payment.status_detail || undefined,
+							payment.status ?? "unknown",
+							payment.status_detail,
 							50 // Credits to add
 						);
 
@@ -499,6 +506,9 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 				const prices = getPrices();
 				const planType = amount >= prices.ultra ? "ultra" : "pro";
 
+				// Type assertion for auto_recurring properties not in SDK types
+				const autoRecurring = subscription.auto_recurring as any;
+
 				try {
 					// Create or update subscription in database
 					await createOrUpdateSubscription(
@@ -508,7 +518,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						planType,
 						status || "pending",
 						amount,
-						subscription.auto_recurring.billing_day,
+						autoRecurring.billing_day,
 						subscription.next_payment_date
 							? new Date(subscription.next_payment_date)
 							: undefined
