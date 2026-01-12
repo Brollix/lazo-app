@@ -89,8 +89,13 @@ import {
 	getPaymentHistory,
 } from "./services/dbService";
 
-// Configure Multer to store files in memory
-const upload = multer({ storage: multer.memoryStorage() });
+// Configure Multer to store files in memory with size limit
+const upload = multer({
+	storage: multer.memoryStorage(),
+	limits: {
+		fileSize: 100 * 1024 * 1024, // 100MB limit
+	},
+});
 
 // In-memory store for session results (active server session only)
 const sessionStore = new Map<

@@ -156,10 +156,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const handleUpload = async () => {
 		if (!file) return;
 
-		// Client-side size validation (50MB)
-		const MAX_FILE_SIZE = 50 * 1024 * 1024;
+		// Client-side size validation (100MB)
+		const MAX_FILE_SIZE = 100 * 1024 * 1024;
 		if (file.size > MAX_FILE_SIZE) {
-			setErrorMessage("El archivo es demasiado grande (máximo 50MB).");
+			setErrorMessage("El archivo es demasiado grande (máximo 100MB).");
 			setStatus("error");
 			return;
 		}
@@ -421,7 +421,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 											{file ? file.name : "Selecciona o arrastra el audio"}
 										</Typography>
 										<Typography variant="caption" color="text.secondary">
-											MP3, WAV, M4A (Máx 50MB)
+											MP3, WAV, M4A (Máx 100MB)
 										</Typography>
 									</Box>
 								)}
