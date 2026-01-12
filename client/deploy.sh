@@ -12,6 +12,7 @@ echo "🚀 Starting Client Deployment..."
 echo "📥 Fetching latest changes from GitHub..."
 cd $PROJECT_ROOT
 # Clean up any corrupted refs and stash local changes
+git update-ref -d refs/remotes/origin/master
 git remote prune origin
 git stash --include-untracked || true
 git fetch origin master
