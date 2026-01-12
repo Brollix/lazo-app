@@ -80,7 +80,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
 				if (!response.ok) {
 					console.error("Error setting free plan");
-					// Optionally show error
 				}
 				onClose();
 			} catch (error) {
@@ -93,26 +92,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		setLoading(true);
 		try {
 			const redirectUrl = window.location.origin;
-			const response = await fetch(`${apiUrl}/api/create-preference`, {
+			const response = await fetch(`${apiUrl}/api/create-subscription`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ planId, userId, userEmail, redirectUrl }),
 			});
 			const data = await response.json();
-			console.log("Preference created:", data);
-			if (data.id) {
-				// Open MercadoPago in external browser
-				const checkoutUrl = `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=${data.id}`;
-				console.log("Opening checkout URL:", checkoutUrl);
+			console.log("Subscription created:", data);
 
-				// Web version: use window.open
-				window.open(checkoutUrl, "_blank");
+			if (data.init_point) {
+				// Open MercadoPago subscription page
+				console.log("Opening subscription URL:", data.init_point);
+				window.open(data.init_point, "_blank");
 				onClose();
 			} else {
-				console.error("No preference ID returned", data);
+				console.error("No init_point returned", data);
 			}
 		} catch (error) {
-			console.error("Error creating payment:", error);
+			console.error("Error creating subscription:", error);
 		} finally {
 			setLoading(false);
 		}
@@ -204,11 +201,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							<Typography
 								component="span"
 								variant="caption"
-								sx={{ opacity: 0.8, fontSize: "0.7rem" }}
+								sx={{
+									opacity: 0.8,
+									fontSize: "0.7rem",
+									display: "block",
+									mt: 0.5,
+								}}
 							>
-								{planId === "pro" && price === 50
-									? "Temporalmente 50 pesos para validación"
-									: `USD $${planId === "pro" ? 10 : 30} aprox.`}
+								Suscripción mensual recurrente • Cancela cuando quieras
 							</Typography>
 						</>
 					) : (

@@ -71,13 +71,21 @@ import {
 } from "./services/aiService";
 import {
 	getPrices,
-	createSubscriptionPreference,
+	createRecurringSubscription,
+	getSubscriptionDetails,
+	cancelSubscription as cancelMPSubscription,
+	pauseSubscription,
 	getPaymentDetails,
 } from "./services/subscriptionService";
 import {
 	getUserProfile,
 	decrementCredits,
 	updateUserPlan,
+	cancelUserSubscription,
+	createOrUpdateSubscription,
+	recordPaymentAndRenewCredits,
+	getSubscriptionByUserId,
+	getPaymentHistory,
 } from "./services/dbService";
 
 // Configure Multer to store files in memory
@@ -330,106 +338,268 @@ app.get("/api/user-plan/:userId", async (req, res) => {
 	res.json(profile);
 });
 
-app.post("/api/create-preference", async (req, res) => {
+app.post("/api/create-subscription", async (req, res) => {
 	const { planId, userId, userEmail, redirectUrl } = req.body;
 	try {
-		const preference = await createSubscriptionPreference(
+		console.log(
+			`[API] Creating subscription for user ${userId}, plan ${planId}`
+		);
+
+		const subscription = await createRecurringSubscription(
 			planId,
 			userId,
 			userEmail,
 			redirectUrl
 		);
-		res.json({ id: preference.id });
+
+		res.json({
+			id: subscription.id,
+			init_point: subscription.init_point,
+			status: subscription.status,
+		});
 	} catch (error: any) {
-		console.error("Error creating preference:", error);
+		console.error("Error creating subscription:", error);
 		res.status(500).json({
-			error: "Error creating preference",
+			error: "Error creating subscription",
 			details: error.message || String(error),
-			stack: error.stack,
 		});
 	}
 });
 
-import { MercadoPagoConfig, Payment } from "mercadopago";
+import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
+import crypto from "crypto";
+
 const mpClient = new MercadoPagoConfig({
 	accessToken: process.env.MP_ACCESS_TOKEN || "",
 });
 
 app.post("/api/mercadopago-webhook", async (req, res) => {
-	const { data, type } = req.body;
-	console.log(`[Webhook] Received event type: ${type}`);
+	const { data, type, action } = req.body;
 
-	if (type === "payment") {
+	// Validate webhook signature for security
+	const xSignature = req.headers["x-signature"] as string;
+	const xRequestId = req.headers["x-request-id"] as string;
+
+	if (process.env.MP_WEBHOOK_SECRET && xSignature && xRequestId) {
+		try {
+			// Extract ts and v1 from x-signature header
+			// Format: "ts=1234567890,v1=hash"
+			const parts = xSignature.split(",");
+			const ts = parts.find((p) => p.startsWith("ts="))?.split("=")[1];
+			const hash = parts.find((p) => p.startsWith("v1="))?.split("=")[1];
+
+			if (ts && hash) {
+				// Create the manifest string: id + request-id + ts
+				const manifest = `id:${data.id};request-id:${xRequestId};ts:${ts};`;
+
+				// Calculate HMAC SHA256
+				const hmac = crypto
+					.createHmac("sha256", process.env.MP_WEBHOOK_SECRET)
+					.update(manifest)
+					.digest("hex");
+
+				// Validate signature
+				if (hmac !== hash) {
+					console.error(
+						"[Webhook] Invalid signature - potential security threat"
+					);
+					return res.status(401).json({ error: "Invalid signature" });
+				}
+
+				console.log("[Webhook] Signature validated successfully");
+			}
+		} catch (error) {
+			console.error("[Webhook] Error validating signature:", error);
+			// Continue processing even if validation fails (for backwards compatibility)
+		}
+	}
+
+	console.log(`[Webhook] Received event - Type: ${type}, Action: ${action}`);
+	console.log(`[Webhook] Full body:`, JSON.stringify(req.body, null, 2));
+
+	// Handle subscription payment (recurring charge)
+	if (type === "payment" || action === "payment.created") {
 		const paymentId = data.id;
 		try {
 			console.log(`[Webhook] Fetching payment details for ID: ${paymentId}`);
 			const payment = await new Payment(mpClient).get({ id: paymentId });
 
-			if (payment.status === "approved") {
-				// Improved extraction logic handling multiple possibilities
-				const userId =
-					payment.metadata?.user_id ||
-					payment.external_reference ||
-					(payment as any).metadata?.userId; // Check for camelCase just in case
+			console.log(`[Webhook] Payment status: ${payment.status}`);
+			console.log(`[Webhook] Preapproval ID: ${payment.preapproval_id}`);
 
-				const planId =
-					payment.metadata?.plan_id ||
-					payment.additional_info?.items?.[0]?.id ||
-					(payment as any).metadata?.planId;
+			if (payment.status === "approved" && payment.preapproval_id) {
+				// This is a recurring subscription payment
+				const userId = payment.external_reference;
+				const mpSubscriptionId = payment.preapproval_id;
 
-				console.log(`[Webhook] Payment APPROVED!`);
-				console.log(`[Webhook] Extracted - User: ${userId}, Plan: ${planId}`);
+				console.log(`[Webhook] Recurring payment APPROVED!`);
 				console.log(
-					`[Webhook] Amount: ${payment.transaction_amount}, Currency: ${payment.currency_id}`
-				);
-				console.log(`[Webhook] Full Payment Metadata:`, payment.metadata);
-				console.log(
-					`[Webhook] Full External Reference:`,
-					payment.external_reference
+					`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}`
 				);
 
-				if (userId && planId) {
-					// Using 50 credits by default as practiced in current implementation
+				if (userId && mpSubscriptionId) {
 					try {
-						const result = await updateUserPlan(userId, planId, 50);
-						if (result.rowsUpdated === 0) {
-							console.error(
-								`[Webhook] CRITICAL: Payment approved but NO user updated. UserId '${userId}' might not exist in DB.`
-							);
-						} else {
-							console.log(
-								`[Webhook] SUCCESS: User ${userId} plan updated to ${planId}. Rows affected: ${result.rowsUpdated}`
-							);
-						}
-					} catch (dbError) {
-						console.error(
-							`[Webhook] DB Error updating plan for user ${userId}:`,
-							dbError
+						// Record payment and renew credits
+						const result = await recordPaymentAndRenewCredits(
+							userId,
+							payment.id.toString(),
+							mpSubscriptionId,
+							payment.transaction_amount || 0,
+							payment.status,
+							payment.status_detail || undefined,
+							50 // Credits to add
 						);
+
+						console.log(
+							`[Webhook] SUCCESS: Payment recorded, ${result.credits_added} credits added`
+						);
+					} catch (dbError) {
+						console.error(`[Webhook] DB Error recording payment:`, dbError);
 					}
 				} else {
 					console.warn(
-						`[Webhook] Missing data in approved payment ${paymentId}. userId: ${userId}, planId: ${planId}`
-					);
-					console.log(
-						`[Webhook] Raw Payment Data for Debugging:`,
-						JSON.stringify(payment, null, 2)
+						`[Webhook] Missing data in payment. userId: ${userId}, subscriptionId: ${mpSubscriptionId}`
 					);
 				}
-			} else {
-				console.log(
-					`[Webhook] Payment ${paymentId} status: ${payment.status} (${payment.status_detail})`
-				);
 			}
 		} catch (error: any) {
-			console.error(`[Webhook] Error processing payment ${paymentId}:`, error);
-			// Check if it's a 404 (common during testing with expired/invalid IDs)
-			if (error.status !== 404) {
-				return res.status(500).json({ error: "Internal processing error" });
-			}
+			console.error(`[Webhook] Error processing payment:`, error);
 		}
 	}
+
+	// Handle subscription events
+	if (
+		type === "subscription_preapproval" ||
+		action === "created" ||
+		action === "updated"
+	) {
+		const subscriptionId = data.id;
+		try {
+			console.log(
+				`[Webhook] Fetching subscription details for ID: ${subscriptionId}`
+			);
+			const subscription = await new PreApproval(mpClient).get({
+				id: subscriptionId,
+			});
+
+			const userId = subscription.external_reference;
+			const status = subscription.status;
+
+			console.log(
+				`[Webhook] Subscription ${subscriptionId} - Status: ${status}, User: ${userId}`
+			);
+
+			if (userId && subscription.auto_recurring) {
+				// Determine plan type from amount
+				const amount = subscription.auto_recurring.transaction_amount || 0;
+				const prices = getPrices();
+				const planType = amount >= prices.ultra ? "ultra" : "pro";
+
+				try {
+					// Create or update subscription in database
+					await createOrUpdateSubscription(
+						userId,
+						subscriptionId,
+						subscription.reason || planType,
+						planType,
+						status || "pending",
+						amount,
+						subscription.auto_recurring.billing_day,
+						subscription.next_payment_date
+							? new Date(subscription.next_payment_date)
+							: undefined
+					);
+
+					console.log(
+						`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} in database`
+					);
+				} catch (dbError) {
+					console.error(`[Webhook] DB Error updating subscription:`, dbError);
+				}
+			}
+		} catch (error: any) {
+			console.error(`[Webhook] Error processing subscription:`, error);
+		}
+	}
+
 	res.sendStatus(200);
+});
+
+app.post("/api/cancel-subscription", async (req, res) => {
+	const { userId } = req.body;
+
+	if (!userId) {
+		return res.status(400).json({ error: "UserId requerido" });
+	}
+
+	try {
+		console.log(`[Cancel] Processing cancellation for user ${userId}`);
+
+		// Get user profile
+		const profile = await getUserProfile(userId);
+
+		if (!profile || !profile.email) {
+			return res.status(404).json({ error: "Usuario no encontrado" });
+		}
+
+		if (profile.plan_type === "free" || !profile.subscription_id) {
+			return res.status(400).json({
+				error: "El usuario no tiene una suscripción activa",
+			});
+		}
+
+		// Cancel subscription in Mercado Pago
+		await cancelMPSubscription(profile.subscription_id);
+
+		// Cancel subscription in database
+		const result = await cancelUserSubscription(userId);
+
+		console.log(`[Cancel] Subscription cancelled successfully:`, result);
+
+		res.json({
+			success: true,
+			message: "Suscripción cancelada exitosamente",
+			data: result,
+		});
+	} catch (error: any) {
+		console.error("[Cancel] Error cancelling subscription:", error);
+		res.status(500).json({
+			error: "Error al cancelar la suscripción",
+			details: error.message,
+		});
+	}
+});
+
+app.get("/api/subscription-status/:userId", async (req, res) => {
+	const { userId } = req.params;
+
+	try {
+		const profile = await getUserProfile(userId);
+		const subscription = await getSubscriptionByUserId(userId);
+
+		res.json({
+			plan_type: profile.plan_type,
+			subscription_status: profile.subscription_status,
+			credits_remaining: profile.credits_remaining,
+			next_billing_date: profile.next_billing_date,
+			subscription: subscription,
+		});
+	} catch (error: any) {
+		console.error("Error fetching subscription status:", error);
+		res.status(500).json({ error: "Error al obtener estado de suscripción" });
+	}
+});
+
+app.get("/api/payment-history/:userId", async (req, res) => {
+	const { userId } = req.params;
+
+	try {
+		const history = await getPaymentHistory(userId, 20);
+		res.json(history);
+	} catch (error: any) {
+		console.error("Error fetching payment history:", error);
+		res.status(500).json({ error: "Error al obtener historial de pagos" });
+	}
 });
 
 app.post("/api/select-free-plan", async (req, res) => {

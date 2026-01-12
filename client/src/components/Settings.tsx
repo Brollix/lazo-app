@@ -11,6 +11,8 @@ import {
 	CircularProgress,
 	Alert,
 	IconButton,
+	Snackbar,
+	AlertTitle,
 } from "@mui/material";
 import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { ThemeContext } from "../App";
@@ -44,6 +46,11 @@ export const Settings: React.FC<SettingsProps> = ({
 	);
 	const [loading, setLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
+	const [showCancelDialog, setShowCancelDialog] = React.useState(false);
+	const [cancelling, setCancelling] = React.useState(false);
+	const [successMessage, setSuccessMessage] = React.useState<string | null>(
+		null
+	);
 
 	// Fetch user profile from Supabase
 	React.useEffect(() => {
@@ -100,6 +107,47 @@ export const Settings: React.FC<SettingsProps> = ({
 			return name.substring(0, 2).toUpperCase();
 		}
 		return email.substring(0, 2).toUpperCase();
+	};
+
+	const handleCancelSubscription = async () => {
+		if (!userProfile) return;
+
+		setCancelling(true);
+		setError(null);
+
+		try {
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/cancel-subscription`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ userId: userProfile.id }),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Error al cancelar suscripción");
+			}
+
+			const result = await response.json();
+			console.log("Subscription cancelled:", result);
+
+			// Update local state
+			setUserProfile({
+				...userProfile,
+				plan_type: "free",
+				credits_remaining: 3,
+			});
+
+			setSuccessMessage(
+				"Suscripción cancelada exitosamente. Has vuelto al plan gratuito."
+			);
+			setShowCancelDialog(false);
+		} catch (err: any) {
+			console.error("Error cancelling subscription:", err);
+			setError(err.message || "Error al cancelar la suscripción");
+		} finally {
+			setCancelling(false);
+		}
 	};
 
 	const displayName = userProfile?.full_name || userProfile?.email || "Usuario";
@@ -267,6 +315,18 @@ export const Settings: React.FC<SettingsProps> = ({
 							>
 								Gestionar Suscripción
 							</Button>
+							{userProfile.plan_type !== "free" && (
+								<Button
+									variant="outlined"
+									color="error"
+									fullWidth
+									size="small"
+									sx={{ mt: 1, borderRadius: 2 }}
+									onClick={() => setShowCancelDialog(true)}
+								>
+									Cancelar Suscripción
+								</Button>
+							)}
 						</Box>
 
 						<SubscriptionModal
@@ -313,5 +373,71 @@ export const Settings: React.FC<SettingsProps> = ({
 				</Button>
 			</DialogActions>
 		</Dialog>
+
+		{/* Cancellation Confirmation Dialog */}
+		<Dialog
+			open={showCancelDialog}
+			onClose={() => !cancelling && setShowCancelDialog(false)}
+			maxWidth="sm"
+			fullWidth
+		>
+			<DialogTitle>¿Cancelar Suscripción?</DialogTitle>
+			<DialogContent>
+				<Alert severity="warning" sx={{ mb: 2 }}>
+					<AlertTitle>Importante</AlertTitle>
+					Al cancelar tu suscripción:
+				</Alert>
+				<Box component="ul" sx={{ pl: 2, mt: 2 }}>
+					<Typography component="li" variant="body2" sx={{ mb: 1 }}>
+						Volverás al <strong>Plan Gratuito</strong> con 3 créditos
+					</Typography>
+					<Typography component="li" variant="body2" sx={{ mb: 1 }}>
+						Tus pacientes y notas clínicas se mantendrán intactos
+					</Typography>
+					<Typography component="li" variant="body2" sx={{ mb: 1 }}>
+						Podrás reactivar tu suscripción en cualquier momento
+					</Typography>
+					<Typography component="li" variant="body2">
+						Si tienes una suscripción recurrente en MercadoPago, deberás
+						cancelarla manualmente
+					</Typography>
+				</Box>
+			</DialogContent>
+			<DialogActions sx={{ p: 2, pt: 0 }}>
+				<Button
+					onClick={() => setShowCancelDialog(false)}
+					disabled={cancelling}
+					size="small"
+				>
+					Mantener Suscripción
+				</Button>
+				<Button
+					onClick={handleCancelSubscription}
+					variant="contained"
+					color="error"
+					disabled={cancelling}
+					size="small"
+				>
+					{cancelling ? "Cancelando..." : "Confirmar Cancelación"}
+				</Button>
+			</DialogActions>
+		</Dialog>
+
+		{/* Success Snackbar */}
+		<Snackbar
+			open={!!successMessage}
+			autoHideDuration={6000}
+			onClose={() => setSuccessMessage(null)}
+			anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+		>
+			<Alert
+				onClose={() => setSuccessMessage(null)}
+				severity="success"
+				sx={{ width: "100%" }}
+			>
+				{successMessage}
+			</Alert>
+		</Snackbar>
+	</>
 	);
 };

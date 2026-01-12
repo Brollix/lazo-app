@@ -21,7 +21,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/lazo-app/server
-            # Update MP_ACCESS_TOKEN in .env with test credentials from GitHub Secret
-            sed -i 's/MP_ACCESS_TOKEN=.*/MP_ACCESS_TOKEN=${{ secrets.MP_TEST_ACCESS_TOKEN }}/' .env
+            # Update environment variables in .env from GitHub Secrets
+            sed -i 's|BACKEND_URL=.*|BACKEND_URL=${{ secrets.BACKEND_URL }}|' .env || echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" >> .env
+            sed -i 's|MP_ACCESS_TOKEN=.*|MP_ACCESS_TOKEN=${{ secrets.MP_TEST_ACCESS_TOKEN }}|' .env
             chmod +x deploy.sh
             ./deploy.sh
