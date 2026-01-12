@@ -168,99 +168,225 @@ app.post(
 
 					// Helper: extract text and basic diarization logic
 					let transcriptText = "";
-					if (profile.plan_type === "ultra") {
-						transcriptText = (transcriptionResult as any).results.channels[0]
-							.alternatives[0].transcript;
-					} else {
+
+					// Normalized structure for processing
+					interface TranscriptWord {
+						start: number;
+						end: number;
+						word: string;
+						speaker?: string;
+					}
+					let normalizedWords: TranscriptWord[] = [];
+					let normalizedSegments: {
+						start: number;
+						end: number;
+						speaker: string;
+					}[] = [];
+
+					// --- PARSE TRANSCRIPTION RESULT BASED ON PROVIDER ---
+
+					// 1. DEEPGRAM (Ultra Plan)
+					if (
+						(transcriptionResult as any).results?.channels?.[0]
+							?.alternatives?.[0]
+					) {
+						const alt = (transcriptionResult as any).results.channels[0]
+							.alternatives[0];
+						transcriptText = alt.transcript;
+
+						// Deepgram provides words with speaker labels if diarize=true
+						if (alt.words) {
+							normalizedWords = alt.words.map((w: any) => ({
+								start: w.start,
+								end: w.end,
+								word: w.word,
+								speaker:
+									w.speaker !== undefined ? `spk_${w.speaker}` : undefined,
+							}));
+
+							// Create segments from words
+							let currentSegment = { start: -1, end: -1, speaker: "" };
+
+							normalizedWords.forEach((w) => {
+								const speaker = w.speaker || "unknown";
+								if (currentSegment.speaker !== speaker) {
+									if (currentSegment.start !== -1) {
+										normalizedSegments.push({ ...currentSegment });
+									}
+									currentSegment = { start: w.start, end: w.end, speaker };
+								} else {
+									currentSegment.end = w.end;
+								}
+							});
+							if (currentSegment.start !== -1)
+								normalizedSegments.push(currentSegment);
+						}
+					}
+					// 2. GROQ / WHISPER (Free/Pro Plan)
+					else if ((transcriptionResult as any).segments) {
 						transcriptText = (transcriptionResult as any).text;
+						// Groq (Whisper) standard response doesn't have speaker diarization usually
+						const segments = (transcriptionResult as any).segments;
+
+						normalizedWords = segments.flatMap((s: any) => {
+							// Estimate words from segment if possible, or just treat segment as text chunk
+							// For simplicity in visualization, we might just track the segment
+							// But for timestamp processing we can use the segment start
+							return [
+								{
+									start: s.start,
+									end: s.end,
+									word: s.text,
+									speaker: "unknown", // No diarization in standard Whisper
+								},
+							];
+						});
+					}
+					// 3. AWS TRANSCRIBE (Fallback/Legacy)
+					else if ((transcriptionResult as any).results?.items) {
+						transcriptText = (transcriptionResult as any).results.transcripts[0]
+							.transcript;
+						const items = (transcriptionResult as any).results.items || [];
+						const awsSegments =
+							(transcriptionResult as any).results?.speaker_labels?.segments ||
+							[];
+
+						normalizedWords = items
+							.filter((i: any) => i.start_time)
+							.map((i: any) => {
+								const start = parseFloat(i.start_time);
+								const end = parseFloat(i.end_time);
+								// Find speaker
+								const seg = awsSegments.find(
+									(s: any) =>
+										start >= parseFloat(s.start_time) &&
+										start < parseFloat(s.end_time)
+								);
+								return {
+									start,
+									end,
+									word: i.alternatives[0].content,
+									speaker: seg ? seg.speaker_label : "unknown",
+								};
+							});
+
+						normalizedSegments = awsSegments.map((s: any) => ({
+							start: parseFloat(s.start_time),
+							end: parseFloat(s.end_time),
+							speaker: s.speaker_label,
+						}));
+					}
+					// 4. Unknown/Text only
+					else {
+						transcriptText = (transcriptionResult as any).text || "";
 					}
 
 					// Decrement credits for ALL users after successful transcription
 					await decrementCredits(userId);
 
-					// Construct timestamped transcript with speaker labels for higher quality analysis
+					// --- CONSTRUCT TIMESTAMPED TRANSCRIPT ---
 					let timestampedTranscript = "";
-					const items = (transcriptionResult as any).results?.items || [];
-					const segments =
-						(transcriptionResult as any).results?.speaker_labels?.segments ||
-						[];
-
 					let currentSpeaker = "";
 					let currentSecond = -1;
 
-					items.forEach((item: any) => {
-						if (!item.start_time) {
-							// Punctuation
-							timestampedTranscript += item.alternatives[0].content;
-							return;
-						}
+					// If we have normalized words, build transcript from them for better accuracy
+					if (normalizedWords.length > 0) {
+						normalizedWords.forEach((w) => {
+							// Speaker change
+							if (
+								w.speaker &&
+								w.speaker !== "unknown" &&
+								w.speaker !== currentSpeaker
+							) {
+								currentSpeaker = w.speaker;
+								timestampedTranscript += `\n[${currentSpeaker}]: `;
+							} else if (
+								(!w.speaker || w.speaker === "unknown") &&
+								currentSpeaker !== ""
+							) {
+								// If we lost speaker tracking, maybe reset? Or keep previous.
+								// For now, keep previous.
+							}
 
-						const start = parseFloat(item.start_time);
+							// Time marker every 30s
+							const startInt = Math.floor(w.start);
+							if (startInt !== currentSecond && startInt % 30 === 0) {
+								const mins = Math.floor(startInt / 60);
+								const secs = startInt % 60;
+								timestampedTranscript += `\n[${mins}:${secs
+									.toString()
+									.padStart(2, "0")}] `;
+								currentSecond = startInt;
+							}
 
-						// Identify speaker for this item
-						const segment = segments.find(
-							(s: any) =>
-								start >= parseFloat(s.start_time) &&
-								start < parseFloat(s.end_time)
-						);
+							timestampedTranscript += ` ${w.word}`;
+						});
+					} else {
+						// Fallback if no word-level timestamps
+						timestampedTranscript = transcriptText;
+					}
 
-						if (segment && segment.speaker_label !== currentSpeaker) {
-							currentSpeaker = segment.speaker_label;
-							timestampedTranscript += `\n[${currentSpeaker}]: `;
-						}
-
-						// Add timestamp marker every 30 seconds
-						const startInt = Math.floor(start);
-						if (startInt !== currentSecond && startInt % 30 === 0) {
-							const mins = Math.floor(startInt / 60);
-							const secs = startInt % 60;
-							timestampedTranscript += `\n[${mins}:${secs
-								.toString()
-								.padStart(2, "0")}] `;
-							currentSecond = startInt;
-						}
-
-						timestampedTranscript +=
-							(timestampedTranscript.endsWith(": ") ||
-							timestampedTranscript.endsWith("] ")
-								? ""
-								: " ") + item.alternatives[0].content;
-					});
-
-					// Biometry calculation
+					// --- BIOMETRY CALCULATION ---
 					let patientSeconds = 0;
 					let therapistSeconds = 0;
 					const silences: { start: number; duration: number }[] = [];
 					let lastEndTime = 0;
 
-					segments.forEach((seg: any) => {
-						const startTime = parseFloat(seg.start_time);
-						const endTime = parseFloat(seg.end_time);
-						const duration = endTime - startTime;
+					if (normalizedSegments.length > 0) {
+						// Use segments if available (Deepgram/AWS)
+						normalizedSegments.forEach((seg) => {
+							const duration = seg.end - seg.start;
+							if (seg.start - lastEndTime > 2) {
+								// Silence threshold > 2s
+								silences.push({
+									start: lastEndTime,
+									duration: seg.start - lastEndTime,
+								});
+							}
 
-						if (startTime - lastEndTime > 5) {
-							silences.push({
-								start: lastEndTime,
-								duration: startTime - lastEndTime,
-							});
-						}
-
-						if (seg.speaker_label === "spk_1") {
-							patientSeconds += duration;
-						} else {
-							therapistSeconds += duration;
-						}
-						lastEndTime = endTime;
-					});
+							// Improve Speaker Logic:
+							// Usually spk_0 is therapist (asks first), spk_1 is patient.
+							// But Deepgram uses 0, 1.
+							// Mapped as spk_0, spk_1 above.
+							// We can refine this later or let Claude identify who is who,
+							// but for biometry stats we need a guess.
+							// Assumption: spk_1 is patient (often the one talking more later or second).
+							// Better: Just assign 0 to Therapist, 1 to Patient for now.
+							if (seg.speaker === "spk_1" || seg.speaker === "1") {
+								patientSeconds += duration;
+							} else {
+								therapistSeconds += duration;
+							}
+							lastEndTime = seg.end;
+						});
+					} else if (normalizedWords.length > 0) {
+						// Estimate from words if no segments (e.g. Groq with no diarization)
+						// If speaker is unknown, we can't do biometry.
+						normalizedWords.forEach((w) => {
+							if (w.start - lastEndTime > 2) {
+								silences.push({
+									start: lastEndTime,
+									duration: w.start - lastEndTime,
+								});
+							}
+							lastEndTime = w.end;
+						});
+					}
 
 					const totalSpeech = patientSeconds + therapistSeconds || 1;
-					const biometry = {
-						talkListenRatio: {
-							patient: Math.round((patientSeconds / totalSpeech) * 100),
-							therapist: Math.round((therapistSeconds / totalSpeech) * 100),
-						},
-						silences: silences,
-					};
+					// Only return biometry if we have actual speaker data (avoid 0% | 0% display)
+					const biometry =
+						patientSeconds > 0 || therapistSeconds > 0
+							? {
+									talkListenRatio: {
+										patient: Math.round((patientSeconds / totalSpeech) * 100),
+										therapist: Math.round(
+											(therapistSeconds / totalSpeech) * 100
+										),
+									},
+									silences: silences,
+							  }
+							: undefined;
 
 					console.log(`[${sessionId}] Transcript ready. Sending to Claude...`);
 

@@ -116,6 +116,12 @@ export const processTranscriptWithClaude = async (
       ]
     }
     
+    IMPORTANT INSTRUCTION FOR TIMESTAMPS:
+    - The transcript has time markers like [MM:SS] or [Start: X.X].
+    - For "key_moments", you MUST extract the exact numeric timestamp (in seconds) corresponding to the **START** of the discussion/moment.
+    - Do NOT estimate. Use the nearest previous timestamp marker in the text.
+    - Accurately associate the correct time so the user can click and jump to exactly when that topic started.
+
     Final check: Ensure the output is valid JSON and timestamps are in seconds (numerical).`;
 
 	const payload = {

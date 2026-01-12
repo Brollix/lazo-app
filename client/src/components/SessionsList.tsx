@@ -22,6 +22,9 @@ import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { Patient } from "./PatientsList";
 import {
 	Dialog,
@@ -29,6 +32,9 @@ import {
 	DialogContent,
 	DialogActions,
 	TextField,
+	Menu,
+	MenuItem,
+	ListItemIcon,
 } from "@mui/material";
 import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
@@ -65,6 +71,68 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	const [newSessionTime, setNewSessionTime] = useState(
 		new Date().toTimeString().split(" ")[0].substring(0, 5)
 	);
+
+	// Action Menu State
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+	const [selectedActionSession, setSelectedActionSession] =
+		useState<ClinicalSession | null>(null);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+	const handleMenuOpen = (
+		event: React.MouseEvent<HTMLButtonElement>,
+		session: ClinicalSession
+	) => {
+		event.stopPropagation();
+		setAnchorEl(event.currentTarget);
+		setSelectedActionSession(session);
+	};
+
+	const handleMenuClose = () => {
+		setAnchorEl(null);
+		setSelectedActionSession(null);
+	};
+
+	const handleEdit = () => {
+		if (selectedActionSession) {
+			onSelectSession(selectedActionSession);
+		}
+		handleMenuClose();
+	};
+
+	const confirmDelete = () => {
+		setDeleteDialogOpen(true);
+		// Keep session selected but close menu
+		setAnchorEl(null);
+	};
+
+	const handleDelete = async () => {
+		if (!selectedActionSession) return;
+		try {
+			setLoading(true);
+
+			// Call the RPC function to delete and reorder
+			const { error } = await supabase.rpc("delete_session_and_reorder", {
+				p_session_id: selectedActionSession.id,
+				p_patient_id: patient.id,
+			});
+
+			if (error) throw error;
+
+			setSessions((prev) =>
+				prev.filter((s) => s.id !== selectedActionSession.id)
+			);
+
+			// Refresh to get new numbers
+			await fetchSessions();
+		} catch (error) {
+			console.error("Error deleting session:", error);
+			alert("Error al eliminar la sesión");
+		} finally {
+			setLoading(false);
+			setDeleteDialogOpen(false);
+			setSelectedActionSession(null);
+		}
+	};
 
 	useEffect(() => {
 		if (patient.id) {
@@ -309,6 +377,13 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 														: ""
 												}`}
 											/>
+											<IconButton
+												edge="end"
+												onClick={(e) => handleMenuOpen(e, session)}
+												sx={{ mr: 1 }}
+											>
+												<MoreVertIcon />
+											</IconButton>
 											<ChevronRightIcon sx={{ opacity: 0.3 }} />
 										</ListItemButton>
 									</ListItem>
@@ -380,6 +455,51 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 						sx={{ borderRadius: 2 }}
 					>
 						Confirmar e Iniciar
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			{/* Actions Menu */}
+			<Menu
+				anchorEl={anchorEl}
+				open={Boolean(anchorEl)}
+				onClose={handleMenuClose}
+				onClick={(e) => e.stopPropagation()}
+			>
+				<MenuItem onClick={handleEdit}>
+					<ListItemIcon>
+						<EditIcon fontSize="small" />
+					</ListItemIcon>
+					<ListItemText>Editar</ListItemText>
+				</MenuItem>
+				<MenuItem onClick={confirmDelete} sx={{ color: "error.main" }}>
+					<ListItemIcon>
+						<DeleteIcon fontSize="small" color="error" />
+					</ListItemIcon>
+					<ListItemText>Eliminar</ListItemText>
+				</MenuItem>
+			</Menu>
+
+			{/* Delete Confirmation Dialog */}
+			<Dialog
+				open={deleteDialogOpen}
+				onClose={() => setDeleteDialogOpen(false)}
+			>
+				<DialogTitle>¿Eliminar Sesión?</DialogTitle>
+				<DialogContent>
+					<Typography variant="body2">
+						¿Estás seguro de que deseas eliminar la{" "}
+						<strong>Sesión #{selectedActionSession?.session_number}</strong>?
+						Esta acción no se puede deshacer y reordenará las sesiones
+						restantes.
+					</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setDeleteDialogOpen(false)} color="inherit">
+						Cancelar
+					</Button>
+					<Button onClick={handleDelete} color="error" variant="contained">
+						Eliminar
 					</Button>
 				</DialogActions>
 			</Dialog>

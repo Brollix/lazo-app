@@ -131,6 +131,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [inputLang, setInputLang] = useState<string>("es-US");
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
 	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
+	const [audioDuration, setAudioDuration] = useState<number | null>(null);
 
 	const onDrop = useCallback(async (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
@@ -140,6 +141,33 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			setResult(null);
 		}
 	}, []);
+
+	// Extract audio duration
+	React.useEffect(() => {
+		if (file) {
+			const objectUrl = URL.createObjectURL(file);
+			const audio = new Audio(objectUrl);
+			audio.onloadedmetadata = () => {
+				setAudioDuration(audio.duration);
+				URL.revokeObjectURL(objectUrl);
+			};
+		} else {
+			setAudioDuration(null);
+		}
+	}, [file]);
+
+	const getEstimatedTime = () => {
+		if (!audioDuration) return null;
+		// Based on benchmark: processing takes ~1.5% of audio duration
+		// e.g. 45 min (2700s) -> ~40s
+		const estimatedSeconds = audioDuration * 0.015;
+
+		if (estimatedSeconds < 30) return "Unos segundos";
+		if (estimatedSeconds < 60)
+			return `~${Math.ceil(estimatedSeconds)} segundos`;
+		const mins = Math.ceil(estimatedSeconds / 60);
+		return `~${mins} minuto${mins > 1 ? "s" : ""}`;
+	};
 
 	// Enforce Spanish output if input is Spanish
 	React.useEffect(() => {
@@ -429,6 +457,24 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									</Box>
 								)}
 							</StyledDropzone>
+
+							{file && audioDuration && status === "idle" && (
+								<Box sx={{ mt: 1, textAlign: "center" }}>
+									<Typography
+										variant="caption"
+										sx={{
+											color: "primary.main",
+											bgcolor: "primary.lighter",
+											px: 1.5,
+											py: 0.5,
+											borderRadius: 4,
+											fontWeight: "bold",
+										}}
+									>
+										⏱️ Tiempo estimado de análisis: {getEstimatedTime()}
+									</Typography>
+								</Box>
+							)}
 
 							{status !== "idle" && status !== "error" && (
 								<Box

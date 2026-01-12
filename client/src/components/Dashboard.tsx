@@ -109,6 +109,9 @@ export const Dashboard: React.FC<{
 	const [isActionLoading, setIsActionLoading] = useState(false);
 	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
 	const [isFocusMode, setIsFocusMode] = useState(false);
+	const [draftDialogOpen, setDraftDialogOpen] = useState(false);
+	const [pendingDraft, setPendingDraft] = useState<any>(null);
+
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const sessionDataRef = useRef<ProcessSessionResponse | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -213,33 +216,31 @@ export const Dashboard: React.FC<{
 		const saved = localStorage.getItem(key);
 		if (saved) {
 			try {
-				const {
-					sessionData: savedSession,
-					soapContent: savedSoap,
-					messages: savedMessages,
-				} = JSON.parse(saved);
+				const parsed = JSON.parse(saved);
 
-				if (savedSession) setSessionData(savedSession);
-				if (savedSoap) setSoapContent(savedSoap);
-				if (savedMessages) {
-					// Hydrate messages, converting saved ISO strings back to Dates
-					setMessages(
-						savedMessages.map((m: any) => ({
-							...m,
-							timestamp: new Date(m.timestamp),
-						}))
-					);
+				// If we are starting a NEW session (no initialSession provided), check draft
+				if (!initialSession) {
+					// Ask user before loading
+					setPendingDraft(parsed);
+					setDraftDialogOpen(true);
+					// Do NOT load yet
+				} else {
+					// If viewing an existing session, we generally ignore drafts
+					// unless we want to support "auto-save edits", which is complex.
+					// For now, let's assume drafts are only for NEW sessions.
 				}
 			} catch (e) {
 				console.error("Error loading draft from localStorage:", e);
 			}
 		} else {
-			// Clear state if no draft for this patient
-			setSessionData(null);
-			setSoapContent("");
-			setMessages([]);
+			// Clear state if no draft for this patient AND we are new
+			if (!initialSession) {
+				setSessionData(null);
+				setSoapContent("");
+				setMessages([]);
+			}
 		}
-	}, [patient?.id]);
+	}, [patient?.id, initialSession]); // Dependency on initialSession is key
 
 	// Save draft on state changes
 	useEffect(() => {
@@ -386,7 +387,6 @@ export const Dashboard: React.FC<{
 			return;
 		}
 
-
 		setIsActionLoading(true);
 
 		const actionLabels: Record<string, string> = {
@@ -505,15 +505,7 @@ export const Dashboard: React.FC<{
 				return;
 			}
 
-			// 1. Get next session number via RPC
-			const { data: nextNum, error: rpcError } = await supabase.rpc(
-				"get_next_session_number",
-				{ p_patient_id: patient.id }
-			);
-
-			if (rpcError) throw rpcError;
-
-			// 2. Prepare data to encrypt/store
+			// Prepare session data object
 			const sessionRecord = {
 				clinical_note: soapContent,
 				summary: sessionData?.analysis.summary,
@@ -522,25 +514,67 @@ export const Dashboard: React.FC<{
 				session_time:
 					initialTime ||
 					new Date().toTimeString().split(" ")[0].substring(0, 5),
+				// Save full analysis data for restoration
+				full_analysis_data: sessionData
+					? {
+							...sessionData,
+							analysis: {
+								...sessionData.analysis,
+								clinical_note: soapContent, // Ensure note matches what was saved
+							},
+					  }
+					: null,
 			};
 
 			const encryptedData = EncryptionService.encryptData(sessionRecord, key);
 
-			// 3. Insert into sessions table
-			const { error: insertError } = await supabase.from("sessions").insert({
-				patient_id: patient.id,
-				user_id: userId,
-				session_number: nextNum,
-				encrypted_data: encryptedData,
-				session_date: initialDate || new Date().toISOString().split("T")[0],
-				session_time:
-					initialTime ||
-					new Date().toTimeString().split(" ")[0].substring(0, 5),
-			});
+			if (initialSession?.id) {
+				// --- UPDATE EXISTING SESSION ---
+				const { error: updateError } = await supabase
+					.from("sessions")
+					.update({
+						encrypted_data: encryptedData,
+						updated_at: new Date().toISOString(),
+						// We don't update session_number or patient_id
+						// We might update session_date/time if editable, but keeping simple for now
+					})
+					.eq("id", initialSession.id);
 
-			if (insertError) throw insertError;
+				if (updateError) throw updateError;
+				alert("✓ Sesión actualizada exitosamente");
+			} else {
+				// --- CREATE NEW SESSION ---
+				// 1. Get next session number via RPC
+				const { data: nextNum, error: rpcError } = await supabase.rpc(
+					"get_next_session_number",
+					{ p_patient_id: patient.id }
+				);
 
-			// 4. Update last visit for patient (requires re-encrypting patient data)
+				if (rpcError) throw rpcError;
+
+				// 2. Insert into sessions table
+				const { error: insertError } = await supabase.from("sessions").insert({
+					patient_id: patient.id,
+					user_id: userId,
+					session_number: nextNum,
+					encrypted_data: encryptedData,
+					session_date: initialDate || new Date().toISOString().split("T")[0],
+					session_time:
+						initialTime ||
+						new Date().toTimeString().split(" ")[0].substring(0, 5),
+				});
+
+				if (insertError) throw insertError;
+				alert(`✓ Sesión #${nextNum} guardada exitosamente`);
+
+				// Clear draft only on new save
+				const draftKey = getStorageKey();
+				if (draftKey) localStorage.removeItem(draftKey);
+			}
+
+			// Update last visit for patient (requires re-encrypting patient data)
+			// Only update if it's the latest session or new?
+			// For simplicity/robustness, just always update last visit to "today" or this session date
 			const sessionDate = initialDate || new Date().toISOString().split("T")[0];
 			const updatedPatientData = {
 				name: patient.name,
@@ -561,15 +595,11 @@ export const Dashboard: React.FC<{
 				})
 				.eq("id", patient.id);
 
-			// 5. Clear draft and refresh
 			setSoapContent("");
 			setSessionData(null);
 			setMessages([]);
-			const draftKey = getStorageKey();
-			if (draftKey) localStorage.removeItem(draftKey);
 
 			await fetchSessions();
-			alert(`✓ Sesión #${nextNum} guardada exitosamente`);
 			if (onBack) onBack(); // Go back to sessions list after save
 		} catch (err: any) {
 			console.error("Error saving session:", err);
@@ -600,12 +630,24 @@ export const Dashboard: React.FC<{
 				session.session_time = data.session_time;
 			}
 
+			// Restore full session data if available
+			if (data.full_analysis_data) {
+				setSessionData(data.full_analysis_data);
+				// Regenerate the "analysis complete" style view or just let the UI react to sessionData
+				// We might want to clear messages or restore them if we saved them,
+				// but for now let's at least show the analysis chips which depend on sessionData
+			}
+
 			setSoapContent(data.clinical_note || "");
 			// Show a message in chat about loaded session
-			addMessage(
-				"bot",
-				`He cargado la **Nota Clínica** de la **Sesión #${session.session_number}** (${session.session_date}).`
-			);
+			setMessages([
+				{
+					id: "loaded-msg",
+					sender: "bot",
+					content: `He cargado la **Nota Clínica** de la **Sesión #${session.session_number}** (${session.session_date}).`,
+					timestamp: new Date(),
+				},
+			]);
 			setShowSessionsSidebar(false);
 		} catch (err) {
 			console.error("Error parsing session data:", err);
@@ -619,6 +661,38 @@ export const Dashboard: React.FC<{
 		} else {
 			setOpenUploadModal(true);
 		}
+	};
+
+	const handleConfirmDraft = (resume: boolean) => {
+		if (resume && pendingDraft) {
+			const {
+				sessionData: savedSession,
+				soapContent: savedSoap,
+				messages: savedMessages,
+			} = pendingDraft;
+
+			if (savedSession) setSessionData(savedSession);
+			if (savedSoap) setSoapContent(savedSoap);
+			if (savedMessages) {
+				setMessages(
+					savedMessages.map((m: any) => ({
+						...m,
+						timestamp: new Date(m.timestamp),
+					}))
+				);
+			}
+		} else {
+			// Discard logic
+			const key = getStorageKey();
+			if (key) localStorage.removeItem(key);
+			setSessionData(null);
+			setSoapContent("");
+			setMessages([]);
+			// Auto-open upload since we are new and empty
+			setOpenUploadModal(true);
+		}
+		setDraftDialogOpen(false);
+		setPendingDraft(null);
 	};
 
 	return (
@@ -777,6 +851,35 @@ export const Dashboard: React.FC<{
 						backdropFilter: "blur(16px)",
 					}}
 				>
+					{/* Draft Confirmation Dialog */}
+					<Dialog
+						open={draftDialogOpen}
+						onClose={() => handleConfirmDraft(true)} // Default to resume if clicked outside? Or block.
+					>
+						<DialogContent>
+							<Typography variant="h6" gutterBottom>
+								Sesión No Guardada Encontrada
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Tienes una sesión anterior que no fue guardada. ¿Quieres
+								continuar con ella o empezar una nueva?
+							</Typography>
+						</DialogContent>
+						<Box
+							sx={{ p: 2, display: "flex", justifyContent: "flex-end", gap: 1 }}
+						>
+							<Button color="error" onClick={() => handleConfirmDraft(false)}>
+								Empezar Nueva (Borrar anterior)
+							</Button>
+							<Button
+								variant="contained"
+								onClick={() => handleConfirmDraft(true)}
+							>
+								Continuar Sesión
+							</Button>
+						</Box>
+					</Dialog>
+
 					{/* Top Section: Audio Player or New Session Button */}
 					<Box
 						sx={{
