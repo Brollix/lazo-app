@@ -169,6 +169,8 @@ function App() {
 							<PatientsList
 								onSelectPatient={handleSelectPatient}
 								onLogout={handleLogout}
+								onNavigateToAdmin={() => setCurrentView("admin")}
+								userId={userId}
 							/>
 						)}
 						{currentView === "sessions" && selectedPatient && (
@@ -178,6 +180,8 @@ function App() {
 								onNewSession={handleNewSession}
 								onBack={handleBackToList}
 								onLogout={handleLogout}
+								onNavigateToAdmin={() => setCurrentView("admin")}
+								userId={userId}
 							/>
 						)}
 						{currentView === "dashboard" && (

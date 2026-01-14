@@ -201,9 +201,12 @@ export const createOrUpdateSubscription = async (
 	status: string,
 	amount: number,
 	billingDay?: number,
-	nextBillingDate?: Date
+	nextBillingDate?: Date,
+	shouldUpdatePlan: boolean = true
 ) => {
-	console.log(`[DB] Creating/updating subscription for user ${userId}`);
+	console.log(
+		`[DB] Creating/updating subscription for user ${userId}, shouldUpdatePlan: ${shouldUpdatePlan}`
+	);
 
 	const { data, error } = await supabase.rpc("upsert_subscription", {
 		p_user_id: userId,
@@ -214,6 +217,7 @@ export const createOrUpdateSubscription = async (
 		p_amount: amount,
 		p_billing_day: billingDay || null,
 		p_next_billing_date: nextBillingDate?.toISOString() || null,
+		p_should_update_plan: shouldUpdatePlan,
 	});
 
 	if (error) {

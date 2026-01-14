@@ -9,6 +9,7 @@ import {
 	CardContent,
 	Divider,
 	CircularProgress,
+	Alert,
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
@@ -19,6 +20,20 @@ interface SubscriptionModalProps {
 	userEmail: string;
 }
 
+interface Plan {
+	id: string;
+	plan_type: string;
+	name: string;
+	description: string;
+	price_usd: number;
+	price_ars: number;
+	features: string[];
+	credits_initial: number;
+	credits_monthly: number;
+	is_active: boolean;
+	display_order: number;
+}
+
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	open,
 	onClose,
@@ -26,36 +41,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	userEmail,
 }) => {
 	const [dolarRate, setDolarRate] = useState<number>(1950);
-	const [prices, setPrices] = useState({ pro: 0, ultra: 0 });
+	const [plans, setPlans] = useState<Plan[]>([]);
 	const [loading, setLoading] = useState(false);
 
 	const apiUrl = import.meta.env.VITE_API_URL;
 
-	// Precios locales (fallback si la API falla)
-	const proPriceARS = prices.pro || Math.round(10 * dolarRate);
-	const ultraPriceARS = prices.ultra || Math.round(30 * dolarRate);
-
 	useEffect(() => {
 		if (open) {
-			// Fetch prices from our backend
-			fetch(`${apiUrl}/api/prices`)
+			// Fetch plans from our backend
+			fetch(`${apiUrl}/api/plans`)
 				.then((res) => res.json())
 				.then((data) => {
-					console.log("Backend prices:", data);
-					setPrices({ pro: data.pro, ultra: data.ultra });
+					console.log("Plans from backend:", data);
+					setPlans(data.plans || []);
 					if (data.rate) setDolarRate(data.rate);
 				})
 				.catch((err) => {
-					console.error("Error fetching prices from backend:", err);
-					// Fallback: Try to fetch dolar rate directly if backend fails
-					fetch("https://dolarapi.com/v1/dolares/tarjeta")
-						.then((res) => res.json())
-						.then((data) => {
-							const comp = data.compra || 0;
-							const vent = data.venta || 0;
-							const promedio = Math.round((comp + vent) / 2);
-							if (promedio > 0) setDolarRate(promedio);
-						});
+					console.error("Error fetching plans from backend:", err);
 				});
 		}
 	}, [open, apiUrl]);
@@ -107,141 +109,168 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		}
 	};
 
-	const PlanCard = ({ title, price, features, planId, color }: any) => (
-		<Card
-			sx={{
-				minHeight: { xs: "auto", sm: 480 },
-				display: "flex",
-				flexDirection: "column",
-				borderRadius: 4,
-				boxShadow: (theme) => theme.shadows[2],
-				border: "1px solid",
-				borderColor: "transparent",
-				"&:hover": {
-					borderColor: color,
-					transform: { xs: "none", sm: "translateY(-4px)" },
-				},
-				transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-				bgcolor: "background.paper",
-			}}
-		>
-			<CardContent
+	const getColorForPlan = (planType: string) => {
+		switch (planType) {
+			case "free":
+				return "text.disabled";
+			case "pro":
+				return "primary.main";
+			case "ultra":
+				return "secondary.main";
+			default:
+				return "primary.main";
+		}
+	};
+
+	const PlanCard = ({ plan }: { plan: Plan }) => {
+		const color = getColorForPlan(plan.plan_type);
+		const isUltra = plan.plan_type === "ultra";
+		const isFree = plan.plan_type === "free";
+
+		return (
+			<Card
 				sx={{
-					p: { xs: 2, sm: 3 },
-					flexGrow: 1,
+					minHeight: { xs: "auto", sm: 480 },
 					display: "flex",
 					flexDirection: "column",
+					borderRadius: 4,
+					boxShadow: (theme) => theme.shadows[2],
+					border: "1px solid",
+					borderColor: "transparent",
+					"&:hover": {
+						borderColor: color,
+						transform: { xs: "none", sm: "translateY(-4px)" },
+					},
+					transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+					bgcolor: "background.paper",
 				}}
 			>
-				<Typography
-					variant="h5"
-					fontWeight="bold"
-					gutterBottom
-					sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
+				<CardContent
+					sx={{
+						p: { xs: 2, sm: 3 },
+						flexGrow: 1,
+						display: "flex",
+						flexDirection: "column",
+					}}
 				>
-					{title}
-				</Typography>
-				<Box sx={{ mb: 1 }}>
 					<Typography
-						variant="h3"
+						variant="h5"
 						fontWeight="bold"
-						component="span"
-						sx={{ color: color, fontSize: { xs: "1.75rem", sm: "2.5rem" } }}
+						gutterBottom
+						sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
 					>
-						{planId === "free"
-							? "Gratis"
-							: planId === "ultra"
-							? "Próximamente"
-							: `ARS $${price?.toLocaleString("es-AR")}`}
+						{plan.name}
 					</Typography>
-					{planId !== "free" && planId !== "ultra" && (
+					<Box sx={{ mb: 1 }}>
 						<Typography
-							variant="body1"
-							color="text.secondary"
+							variant="h3"
+							fontWeight="bold"
 							component="span"
-							sx={{ ml: 1 }}
+							sx={{ color: color, fontSize: { xs: "1.75rem", sm: "2.5rem" } }}
 						>
-							/mes
+							{isFree
+								? "Gratis"
+								: isUltra && !plan.is_active
+								? "Próximamente"
+								: `ARS $${plan.price_ars?.toLocaleString("es-AR")}`}
 						</Typography>
-					)}
-				</Box>
-				<Box sx={{ mb: 2, display: "block", minHeight: "2rem" }}>
-					{planId === "ultra" ? (
-						<Typography variant="body2" color="text.secondary" fontWeight={500}>
-							Funcionalidades avanzadas en desarrollo
-						</Typography>
-					) : planId !== "free" ? (
-						<>
+						{!isFree && !isUltra && (
+							<Typography
+								variant="body1"
+								color="text.secondary"
+								component="span"
+								sx={{ ml: 1 }}
+							>
+								/mes
+							</Typography>
+						)}
+					</Box>
+					<Box sx={{ mb: 2, display: "block", minHeight: "2rem" }}>
+						{isUltra && !plan.is_active ? (
 							<Typography
 								variant="body2"
 								color="text.secondary"
 								fontWeight={500}
 							>
-								USD ${planId === "pro" ? 10 : 30} × Dólar Tarjeta
-								<br />
-								(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
+								{plan.description}
 							</Typography>
+						) : !isFree ? (
+							<>
+								<Typography
+									variant="body2"
+									color="text.secondary"
+									fontWeight={500}
+								>
+									USD ${plan.price_usd} × Dólar Tarjeta
+									<br />
+									(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
+								</Typography>
+								<Typography
+									variant="caption"
+									sx={{
+										color: "text.secondary",
+										opacity: 0.8,
+										fontSize: "0.7rem",
+										display: "block",
+										mt: 0.5,
+									}}
+								>
+									Suscripción mensual recurrente • Cancela cuando quieras
+								</Typography>
+							</>
+						) : (
 							<Typography
-								variant="caption"
-								sx={{
-									color: "text.secondary",
-									opacity: 0.8,
-									fontSize: "0.7rem",
-									display: "block",
-									mt: 0.5,
-								}}
+								variant="body2"
+								color="text.secondary"
+								fontWeight={500}
 							>
-								Suscripción mensual recurrente • Cancela cuando quieras
+								{plan.description}
 							</Typography>
-						</>
-					) : (
-						<Typography variant="body2" color="text.secondary" fontWeight={500}>
-							Perfecto para comenzar
-						</Typography>
-					)}
-				</Box>
-				<Divider sx={{ mb: 2 }} />
-				<Box sx={{ mb: 3, flexGrow: 1 }}>
-					{features.map((f: string, i: number) => (
-						<Box key={i} sx={{ display: "flex", gap: 1, mb: 1.5 }}>
-							<CheckCircleOutlineIcon fontSize="small" sx={{ color }} />
-							<Typography variant="body2" sx={{ lineHeight: 1.4 }}>
-								{f}
-							</Typography>
-						</Box>
-					))}
-				</Box>
-				<Button
-					fullWidth
-					variant="contained"
-					disableElevation
-					disabled={loading || planId === "ultra"}
-					sx={{
-						borderRadius: 2,
-						py: 1.5,
-						fontWeight: "bold",
-						bgcolor: color,
-						color: "white",
-						"&:hover": {
+						)}
+					</Box>
+					<Divider sx={{ mb: 2 }} />
+					<Box sx={{ mb: 3, flexGrow: 1 }}>
+						{plan.features.map((f: string, i: number) => (
+							<Box key={i} sx={{ display: "flex", gap: 1, mb: 1.5 }}>
+								<CheckCircleOutlineIcon fontSize="small" sx={{ color }} />
+								<Typography variant="body2" sx={{ lineHeight: 1.4 }}>
+									{f}
+								</Typography>
+							</Box>
+						))}
+					</Box>
+					<Button
+						fullWidth
+						variant="contained"
+						disableElevation
+						disabled={loading || (isUltra && !plan.is_active)}
+						sx={{
+							borderRadius: 2,
+							py: 1.5,
+							fontWeight: "bold",
 							bgcolor: color,
-							opacity: 0.9,
-						},
-					}}
-					onClick={() => handleSubscribe(planId)}
-				>
-					{loading ? (
-						<CircularProgress size={24} color="inherit" />
-					) : planId === "ultra" ? (
-						"Próximamente"
-					) : planId === "free" ? (
-						"Continuar Gratis"
-					) : (
-						"Elegir Plan"
-					)}
-				</Button>
-			</CardContent>
-		</Card>
-	);
+							color: "white",
+							"&:hover": {
+								bgcolor: color,
+								opacity: 0.9,
+							},
+						}}
+						onClick={() => handleSubscribe(plan.plan_type as any)}
+					>
+						{loading ? (
+							<CircularProgress size={24} color="inherit" />
+						) : isUltra && !plan.is_active ? (
+							"Próximamente"
+						) : isFree ? (
+							"Continuar Gratis"
+						) : (
+							"Elegir Plan"
+						)}
+					</Button>
+				</CardContent>
+			</Card>
+		);
+	};
 
 	return (
 		<Dialog
@@ -305,6 +334,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					alignItems: "center",
 				}}
 			>
+				<Alert
+					severity="info"
+					sx={{
+						mb: 3,
+						borderRadius: 2,
+						width: "100%",
+						maxWidth: { xs: "100%", md: 900 },
+					}}
+				>
+					<Typography variant="body2" sx={{ fontWeight: 500 }}>
+						<strong>Nota:</strong> Puedes pagar con cualquier email en
+						MercadoPago. El sistema guardará automáticamente tu email de pago
+						para futuras renovaciones.
+					</Typography>
+				</Alert>
 				<Box
 					sx={{
 						display: "flex",
@@ -315,71 +359,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						alignItems: { xs: "stretch", md: "flex-start" },
 					}}
 				>
-					<Box
-						sx={{
-							flex: "1 1 0",
-							maxWidth: { xs: "100%", md: 400 },
-							width: "100%",
-						}}
-					>
-						<PlanCard
-							title="Plan Gratis"
-							price={0}
-							color="text.disabled"
-							planId="free"
-							features={[
-								"3 créditos de audio iniciales",
-								"Transcripción Whisper-v3 (Groq)",
-								"Análisis con Claude Sonnet 3.5",
-								"Ideal para probar la plataforma",
-								"Sin tarjeta de crédito",
-							]}
-						/>
-					</Box>
-					<Box
-						sx={{
-							flex: "1 1 0",
-							maxWidth: { xs: "100%", md: 400 },
-							width: "100%",
-						}}
-					>
-						<PlanCard
-							title="Plan Pro"
-							price={proPriceARS}
-							color="primary.main"
-							planId="pro"
-							features={[
-								"Grabaciones ilimitadas",
-								"Transcripción Whisper-v3 (Groq)",
-								"Análisis con Claude Sonnet 3.5",
-								"Asistente IA 24/7 integrado",
-								"Soporte prioritario por WhatsApp",
-								"Exportación a PDF/Word",
-							]}
-						/>
-					</Box>
-					<Box
-						sx={{
-							flex: "1 1 0",
-							maxWidth: { xs: "100%", md: 400 },
-							width: "100%",
-						}}
-					>
-						<PlanCard
-							title="Plan Ultra"
-							price={ultraPriceARS}
-							color="secondary.main"
-							planId="ultra"
-							features={[
-								"Todo lo de Pro",
-								"Transcripción Deepgram Nova-2",
-								"Precisión máxima (99.9%)",
-								"Diarización avanzada (Speaker ID)",
-								"Análisis multi-lenguaje nativo",
-								"Respaldos cifrados automáticos",
-							]}
-						/>
-					</Box>
+					{plans.map((plan) => (
+						<Box
+							key={plan.id}
+							sx={{
+								flex: "1 1 0",
+								maxWidth: { xs: "100%", md: 400 },
+								width: "100%",
+							}}
+						>
+							<PlanCard plan={plan} />
+						</Box>
+					))}
 				</Box>
 				<Box sx={{ mt: 4, textAlign: "center" }}>
 					<Typography variant="caption" color="text.secondary">

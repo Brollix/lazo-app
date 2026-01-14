@@ -15,7 +15,7 @@ const corsOptions = {
 		// Allow all origins for now - you can restrict this in production
 		callback(null, true);
 	},
-	methods: ["GET", "POST", "OPTIONS"],
+	methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 	allowedHeaders: [
 		"Content-Type",
 		"Authorization",
@@ -45,7 +45,10 @@ app.use((req, res, next) => {
 		res.header("Access-Control-Allow-Origin", origin);
 		res.header("Access-Control-Allow-Credentials", "true");
 	}
-	res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+	res.header(
+		"Access-Control-Allow-Methods",
+		"GET, POST, PATCH, DELETE, OPTIONS"
+	);
 	res.header(
 		"Access-Control-Allow-Headers",
 		"Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
@@ -564,6 +567,37 @@ app.get("/api/prices", (req, res) => {
 	res.json(getPrices());
 });
 
+// Get all active subscription plans
+app.get("/api/plans", async (req, res) => {
+	try {
+		const { data: plans, error } = await supabase
+			.from("subscription_plans")
+			.select("*")
+			.eq("is_active", true)
+			.order("display_order", { ascending: true });
+
+		if (error) throw error;
+
+		// Get current dolar rate for dynamic pricing
+		const prices = getPrices();
+		const dolarRate = prices.rate;
+
+		// Calculate ARS prices if not set
+		const plansWithPrices = plans.map((plan) => ({
+			...plan,
+			price_ars: plan.price_ars || Math.round(plan.price_usd * dolarRate),
+		}));
+
+		res.json({
+			plans: plansWithPrices,
+			rate: dolarRate,
+		});
+	} catch (error: any) {
+		console.error("Error fetching plans:", error);
+		res.status(500).json({ error: "Error al obtener planes" });
+	}
+});
+
 app.get("/api/user-plan/:userId", async (req, res) => {
 	const profile = await getUserProfile(req.params.userId);
 	res.json(profile);
@@ -664,14 +698,26 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 				// This is a recurring subscription payment
 				const userId = payment.external_reference;
 				const mpSubscriptionId = paymentData.preapproval_id;
+				const payerEmail = payment.payer?.email;
 
 				console.log(`[Webhook] Recurring payment APPROVED!`);
 				console.log(
-					`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}`
+					`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Payer Email: ${payerEmail}`
 				);
 
 				if (userId && mpSubscriptionId) {
 					try {
+						// Capture and store the actual payer email from MercadoPago
+						if (payerEmail) {
+							console.log(
+								`[Webhook] Updating payment_email for user ${userId} to ${payerEmail}`
+							);
+							await supabase
+								.from("profiles")
+								.update({ payment_email: payerEmail })
+								.eq("id", userId);
+						}
+
 						// Record payment and renew credits
 						const result = await recordPaymentAndRenewCredits(
 							userId,
@@ -719,7 +765,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 			const status = subscription.status;
 
 			console.log(
-				`[Webhook] Subscription ${subscriptionId} - Status: ${status}, User: ${userId}`
+				`[Webhook] Subscription ${subscriptionId} - Status: ${status}, User: ${userId}, Action: ${action}`
 			);
 
 			if (userId && subscription.auto_recurring) {
@@ -732,6 +778,16 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 				const autoRecurring = subscription.auto_recurring as any;
 
 				try {
+					// Only update plan if status is "authorized" (first payment approved)
+					// For "created" or "pending" status, just record the subscription without updating plan
+					const shouldUpdatePlan = status === "authorized";
+
+					console.log(
+						`[Webhook] ${
+							shouldUpdatePlan ? "UPDATING PLAN" : "RECORDING SUBSCRIPTION"
+						} - Status: ${status}, Action: ${action}`
+					);
+
 					// Create or update subscription in database
 					await createOrUpdateSubscription(
 						userId,
@@ -743,11 +799,14 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						autoRecurring.billing_day,
 						subscription.next_payment_date
 							? new Date(subscription.next_payment_date)
-							: undefined
+							: undefined,
+						shouldUpdatePlan
 					);
 
 					console.log(
-						`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} in database`
+						`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} in database${
+							shouldUpdatePlan ? " with plan update" : " (plan NOT updated)"
+						}`
 					);
 				} catch (dbError) {
 					console.error(`[Webhook] DB Error updating subscription:`, dbError);

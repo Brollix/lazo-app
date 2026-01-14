@@ -33,6 +33,7 @@ import {
 	EventNote,
 	MenuBook,
 	NotificationsActive as NotifyIcon,
+	AdminPanelSettings as AdminIcon,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -68,6 +69,8 @@ export interface ClinicalSession {
 	session_time?: string;
 	encrypted_data: string;
 }
+
+const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 const formatDuration = (seconds?: number) => {
 	if (!seconds) return "";
@@ -1041,6 +1044,25 @@ export const Dashboard: React.FC<{
 								>
 									Asistente IA
 								</Typography>
+							</Stack>
+							<Stack direction="row" spacing={1}>
+								{userId === ADMIN_UUID && onNavigateToAdmin && (
+									<IconButton
+										size="small"
+										onClick={onNavigateToAdmin}
+										color="primary"
+										title="Panel Admin"
+									>
+										<AdminIcon fontSize="small" />
+									</IconButton>
+								)}
+								<IconButton
+									size="small"
+									onClick={() => setSettingsOpen(true)}
+									color="inherit"
+								>
+									<SettingsIcon fontSize="small" />
+								</IconButton>
 							</Stack>
 						</Box>
 

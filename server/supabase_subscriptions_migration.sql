@@ -8,7 +8,8 @@ ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'none',
 ADD COLUMN IF NOT EXISTS subscription_plan_id TEXT,
 ADD COLUMN IF NOT EXISTS next_billing_date TIMESTAMP WITH TIME ZONE,
 ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMP WITH TIME ZONE,
-ADD COLUMN IF NOT EXISTS subscription_cancelled_at TIMESTAMP WITH TIME ZONE;
+ADD COLUMN IF NOT EXISTS subscription_cancelled_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS payment_email TEXT; -- Email captured from MercadoPago payer
 
 -- 2. Create subscriptions table to track subscription details
 CREATE TABLE IF NOT EXISTS public.subscriptions (
@@ -51,9 +52,11 @@ ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_history ENABLE ROW LEVEL SECURITY;
 
 -- 5. Create RLS policies for subscriptions
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can view own subscriptions" ON public.subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can view own payment history" ON public.payment_history;
 CREATE POLICY "Users can view own payment history" ON public.payment_history
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -66,7 +69,8 @@ CREATE OR REPLACE FUNCTION upsert_subscription(
   p_status TEXT,
   p_amount DECIMAL,
   p_billing_day INTEGER DEFAULT NULL,
-  p_next_billing_date TIMESTAMP WITH TIME ZONE DEFAULT NULL
+  p_next_billing_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  p_should_update_plan BOOLEAN DEFAULT TRUE
 )
 RETURNS json AS $$
 DECLARE
@@ -92,21 +96,34 @@ BEGIN
   RETURNING id INTO v_subscription_id;
 
   -- Update profile with subscription info
-  UPDATE public.profiles
-  SET 
-    subscription_id = p_mp_subscription_id,
-    subscription_status = p_status,
-    subscription_plan_id = p_mp_plan_id,
-    plan_type = p_plan_type,
-    next_billing_date = p_next_billing_date,
-    subscription_started_at = CASE WHEN subscription_started_at IS NULL THEN timezone('utc'::text, now()) ELSE subscription_started_at END,
-    updated_at = timezone('utc'::text, now())
-  WHERE id = p_user_id;
+  -- Only update plan_type if p_should_update_plan is TRUE
+  IF p_should_update_plan THEN
+    UPDATE public.profiles
+    SET 
+      subscription_id = p_mp_subscription_id,
+      subscription_status = p_status,
+      subscription_plan_id = p_mp_plan_id,
+      plan_type = p_plan_type,
+      next_billing_date = p_next_billing_date,
+      subscription_started_at = CASE WHEN subscription_started_at IS NULL THEN timezone('utc'::text, now()) ELSE subscription_started_at END,
+      updated_at = timezone('utc'::text, now())
+    WHERE id = p_user_id;
+  ELSE
+    UPDATE public.profiles
+    SET 
+      subscription_id = p_mp_subscription_id,
+      subscription_status = p_status,
+      subscription_plan_id = p_mp_plan_id,
+      next_billing_date = p_next_billing_date,
+      updated_at = timezone('utc'::text, now())
+    WHERE id = p_user_id;
+  END IF;
 
   result := json_build_object(
     'subscription_id', v_subscription_id,
     'mp_subscription_id', p_mp_subscription_id,
-    'status', p_status
+    'status', p_status,
+    'plan_updated', p_should_update_plan
   );
 
   RETURN result;
@@ -222,7 +239,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 9. Grant execute permissions
-GRANT EXECUTE ON FUNCTION upsert_subscription(UUID, TEXT, TEXT, TEXT, TEXT, DECIMAL, INTEGER, TIMESTAMP WITH TIME ZONE) TO authenticated;
+GRANT EXECUTE ON FUNCTION upsert_subscription(UUID, TEXT, TEXT, TEXT, TEXT, DECIMAL, INTEGER, TIMESTAMP WITH TIME ZONE, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION record_payment_and_renew_credits(UUID, TEXT, TEXT, DECIMAL, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION cancel_user_subscription(UUID) TO authenticated;
 

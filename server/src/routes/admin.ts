@@ -79,8 +79,22 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 
 		if (subsError) throw subsError;
 
-		const PRO_PRICE = 19900;
-		const ULTRA_PRICE = 48500;
+		// Get plan prices from database
+		const { data: planData, error: planError } = await supabase
+			.from("subscription_plans")
+			.select("plan_type, price_usd, price_ars");
+
+		if (planError) throw planError;
+
+		const proPlan = planData.find((p) => p.plan_type === "pro");
+		const ultraPlan = planData.find((p) => p.plan_type === "ultra");
+
+		// Use price_ars if set, otherwise calculate from USD
+		const PRO_PRICE =
+			proPlan?.price_ars || Math.round((proPlan?.price_usd || 10) * 1950);
+		const ULTRA_PRICE =
+			ultraPlan?.price_ars || Math.round((ultraPlan?.price_usd || 30) * 1950);
+
 		const proCount = subsData.filter((u) => u.plan_type === "pro").length;
 		const ultraCount = subsData.filter((u) => u.plan_type === "ultra").length;
 		const mrr = proCount * PRO_PRICE + ultraCount * ULTRA_PRICE;
@@ -103,13 +117,31 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 			return acc + (s.mode === "high_precision" ? 0.5 : 0.01);
 		}, 0);
 
-		// 6. Sessions Today
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
-		const { count: sessionsToday } = await supabase
+		// 7. Daily Stats (last 7 days sessions)
+		const sevenDaysAgoStart = new Date();
+		sevenDaysAgoStart.setDate(sevenDaysAgoStart.getDate() - 7);
+		sevenDaysAgoStart.setHours(0, 0, 0, 0);
+
+		const { data: dailySessions, error: dailyError } = await supabase
 			.from("processing_sessions")
-			.select("*", { count: "exact", head: true })
-			.gte("created_at", todayStart.toISOString());
+			.select("created_at")
+			.gte("created_at", sevenDaysAgoStart.toISOString());
+
+		if (dailyError) throw dailyError;
+
+		const dailyStats = [];
+		for (let i = 6; i >= 0; i--) {
+			const d = new Date();
+			d.setDate(d.getDate() - i);
+			const dateStr = d.toISOString().split("T")[0];
+			const count = dailySessions.filter((s) =>
+				s.created_at.startsWith(dateStr)
+			).length;
+			dailyStats.push({ date: dateStr, count });
+		}
+
+		// 8. Sessions Today
+		const sessionsToday = dailyStats[dailyStats.length - 1]?.count || 0;
 
 		res.json({
 			totalUsers: totalUsers || 0,
@@ -118,6 +150,7 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 			mrr,
 			aiBurnRate: parseFloat(burnRate.toFixed(2)),
 			sessionsToday: sessionsToday || 0,
+			dailyStats,
 			breakdown: {
 				proUsers: proCount,
 				ultraUsers: ultraCount,
@@ -355,6 +388,9 @@ router.patch(
 /**
  * DELETE /admin/announcements/:id
  */
+/**
+ * DELETE /admin/announcements/:id
+ */
 router.delete(
 	"/announcements/:id",
 	isAdmin,
@@ -372,5 +408,136 @@ router.delete(
 		}
 	}
 );
+
+/**
+ * GET /admin/plans
+ * Returns all subscription plans (including inactive)
+ */
+router.get("/plans", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { data: plans, error } = await supabase
+			.from("subscription_plans")
+			.select("*")
+			.order("display_order", { ascending: true });
+
+		if (error) throw error;
+		res.json({ plans });
+	} catch (error: any) {
+		console.error("[Admin] Error fetching plans:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * PATCH /admin/plans/:id
+ * Update a subscription plan
+ */
+router.patch("/plans/:id", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { id } = req.params;
+		const {
+			name,
+			description,
+			price_usd,
+			price_ars,
+			features,
+			credits_initial,
+			credits_monthly,
+			is_active,
+			display_order,
+		} = req.body;
+
+		const { data, error } = await supabase
+			.from("subscription_plans")
+			.update({
+				name,
+				description,
+				price_usd,
+				price_ars,
+				features,
+				credits_initial,
+				credits_monthly,
+				is_active,
+				display_order,
+			})
+			.eq("id", id)
+			.select()
+			.single();
+
+		if (error) throw error;
+		res.json({ success: true, plan: data });
+	} catch (error: any) {
+		console.error("[Admin] Error updating plan:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * POST /admin/plans
+ * Create a new subscription plan
+ */
+router.post("/plans", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const {
+			plan_type,
+			name,
+			description,
+			price_usd,
+			price_ars,
+			features,
+			credits_initial,
+			credits_monthly,
+			is_active,
+			display_order,
+		} = req.body;
+
+		const { data, error } = await supabase
+			.from("subscription_plans")
+			.insert({
+				plan_type,
+				name,
+				description,
+				price_usd,
+				price_ars,
+				features,
+				credits_initial,
+				credits_monthly,
+				is_active,
+				display_order,
+			})
+			.select()
+			.single();
+
+		if (error) throw error;
+		res.json({ success: true, plan: data });
+	} catch (error: any) {
+		console.error("[Admin] Error creating plan:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * DELETE /admin/plans/:id
+ * Delete a subscription plan
+ */
+router.delete("/plans/:id", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { id } = req.params;
+
+		// Instead of deleting, we'll deactivate the plan
+		const { data, error } = await supabase
+			.from("subscription_plans")
+			.update({ is_active: false })
+			.eq("id", id)
+			.select()
+			.single();
+
+		if (error) throw error;
+		res.json({ success: true, plan: data });
+	} catch (error: any) {
+		console.error("[Admin] Error deleting plan:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
 
 export default router;

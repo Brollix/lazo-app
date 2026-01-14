@@ -44,7 +44,6 @@ import {
 	SwapHoriz as SwapIcon,
 	Logout as LogoutIcon,
 	ContentCopy as CopyIcon,
-	Timeline as TimelineIcon,
 	TrendingUp as TrendingUpIcon,
 	Speed as SpeedIcon,
 	NotificationsActive as NotifyIcon,
@@ -57,6 +56,8 @@ import {
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
 	ArrowBack as ArrowBackIcon,
+	Subscriptions as SubscriptionsIcon,
+	Edit as EditIcon,
 } from "@mui/icons-material";
 import {
 	getGradients,
@@ -80,6 +81,7 @@ interface Stats {
 	mrr: number;
 	aiBurnRate: number;
 	sessionsToday: number;
+	dailyStats: { date: string; count: number }[];
 	breakdown: {
 		proUsers: number;
 		ultraUsers: number;
@@ -156,6 +158,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 	const [newPlan, setNewPlan] = useState<string>("free");
 	const [updating, setUpdating] = useState(false);
 
+	// Plans state
+	const [plans, setPlans] = useState<any[]>([]);
+	const [loadingPlans, setLoadingPlans] = useState(false);
+	const [editPlanModalOpen, setEditPlanModalOpen] = useState(false);
+	const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+	const [overviewView, setOverviewView] = useState<
+		"grid" | "mrr" | "users" | "burn_rate" | "conversion"
+	>("grid");
+
 	const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 	useEffect(() => {
@@ -190,6 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			// Initial background loads
 			fetchAnnouncements();
 			fetchHealth();
+			fetchPlans();
 		} catch (err: any) {
 			console.error("Error fetching admin data:", err);
 			setError(err.message || "Error al cargar datos");
@@ -224,6 +236,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			}
 		} catch (e) {
 			console.error("Error fetching announcements:", e);
+		}
+	};
+
+	const fetchPlans = async () => {
+		setLoadingPlans(true);
+		try {
+			const res = await fetch(`${API_URL}/api/admin/plans?userId=${userId}`);
+			if (res.ok) {
+				const data = await res.json();
+				setPlans(data.plans);
+			}
+		} catch (e) {
+			console.error("Error fetching plans:", e);
+		} finally {
+			setLoadingPlans(false);
 		}
 	};
 
@@ -377,6 +404,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			if (res.ok) fetchAnnouncements();
 		} catch (e) {
 			console.error("Error deleting announcement:", e);
+		}
+	};
+
+	const handleUpdatePlanDetails = async () => {
+		if (!selectedPlan) return;
+		setUpdating(true);
+		try {
+			const res = await fetch(`${API_URL}/api/admin/plans/${selectedPlan.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					userId,
+					...selectedPlan,
+				}),
+			});
+			if (!res.ok) throw new Error("Error updating plan");
+			await fetchPlans();
+			setEditPlanModalOpen(false);
+			setSelectedPlan(null);
+		} catch (err: any) {
+			alert(err.message);
+		} finally {
+			setUpdating(false);
 		}
 	};
 
@@ -636,6 +686,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 					label="Salud del Sistema"
 				/>
 				<Tab icon={<NotifyIcon />} iconPosition="start" label="Anuncios" />
+				<Tab icon={<SubscriptionsIcon />} iconPosition="start" label="Planes" />
 			</Tabs>
 
 			{error && (
@@ -653,193 +704,435 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			)}
 
 			{activeTab === 0 && (
-				<Grid container spacing={4}>
-					{/* KPI Section directly here for Overview */}
-					<Grid size={{ xs: 12 }}>
-						{stats && (
-							<Grid container spacing={3} sx={{ mb: 2 }}>
-								{[
-									{
-										title: "Ingresos (MRR)",
-										value: formatCurrency(stats.mrr),
-										subtitle: `P: ${stats.breakdown.proUsers} | U: ${stats.breakdown.ultraUsers}`,
-										icon: <MoneyIcon />,
-										color: "primary",
-									},
-									{
-										title: "Usuarios Activos (7d)",
-										value: `${stats.activeUsers7d} / ${stats.totalUsers}`,
-										progress: (stats.activeUsers7d / stats.totalUsers) * 100,
-										icon: <PeopleIcon />,
-										color: "info",
-									},
-									{
-										title: "Conversión",
-										value: `${stats.conversionRate}%`,
-										subtitle: "Pago / Total",
-										icon: <TrendingUpIcon />,
-										color: "warning",
-									},
-									{
-										title: "AI Burn Rate (Est.)",
-										value: `${stats.aiBurnRate} USD`,
-										subtitle: "Mes actual acumulado",
-										icon: <SpeedIcon />,
-										color: "error",
-									},
-								].map((kpi, index) => (
-									<Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-										<Card
-											elevation={0}
-											sx={{
-												height: "100%",
-												borderRadius: br.xl,
-												position: "relative",
-												overflow: "hidden",
-												background: (theme) =>
-													getBackgrounds(theme.palette.mode).glass.panel,
-												backdropFilter: "blur(20px)",
-												border: "1px solid",
-												borderColor: (theme) =>
-													alpha((theme.palette as any)[kpi.color].main, 0.2),
-											}}
-										>
-											<Box
-												sx={{
-													position: "absolute",
-													top: 0,
-													left: 0,
-													width: 4,
-													height: "100%",
-													bgcolor: `${kpi.color}.main`,
-												}}
-											/>
-											<CardContent sx={{ p: spacing.lg }}>
-												<Stack
-													direction="row"
-													justifyContent="space-between"
-													alignItems="flex-start"
-												>
-													<Box>
-														<Typography
-															variant="caption"
-															color="text.secondary"
-															sx={{
-																textTransform: "uppercase",
-																fontWeight: typographyExtended.fontWeights.bold,
-															}}
-														>
-															{kpi.title}
-														</Typography>
-														<Typography
-															variant="h4"
-															fontWeight={typographyExtended.fontWeights.black}
-															sx={{ mt: spacing.xs }}
-														>
-															{kpi.value}
-														</Typography>
-													</Box>
-													<Box
-														sx={{
-															p: spacing.sm,
-															borderRadius: br.md,
-															bgcolor: (theme) =>
+				<Box>
+					{overviewView === "grid" ? (
+						<Grid container spacing={4}>
+							{/* KPI Section directly here for Overview */}
+							<Grid size={{ xs: 12 }}>
+								{stats && (
+									<Grid container spacing={3} sx={{ mb: 2 }}>
+										{[
+											{
+												title: "Ingresos (MRR)",
+												value: formatCurrency(stats.mrr),
+												subtitle: `P: ${stats.breakdown.proUsers} | U: ${stats.breakdown.ultraUsers}`,
+												icon: <MoneyIcon />,
+												color: "primary",
+												viewMode: "mrr",
+											},
+											{
+												title: "Usuarios Activos (7d)",
+												value: `${stats.activeUsers7d} / ${stats.totalUsers}`,
+												progress:
+													(stats.activeUsers7d / stats.totalUsers) * 100,
+												icon: <PeopleIcon />,
+												color: "info",
+												viewMode: "users",
+											},
+											{
+												title: "Conversión",
+												value: `${stats.conversionRate}%`,
+												subtitle: "Pago / Total",
+												icon: <TrendingUpIcon />,
+												color: "warning",
+												viewMode: "conversion",
+											},
+											{
+												title: "AI Burn Rate (Est.)",
+												value: `${stats.aiBurnRate} USD`,
+												subtitle: "Mes actual acumulado",
+												icon: <SpeedIcon />,
+												color: "error",
+												viewMode: "burn_rate",
+											},
+										].map((kpi, index) => (
+											<Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+												<Card
+													elevation={0}
+													onClick={() => setOverviewView(kpi.viewMode as any)}
+													sx={{
+														height: "100%",
+														borderRadius: br.xl,
+														position: "relative",
+														overflow: "hidden",
+														cursor: "pointer",
+														transition: "all 0.2s ease-in-out",
+														background: (theme) =>
+															getBackgrounds(theme.palette.mode).glass.panel,
+														backdropFilter: "blur(20px)",
+														border: "1px solid",
+														borderColor: (theme) =>
+															alpha(
+																(theme.palette as any)[kpi.color].main,
+																0.2
+															),
+														"&:hover": {
+															transform: "translateY(-4px)",
+															boxShadow: (theme) =>
+																`0 12px 20px ${alpha(
+																	(theme.palette as any)[kpi.color].main,
+																	0.15
+																)}`,
+															borderColor: (theme) =>
 																alpha(
 																	(theme.palette as any)[kpi.color].main,
-																	0.1
+																	0.4
 																),
-															color: `${kpi.color}.main`,
+														},
+														"&:active": {
+															transform: "translateY(0)",
+														},
+													}}
+												>
+													<Box
+														sx={{
+															position: "absolute",
+															top: 0,
+															left: 0,
+															width: 4,
+															height: "100%",
+															bgcolor: `${kpi.color}.main`,
 														}}
+													/>
+													<CardContent sx={{ p: spacing.lg }}>
+														<Stack
+															direction="row"
+															justifyContent="space-between"
+															alignItems="flex-start"
+														>
+															<Box>
+																<Typography
+																	variant="caption"
+																	color="text.secondary"
+																	sx={{
+																		textTransform: "uppercase",
+																		fontWeight:
+																			typographyExtended.fontWeights.bold,
+																	}}
+																>
+																	{kpi.title}
+																</Typography>
+																<Typography
+																	variant="h4"
+																	fontWeight={
+																		typographyExtended.fontWeights.black
+																	}
+																	sx={{ mt: spacing.xs }}
+																>
+																	{kpi.value}
+																</Typography>
+															</Box>
+															<Box
+																sx={{
+																	p: spacing.sm,
+																	borderRadius: br.md,
+																	bgcolor: (theme) =>
+																		alpha(
+																			(theme.palette as any)[kpi.color].main,
+																			0.1
+																		),
+																	color: `${kpi.color}.main`,
+																}}
+															>
+																{kpi.icon}
+															</Box>
+														</Stack>
+														{kpi.progress !== undefined ? (
+															<Box sx={{ mt: spacing.md }}>
+																<Box
+																	sx={{
+																		height: 6,
+																		bgcolor: (theme) =>
+																			alpha(
+																				(theme.palette as any)[kpi.color].main,
+																				0.1
+																			),
+																		borderRadius: br.lg,
+																		overflow: "hidden",
+																	}}
+																>
+																	<Box
+																		sx={{
+																			width: `${kpi.progress}%`,
+																			height: "100%",
+																			bgcolor: `${kpi.color}.main`,
+																			borderRadius: br.lg,
+																		}}
+																	/>
+																</Box>
+															</Box>
+														) : (
+															<Typography
+																variant="caption"
+																color="text.secondary"
+																sx={{ mt: spacing.md, display: "block" }}
+															>
+																{kpi.subtitle}
+															</Typography>
+														)}
+													</CardContent>
+												</Card>
+											</Grid>
+										))}
+									</Grid>
+								)}
+							</Grid>
+
+							<Grid size={{ xs: 12, lg: 8 }}>
+								<Paper
+									elevation={0}
+									sx={{
+										p: spacing.lg,
+										borderRadius: br.xl,
+										background: (theme) =>
+											getBackgrounds(theme.palette.mode).glass.panel,
+										backdropFilter: "blur(20px)",
+										border: "1px solid",
+										borderColor: (theme) =>
+											getColors(theme.palette.mode).glassBorder,
+										height: 600,
+										display: "flex",
+										flexDirection: "column",
+										justifyContent: "center",
+									}}
+								>
+									<Typography variant="h6" fontWeight="bold">
+										Resumen Diario
+									</Typography>
+									<Box
+										sx={{
+											height: 200,
+											display: "flex",
+											alignItems: "flex-end",
+											gap: 1.5,
+											mt: 3,
+											px: 1,
+										}}
+									>
+										{stats ? (
+											stats.dailyStats.map((day, idx) => {
+												const maxCount = Math.max(
+													...stats.dailyStats.map((d) => d.count),
+													1
+												);
+												const heightPct = (day.count / maxCount) * 100;
+												const isLatest = idx === stats.dailyStats.length - 1;
+
+												return (
+													<Tooltip
+														key={day.date}
+														title={`${day.date}: ${day.count} sesiones`}
+														arrow
 													>
-														{kpi.icon}
-													</Box>
-												</Stack>
-												{kpi.progress !== undefined ? (
-													<Box sx={{ mt: spacing.md }}>
 														<Box
 															sx={{
-																height: 6,
-																bgcolor: (theme) =>
-																	alpha(
-																		(theme.palette as any)[kpi.color].main,
-																		0.1
-																	),
-																borderRadius: br.lg,
-																overflow: "hidden",
+																flex: 1,
+																display: "flex",
+																flexDirection: "column",
+																alignItems: "center",
+																gap: 1,
 															}}
 														>
 															<Box
 																sx={{
-																	width: `${kpi.progress}%`,
-																	height: "100%",
-																	bgcolor: `${kpi.color}.main`,
-																	borderRadius: br.lg,
+																	width: "100%",
+																	height: `${heightPct}%`,
+																	minHeight: day.count > 0 ? 4 : 0,
+																	background: (theme) =>
+																		isLatest
+																			? theme.palette.primary.main
+																			: alpha(theme.palette.primary.main, 0.4),
+																	borderRadius: "4px 4px 0 0",
+																	transition:
+																		"height 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+																	"&:hover": {
+																		background: (theme) =>
+																			theme.palette.primary.main,
+																		transform: "scaleX(1.1)",
+																	},
 																}}
 															/>
+															<Typography
+																variant="caption"
+																sx={{
+																	fontSize: "0.65rem",
+																	opacity: 0.7,
+																	whiteSpace: "nowrap",
+																	transform: "rotate(-45deg)",
+																	mt: 1,
+																	mb: 1,
+																}}
+															>
+																{day.date.split("-").slice(1).join("/")}
+															</Typography>
 														</Box>
-													</Box>
-												) : (
-													<Typography
-														variant="caption"
-														color="text.secondary"
-														sx={{ mt: spacing.md, display: "block" }}
-													>
-														{kpi.subtitle}
-													</Typography>
-												)}
-											</CardContent>
-										</Card>
-									</Grid>
-								))}
+													</Tooltip>
+												);
+											})
+										) : (
+											<Box
+												sx={{
+													width: "100%",
+													height: "100%",
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+												}}
+											>
+												<CircularProgress size={24} />
+											</Box>
+										)}
+									</Box>
+									<Typography
+										variant="caption"
+										display="block"
+										textAlign="center"
+										sx={{ mt: 4, opacity: 0.6 }}
+									>
+										Sesiones iniciadas por día (Últimos 7 días)
+									</Typography>
+								</Paper>
 							</Grid>
-						)}
-					</Grid>
 
-					<Grid size={{ xs: 12, lg: 8 }}>
+							<Grid size={{ xs: 12, lg: 4 }}>
+								<Paper
+									elevation={0}
+									sx={{
+										p: spacing.lg,
+										maxHeight: 600,
+										display: "flex",
+										flexDirection: "column",
+										borderRadius: br.xl,
+										background: (theme) =>
+											getBackgrounds(theme.palette.mode).glass.panel,
+										backdropFilter: "blur(20px)",
+										border: "1px solid",
+										borderColor: (theme) =>
+											getColors(theme.palette.mode).glassBorder,
+									}}
+								>
+									<Stack
+										direction="row"
+										justifyContent="space-between"
+										alignItems="center"
+										sx={{ mb: spacing.lg }}
+									>
+										<Typography
+											variant="h6"
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												fontWeight: typographyExtended.fontWeights.extrabold,
+											}}
+										>
+											<HistoryIcon
+												sx={{ mr: spacing.sm, color: "secondary.main" }}
+											/>{" "}
+											Live Feed
+										</Typography>
+										<Tooltip title="Actualizar">
+											<IconButton size="small" onClick={fetchData}>
+												<HistoryIcon fontSize="small" />
+											</IconButton>
+										</Tooltip>
+									</Stack>
+
+									<Box sx={{ flexGrow: 1, overflow: "auto", pr: spacing.xs }}>
+										<Stack spacing={spacing.md}>
+											{activityFeed.map((item) => (
+												<Card
+													key={item.id}
+													elevation={0}
+													sx={{
+														borderRadius: br.lg,
+														border: "1px solid",
+														borderColor: (theme) =>
+															getColors(theme.palette.mode).glassBorder,
+														bgcolor: (theme) =>
+															alpha(theme.palette.background.default, 0.4),
+													}}
+												>
+													<CardContent sx={{ p: spacing.md }}>
+														<Stack
+															direction="row"
+															justifyContent="space-between"
+															alignItems="start"
+														>
+															<Box>
+																<Typography
+																	variant="caption"
+																	color="text.secondary"
+																	fontWeight={
+																		typographyExtended.fontWeights.semibold
+																	}
+																>
+																	{formatDate(item.created_at)}
+																</Typography>
+																<Typography
+																	variant="body2"
+																	sx={{
+																		fontWeight:
+																			typographyExtended.fontWeights.bold,
+																		mt: spacing.xs,
+																	}}
+																>
+																	ID: {item.id.substring(0, 8)}
+																</Typography>
+															</Box>
+															<Chip
+																size="small"
+																label={item.status}
+																color={
+																	item.status === "completed"
+																		? "success"
+																		: "error"
+																}
+																variant="outlined"
+															/>
+														</Stack>
+													</CardContent>
+												</Card>
+											))}
+										</Stack>
+									</Box>
+								</Paper>
+							</Grid>
+						</Grid>
+					) : (
+						<Box sx={{ mb: 4 }}>
+							<Button
+								startIcon={<ArrowBackIcon />}
+								onClick={() => setOverviewView("grid")}
+								sx={{ mb: 3, borderRadius: br.lg }}
+							>
+								Volver a Vista General
+							</Button>
+
+							{overviewView === "mrr" && (
+								<RevenueDetail stats={stats} spacing={spacing} br={br} />
+							)}
+							{overviewView === "users" && (
+								<UserAnalyticsDetail stats={stats} spacing={spacing} br={br} />
+							)}
+							{overviewView === "burn_rate" && (
+								<BurnRateDetail stats={stats} spacing={spacing} br={br} />
+							)}
+							{overviewView === "conversion" && (
+								<ConversionDetail stats={stats} spacing={spacing} br={br} />
+							)}
+						</Box>
+					)}
+				</Box>
+			)}
+
+			{/* Users Tab */}
+			{activeTab === 1 && (
+				<Box sx={{ display: "flex", justifyContent: "center" }}>
+					<Box sx={{ width: "100%", maxWidth: 1400 }}>
 						<Paper
 							elevation={0}
 							sx={{
 								p: spacing.lg,
-								borderRadius: br.xl,
-								background: (theme) =>
-									getBackgrounds(theme.palette.mode).glass.panel,
-								backdropFilter: "blur(20px)",
-								border: "1px solid",
-								borderColor: (theme) =>
-									getColors(theme.palette.mode).glassBorder,
-								height: 600,
-								display: "flex",
-								flexDirection: "column",
-								justifyContent: "center",
-								alignItems: "center",
-								textAlign: "center",
-							}}
-						>
-							<TimelineIcon
-								sx={{
-									fontSize: 64,
-									color: "primary.main",
-									mb: 2,
-									opacity: 0.5,
-								}}
-							/>
-							<Typography variant="h5" fontWeight="bold">
-								Resumen Diario
-							</Typography>
-							<Typography color="text.secondary">
-								Estadística visual próximamente disponible
-							</Typography>
-						</Paper>
-					</Grid>
-
-					<Grid size={{ xs: 12, lg: 4 }}>
-						<Paper
-							elevation={0}
-							sx={{
-								p: spacing.lg,
-								maxHeight: 600,
-								display: "flex",
-								flexDirection: "column",
 								borderRadius: br.xl,
 								background: (theme) =>
 									getBackgrounds(theme.palette.mode).glass.panel,
@@ -855,319 +1148,328 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 								alignItems="center"
 								sx={{ mb: spacing.lg }}
 							>
-								<Typography
-									variant="h6"
-									sx={{
-										display: "flex",
-										alignItems: "center",
-										fontWeight: typographyExtended.fontWeights.extrabold,
-									}}
-								>
-									<HistoryIcon
-										sx={{ mr: spacing.sm, color: "secondary.main" }}
-									/>{" "}
-									Live Feed
+								<Typography variant="h6" fontWeight="bold">
+									Gestión de Usuarios ({users.length})
 								</Typography>
-								<Tooltip title="Actualizar">
-									<IconButton size="small" onClick={fetchData}>
-										<HistoryIcon fontSize="small" />
-									</IconButton>
-								</Tooltip>
+								<Button
+									startIcon={<DownloadIcon />}
+									variant="outlined"
+									size="small"
+									onClick={exportToCSV}
+									sx={{ borderRadius: br.lg }}
+								>
+									Exportar CSV
+								</Button>
 							</Stack>
-
-							<Box sx={{ flexGrow: 1, overflow: "auto", pr: spacing.xs }}>
-								<Stack spacing={spacing.md}>
-									{activityFeed.map((item) => (
-										<Card
-											key={item.id}
-											elevation={0}
-											sx={{
-												borderRadius: br.lg,
-												border: "1px solid",
-												borderColor: (theme) =>
-													getColors(theme.palette.mode).glassBorder,
-												bgcolor: (theme) =>
-													alpha(theme.palette.background.default, 0.4),
-											}}
-										>
-											<CardContent sx={{ p: spacing.md }}>
-												<Stack
-													direction="row"
-													justifyContent="space-between"
-													alignItems="start"
-												>
-													<Box>
-														<Typography
-															variant="caption"
-															color="text.secondary"
-															fontWeight={
-																typographyExtended.fontWeights.semibold
-															}
-														>
-															{formatDate(item.created_at)}
-														</Typography>
-														<Typography
-															variant="body2"
-															sx={{
-																fontWeight: typographyExtended.fontWeights.bold,
-																mt: spacing.xs,
-															}}
-														>
-															ID: {item.id.substring(0, 8)}
-														</Typography>
-													</Box>
-													<Chip
-														size="small"
-														label={item.status}
-														color={
-															item.status === "completed" ? "success" : "error"
-														}
-														variant="outlined"
-													/>
-												</Stack>
-											</CardContent>
-										</Card>
-									))}
-								</Stack>
+							<Box
+								sx={{
+									height: 600,
+									width: "100%",
+									"& .MuiDataGrid-root": { border: "none" },
+								}}
+							>
+								<DataGrid
+									rows={users}
+									columns={userColumns}
+									loading={loading}
+									slots={{ toolbar: GridToolbar }}
+									slotProps={{ toolbar: { showQuickFilter: true } }}
+									pageSizeOptions={[10, 25, 50]}
+									initialState={{
+										pagination: { paginationModel: { pageSize: 10 } },
+									}}
+									density="compact"
+								/>
 							</Box>
 						</Paper>
-					</Grid>
-				</Grid>
-			)}
-
-			{activeTab === 1 && (
-				<Paper
-					elevation={0}
-					sx={{
-						p: spacing.lg,
-						borderRadius: br.xl,
-						background: (theme) =>
-							getBackgrounds(theme.palette.mode).glass.panel,
-						backdropFilter: "blur(20px)",
-						border: "1px solid",
-						borderColor: (theme) => getColors(theme.palette.mode).glassBorder,
-					}}
-				>
-					<Stack
-						direction="row"
-						justifyContent="space-between"
-						alignItems="center"
-						sx={{ mb: spacing.lg }}
-					>
-						<Typography variant="h6" fontWeight="bold">
-							Gestión de Usuarios ({users.length})
-						</Typography>
-						<Button
-							startIcon={<DownloadIcon />}
-							variant="outlined"
-							size="small"
-							onClick={exportToCSV}
-						>
-							Exportar CSV
-						</Button>
-					</Stack>
-					<Box
-						sx={{
-							height: 600,
-							width: "100%",
-							"& .MuiDataGrid-root": { border: "none" },
-						}}
-					>
-						<DataGrid
-							rows={users}
-							columns={userColumns}
-							loading={loading}
-							slots={{ toolbar: GridToolbar }}
-							slotProps={{ toolbar: { showQuickFilter: true } }}
-							pageSizeOptions={[10, 25, 50]}
-							initialState={{
-								pagination: { paginationModel: { pageSize: 10 } },
-							}}
-						/>
 					</Box>
-				</Paper>
+				</Box>
 			)}
 
 			{activeTab === 2 && (
-				<Box>
-					<Stack
-						direction="row"
-						justifyContent="space-between"
-						alignItems="center"
-						sx={{ mb: spacing.lg }}
-					>
-						<Typography variant="h5" fontWeight="bold">
-							Salud del Sistema
-						</Typography>
-						<Button
-							startIcon={<HistoryIcon />}
-							variant="contained"
-							onClick={fetchHealth}
-							disabled={checkingHealth}
+				<Box sx={{ display: "flex", justifyContent: "center" }}>
+					<Box sx={{ width: "100%", maxWidth: 1200 }}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							sx={{ mb: spacing.lg }}
 						>
-							{checkingHealth ? "Verificando..." : "Verificar Ahora"}
-						</Button>
-					</Stack>
+							<Typography variant="h5" fontWeight="bold">
+								Salud del Sistema
+							</Typography>
+							<Button
+								startIcon={<HistoryIcon />}
+								variant="contained"
+								size="small"
+								onClick={fetchHealth}
+								disabled={checkingHealth}
+								sx={{ borderRadius: br.lg }}
+							>
+								{checkingHealth ? "Verificando..." : "Verificar Ahora"}
+							</Button>
+						</Stack>
 
-					<Grid container spacing={3}>
-						{[
-							{
-								name: "Supabase DB",
-								status: health?.supabase.status,
-								info: health?.supabase.error,
-								icon: <SuccessIcon />,
-							},
-							{
-								name: "Groq (AI Standard)",
-								status: health?.groq.status,
-								info: health?.groq.code
-									? `HTTP ${health.groq.code}`
-									: health?.groq.error,
-								icon: <CloudIcon />,
-							},
-							{
-								name: "Deepgram (High Precision)",
-								status: health?.deepgram.status,
-								info: health?.deepgram.code
-									? `HTTP ${health.deepgram.code}`
-									: health?.deepgram.error,
-								icon: <SpeedIcon />,
-							},
-							{
-								name: "AWS Bedrock (Complex Analysis)",
-								status: health?.bedrock.status,
-								info: health?.bedrock.region,
-								icon: <HealthIcon />,
-							},
-						].map((svc, i) => (
-							<Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
-								<Card
-									sx={{
-										borderRadius: br.lg,
-										border: "1px solid",
-										borderColor: (theme) =>
-											getColors(theme.palette.mode).glassBorder,
-									}}
-								>
-									<CardContent sx={{ textAlign: "center" }}>
-										<Box
-											sx={{
-												p: 2,
-												borderRadius: "50%",
-												bgcolor: (theme) =>
-													alpha(
+						<Grid container spacing={3}>
+							{[
+								{
+									name: "Supabase DB",
+									status: health?.supabase.status,
+									info: health?.supabase.error,
+									icon: <SuccessIcon fontSize="small" />,
+								},
+								{
+									name: "Groq (AI Standard)",
+									status: health?.groq.status,
+									info: health?.groq.code
+										? `HTTP ${health.groq.code}`
+										: health?.groq.error,
+									icon: <CloudIcon fontSize="small" />,
+								},
+								{
+									name: "Deepgram (High Precision)",
+									status: health?.deepgram.status,
+									info: health?.deepgram.code
+										? `HTTP ${health.deepgram.code}`
+										: health?.deepgram.error,
+									icon: <SpeedIcon fontSize="small" />,
+								},
+								{
+									name: "AWS Bedrock (Complex Analysis)",
+									status: health?.bedrock.status,
+									info: health?.bedrock.region,
+									icon: <HealthIcon fontSize="small" />,
+								},
+							].map((svc, i) => (
+								<Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
+									<Card
+										sx={{
+											borderRadius: br.lg,
+											border: "1px solid",
+											background: (theme) =>
+												getBackgrounds(theme.palette.mode).glass.panel,
+											backdropFilter: "blur(20px)",
+											borderColor: (theme) =>
+												getColors(theme.palette.mode).glassBorder,
+										}}
+									>
+										<CardContent sx={{ textAlign: "center", p: spacing.md }}>
+											<Box
+												sx={{
+													p: 1.5,
+													borderRadius: "50%",
+													bgcolor: (theme) =>
+														alpha(
+															svc.status === "healthy" ||
+																svc.status === "configured"
+																? theme.palette.success.main
+																: theme.palette.error.main,
+															0.1
+														),
+													color:
 														svc.status === "healthy" ||
-															svc.status === "configured"
-															? theme.palette.success.main
-															: theme.palette.error.main,
-														0.1
-													),
-												color:
+														svc.status === "configured"
+															? "success.main"
+															: "error.main",
+													mb: 1.5,
+													display: "inline-flex",
+												}}
+											>
+												{svc.icon}
+											</Box>
+											<Typography
+												variant="subtitle2"
+												fontWeight="bold"
+												sx={{ mb: 0.5 }}
+											>
+												{svc.name}
+											</Typography>
+											<Chip
+												label={svc.status?.toUpperCase() || "PENDIENTE"}
+												color={
 													svc.status === "healthy" ||
 													svc.status === "configured"
-														? "success.main"
-														: "error.main",
-												mb: 2,
-												display: "inline-flex",
-											}}
-										>
-											{svc.icon}
-										</Box>
-										<Typography variant="h6" fontWeight="bold">
-											{svc.name}
-										</Typography>
-										<Chip
-											label={svc.status?.toUpperCase() || "PENDIENTE"}
-											color={
-												svc.status === "healthy" || svc.status === "configured"
-													? "success"
-													: "error"
-											}
-											size="small"
-											sx={{ my: 1 }}
-										/>
-										<Typography
-											variant="caption"
-											display="block"
-											color="text.secondary"
-										>
-											{svc.info || "Sin detalles"}
-										</Typography>
-									</CardContent>
-								</Card>
-							</Grid>
-						))}
-					</Grid>
+														? "success"
+														: "error"
+												}
+												size="small"
+												sx={{ mb: 1 }}
+											/>
+											<Typography
+												variant="caption"
+												display="block"
+												color="text.secondary"
+												sx={{ fontSize: "0.7rem", opacity: 0.8 }}
+											>
+												{svc.info || "Sin detalles"}
+											</Typography>
+										</CardContent>
+									</Card>
+								</Grid>
+							))}
+						</Grid>
+					</Box>
 				</Box>
 			)}
 
 			{activeTab === 3 && (
-				<Box>
-					<Stack
-						direction="row"
-						justifyContent="space-between"
-						alignItems="center"
-						sx={{ mb: spacing.lg }}
-					>
-						<Typography variant="h5" fontWeight="bold">
-							Gestión de Anuncios
-						</Typography>
-						<Button
-							startIcon={<AddIcon />}
-							variant="contained"
-							onClick={() => setNotifyModalOpen(true)}
+				<Box sx={{ display: "flex", justifyContent: "center" }}>
+					<Box sx={{ width: "100%", maxWidth: 1200 }}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							sx={{ mb: spacing.lg }}
 						>
-							Nuevo Anuncio
-						</Button>
-					</Stack>
+							<Typography variant="h5" fontWeight="bold">
+								Gestión de Anuncios
+							</Typography>
+							<Button
+								startIcon={<AddIcon />}
+								variant="contained"
+								onClick={() => setNotifyModalOpen(true)}
+							>
+								Nuevo Anuncio
+							</Button>
+						</Stack>
 
-					<TableContainer component={Paper} sx={{ borderRadius: br.lg }}>
-						<Table>
-							<TableHead>
-								<TableRow>
-									<TableCell>Fecha</TableCell>
-									<TableCell>Mensaje</TableCell>
-									<TableCell align="center">Activo</TableCell>
-									<TableCell align="right">Acciones</TableCell>
-								</TableRow>
-							</TableHead>
-							<TableBody>
-								{announcements.map((a) => (
-									<TableRow key={a.id}>
-										<TableCell>{formatDate(a.created_at)}</TableCell>
-										<TableCell sx={{ maxWidth: 400 }}>{a.message}</TableCell>
-										<TableCell align="center">
-											<Switch
-												checked={a.active}
-												onChange={(e) =>
-													handleToggleAnnouncement(a.id, e.target.checked)
-												}
-											/>
-										</TableCell>
-										<TableCell align="right">
-											<IconButton
-												color="error"
-												onClick={() => handleDeleteAnnouncement(a.id)}
-											>
-												<DeleteIcon />
-											</IconButton>
-										</TableCell>
-									</TableRow>
-								))}
-								{announcements.length === 0 && (
+						<TableContainer component={Paper} sx={{ borderRadius: br.lg }}>
+							<Table size="small">
+								<TableHead>
 									<TableRow>
-										<TableCell colSpan={4} align="center">
-											No hay anuncios registrados
-										</TableCell>
+										<TableCell>Fecha</TableCell>
+										<TableCell>Mensaje</TableCell>
+										<TableCell align="center">Activo</TableCell>
+										<TableCell align="right">Acciones</TableCell>
 									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</TableContainer>
+								</TableHead>
+								<TableBody>
+									{announcements.map((a) => (
+										<TableRow key={a.id}>
+											<TableCell>{formatDate(a.created_at)}</TableCell>
+											<TableCell sx={{ maxWidth: 400 }}>{a.message}</TableCell>
+											<TableCell align="center">
+												<Switch
+													checked={a.active}
+													onChange={(e) =>
+														handleToggleAnnouncement(a.id, e.target.checked)
+													}
+												/>
+											</TableCell>
+											<TableCell align="right">
+												<IconButton
+													color="error"
+													size="small"
+													onClick={() => handleDeleteAnnouncement(a.id)}
+												>
+													<DeleteIcon fontSize="small" />
+												</IconButton>
+											</TableCell>
+										</TableRow>
+									))}
+									{announcements.length === 0 && (
+										<TableRow>
+											<TableCell colSpan={4} align="center">
+												No hay anuncios registrados
+											</TableCell>
+										</TableRow>
+									)}
+								</TableBody>
+							</Table>
+						</TableContainer>
+					</Box>
 				</Box>
 			)}
 
-			{/* Global Notification Modal */}
+			{activeTab === 4 && (
+				<Box sx={{ display: "flex", justifyContent: "center" }}>
+					<Box sx={{ width: "100%", maxWidth: 1200 }}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							sx={{ mb: spacing.lg }}
+						>
+							<Typography variant="h5" fontWeight="bold">
+								Gestión de Planes
+							</Typography>
+						</Stack>
+
+						{loadingPlans ? (
+							<Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+								<CircularProgress />
+							</Box>
+						) : (
+							<TableContainer
+								component={Paper}
+								sx={{ borderRadius: br.lg, maxWidth: 1200 }}
+							>
+								<Table size="small">
+									<TableHead>
+										<TableRow>
+											<TableCell>Plan</TableCell>
+											<TableCell>Precio USD</TableCell>
+											<TableCell>Precio ARS</TableCell>
+											<TableCell>Créditos Iniciales</TableCell>
+											<TableCell>Créditos Mensuales</TableCell>
+											<TableCell align="center">Activo</TableCell>
+											<TableCell align="right">Acciones</TableCell>
+										</TableRow>
+									</TableHead>
+									<TableBody>
+										{plans.map((plan) => (
+											<TableRow key={plan.id}>
+												<TableCell>
+													<Box>
+														<Typography variant="body2" fontWeight="bold">
+															{plan.name}
+														</Typography>
+														<Typography
+															variant="caption"
+															color="text.secondary"
+														>
+															{plan.plan_type}
+														</Typography>
+													</Box>
+												</TableCell>
+												<TableCell>${plan.price_usd}</TableCell>
+												<TableCell>
+													{plan.price_ars
+														? formatCurrency(plan.price_ars)
+														: "-"}
+												</TableCell>
+												<TableCell>{plan.credits_initial}</TableCell>
+												<TableCell>{plan.credits_monthly}</TableCell>
+												<TableCell align="center">
+													<Chip
+														label={plan.is_active ? "Activo" : "Inactivo"}
+														color={plan.is_active ? "success" : "default"}
+														size="small"
+													/>
+												</TableCell>
+												<TableCell align="right">
+													<IconButton
+														color="primary"
+														size="small"
+														onClick={() => {
+															setSelectedPlan(plan);
+															setEditPlanModalOpen(true);
+														}}
+													>
+														<EditIcon fontSize="small" />
+													</IconButton>
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</TableContainer>
+						)}
+					</Box>
+				</Box>
+			)}
+
+			{/* Notify Modal */}
 			<Dialog
 				open={notifyModalOpen}
 				onClose={() => setNotifyModalOpen(false)}
@@ -1340,6 +1642,743 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 					<Button onClick={() => setDetailsModalOpen(false)}>Cerrar</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* Edit Plan Modal */}
+			<Dialog
+				open={editPlanModalOpen}
+				onClose={() => setEditPlanModalOpen(false)}
+				fullWidth
+				maxWidth="sm"
+			>
+				<DialogTitle>Editar Plan: {selectedPlan?.name}</DialogTitle>
+				<DialogContent>
+					<Box
+						sx={{
+							pt: spacing.sm,
+							display: "flex",
+							flexDirection: "column",
+							gap: 2,
+						}}
+					>
+						<TextField
+							fullWidth
+							label="Nombre"
+							value={selectedPlan?.name || ""}
+							onChange={(e) =>
+								setSelectedPlan({ ...selectedPlan, name: e.target.value })
+							}
+						/>
+						<TextField
+							fullWidth
+							label="Descripción"
+							value={selectedPlan?.description || ""}
+							onChange={(e) =>
+								setSelectedPlan({
+									...selectedPlan,
+									description: e.target.value,
+								})
+							}
+						/>
+						<TextField
+							fullWidth
+							type="number"
+							label="Precio USD"
+							value={selectedPlan?.price_usd || 0}
+							onChange={(e) =>
+								setSelectedPlan({
+									...selectedPlan,
+									price_usd: parseFloat(e.target.value) || 0,
+								})
+							}
+						/>
+						<TextField
+							fullWidth
+							type="number"
+							label="Precio ARS (opcional, se calcula automáticamente si está vacío)"
+							value={selectedPlan?.price_ars || ""}
+							onChange={(e) =>
+								setSelectedPlan({
+									...selectedPlan,
+									price_ars: e.target.value ? parseFloat(e.target.value) : null,
+								})
+							}
+						/>
+						<TextField
+							fullWidth
+							type="number"
+							label="Créditos Iniciales"
+							value={selectedPlan?.credits_initial || 0}
+							onChange={(e) =>
+								setSelectedPlan({
+									...selectedPlan,
+									credits_initial: parseInt(e.target.value) || 0,
+								})
+							}
+						/>
+						<TextField
+							fullWidth
+							type="number"
+							label="Créditos Mensuales"
+							value={selectedPlan?.credits_monthly || 0}
+							onChange={(e) =>
+								setSelectedPlan({
+									...selectedPlan,
+									credits_monthly: parseInt(e.target.value) || 0,
+								})
+							}
+						/>
+						<Stack direction="row" alignItems="center" spacing={2}>
+							<Typography>Plan Activo:</Typography>
+							<Switch
+								checked={selectedPlan?.is_active || false}
+								onChange={(e) =>
+									setSelectedPlan({
+										...selectedPlan,
+										is_active: e.target.checked,
+									})
+								}
+							/>
+						</Stack>
+					</Box>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setEditPlanModalOpen(false)}>Cancelar</Button>
+					<Button
+						variant="contained"
+						onClick={handleUpdatePlanDetails}
+						disabled={updating}
+					>
+						{updating ? <CircularProgress size={24} /> : "Guardar Cambios"}
+					</Button>
+				</DialogActions>
+			</Dialog>
 		</Box>
+	);
+};
+
+// --- Detailed Sub-sections for Overview ---
+
+const RevenueDetail = ({ stats, spacing, br }: any) => {
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat("es-AR", {
+			style: "currency",
+			currency: "ARS",
+			minimumFractionDigits: 0,
+		}).format(amount);
+	};
+
+	return (
+		<Grid container spacing={3}>
+			<Grid size={{ xs: 12, md: 8 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						minHeight: 400,
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Desglose de Ingresos Proyectados (MRR)
+					</Typography>
+					<Stack spacing={4} sx={{ mt: 4 }}>
+						<Box>
+							<Stack direction="row" justifyContent="space-between" mb={1}>
+								<Typography variant="body2" fontWeight="medium">
+									Plan Pro ({stats.breakdown.proUsers} usuarios)
+								</Typography>
+								<Typography variant="body1" fontWeight="bold">
+									{formatCurrency(stats.breakdown.proUsers * 19500)}
+								</Typography>
+							</Stack>
+							<Box
+								sx={{
+									height: 12,
+									bgcolor: "primary.main",
+									borderRadius: br.lg,
+									opacity: 0.8,
+								}}
+							/>
+						</Box>
+						<Box>
+							<Stack direction="row" justifyContent="space-between" mb={1}>
+								<Typography variant="body2" fontWeight="medium">
+									Plan Ultra ({stats.breakdown.ultraUsers} usuarios)
+								</Typography>
+								<Typography variant="body1" fontWeight="bold">
+									{formatCurrency(stats.breakdown.ultraUsers * 45000)}
+								</Typography>
+							</Stack>
+							<Box
+								sx={{
+									height: 12,
+									bgcolor: "success.main",
+									borderRadius: br.lg,
+									opacity: 0.8,
+								}}
+							/>
+						</Box>
+					</Stack>
+
+					<Box
+						sx={{
+							mt: 6,
+							p: spacing.lg,
+							bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.05),
+							borderRadius: br.lg,
+							border: "1px dashed",
+							borderColor: "primary.main",
+						}}
+					>
+						<Stack direction="row" spacing={1} alignItems="center" mb={1}>
+							<TrendingUpIcon color="primary" fontSize="small" />
+							<Typography variant="subtitle2" color="primary" fontWeight="bold">
+								Potencial de Crecimiento
+							</Typography>
+						</Stack>
+						<Typography
+							variant="body2"
+							color="text.secondary"
+							sx={{ opacity: 0.9 }}
+						>
+							Si conviertes el 5% de tus usuarios activos actuales (
+							{Math.round(stats.totalUsers * 0.05)} usuarios) al Plan Pro, tus
+							ingresos mensuales aumentarían en aproximadamente{" "}
+							<strong>{formatCurrency(stats.totalUsers * 0.05 * 19500)}</strong>
+							.
+						</Typography>
+					</Box>
+				</Paper>
+			</Grid>
+			<Grid size={{ xs: 12, md: 4 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						height: "100%",
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Métricas Clave
+					</Typography>
+					<Stack spacing={3} sx={{ mt: 3 }}>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								ARPU (Promedio por Usuario Pago)
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								{formatCurrency(
+									stats.mrr /
+										(stats.breakdown.proUsers + stats.breakdown.ultraUsers || 1)
+								)}
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								LTV Estimado (12 meses)
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								{formatCurrency(
+									(stats.mrr /
+										(stats.breakdown.proUsers + stats.breakdown.ultraUsers ||
+											1)) *
+										12
+								)}
+							</Typography>
+						</Box>
+					</Stack>
+				</Paper>
+			</Grid>
+		</Grid>
+	);
+};
+
+const UserAnalyticsDetail = ({ stats, spacing, br }: any) => {
+	return (
+		<Grid container spacing={3}>
+			<Grid size={{ xs: 12, md: 8 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						minHeight: 400,
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Actividad de Usuarios (Últimos 7 días)
+					</Typography>
+					<Box
+						sx={{
+							mt: 4,
+							height: 200,
+							display: "flex",
+							alignItems: "flex-end",
+							gap: 2,
+						}}
+					>
+						{[65, 80, 45, 90, 70, 85, 100].map((val, i) => (
+							<Box
+								key={i}
+								sx={{
+									flex: 1,
+									display: "flex",
+									flexDirection: "column",
+									alignItems: "center",
+									gap: 1,
+								}}
+							>
+								<Box
+									sx={{
+										width: "100%",
+										height: `${val}%`,
+										bgcolor: i === 6 ? "info.main" : "info.light",
+										borderRadius: `${br.md} ${br.md} 0 0`,
+										opacity: i === 6 ? 1 : 0.6,
+										transition: "height 1s ease-out",
+									}}
+								/>
+								<Typography variant="caption" color="text.secondary">
+									Día {i + 1}
+								</Typography>
+							</Box>
+						))}
+					</Box>
+					<Typography
+						variant="body2"
+						color="text.secondary"
+						sx={{ mt: 3, textAlign: "center" }}
+					>
+						El pico de actividad se registra hoy con{" "}
+						<strong>{stats.sessionsToday} sesiones</strong> iniciadas.
+					</Typography>
+				</Paper>
+			</Grid>
+			<Grid size={{ xs: 12, md: 4 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						height: "100%",
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Retención y Uso
+					</Typography>
+					<Stack spacing={3} sx={{ mt: 3 }}>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Total de Usuarios
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								{stats.totalUsers}
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Activos Semanales (WAU)
+							</Typography>
+							<Typography variant="h5" fontWeight="bold" color="info.main">
+								{stats.activeUsers7d}
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								% de Actividad
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								{Math.round((stats.activeUsers7d / stats.totalUsers) * 100)}%
+							</Typography>
+						</Box>
+					</Stack>
+				</Paper>
+			</Grid>
+		</Grid>
+	);
+};
+
+const BurnRateDetail = ({ stats, spacing, br }: any) => {
+	return (
+		<Grid container spacing={3}>
+			<Grid size={{ xs: 12, md: 8 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						minHeight: 400,
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Consumo Estimado de APIs (Mes Actual)
+					</Typography>
+					<Stack spacing={3} sx={{ mt: 4 }}>
+						<Box>
+							<Stack direction="row" justifyContent="space-between" mb={1}>
+								<Box sx={{ display: "flex", alignItems: "center" }}>
+									<CloudIcon color="info" sx={{ mr: 1, fontSize: 18 }} />
+									<Typography variant="body2">Groq (Standard)</Typography>
+								</Box>
+								<Typography variant="body2" fontWeight="bold">
+									~ {stats.aiBurnRate * 0.1} USD
+								</Typography>
+							</Stack>
+							<Box
+								sx={{
+									height: 8,
+									bgcolor: "info.main",
+									borderRadius: br.lg,
+									opacity: 0.8,
+								}}
+							/>
+						</Box>
+						<Box>
+							<Stack direction="row" justifyContent="space-between" mb={1}>
+								<Box sx={{ display: "flex", alignItems: "center" }}>
+									<SpeedIcon color="error" sx={{ mr: 1, fontSize: 18 }} />
+									<Typography variant="body2">
+										Deepgram (High Precision)
+									</Typography>
+								</Box>
+								<Typography variant="body2" fontWeight="bold">
+									~ {stats.aiBurnRate * 0.8} USD
+								</Typography>
+							</Stack>
+							<Box
+								sx={{
+									height: 8,
+									bgcolor: "error.main",
+									borderRadius: br.lg,
+									opacity: 0.8,
+								}}
+							/>
+						</Box>
+						<Box>
+							<Stack direction="row" justifyContent="space-between" mb={1}>
+								<Box sx={{ display: "flex", alignItems: "center" }}>
+									<HealthIcon color="warning" sx={{ mr: 1, fontSize: 18 }} />
+									<Typography variant="body2">AWS Bedrock (Complex)</Typography>
+								</Box>
+								<Typography variant="body2" fontWeight="bold">
+									~ {stats.aiBurnRate * 0.1} USD
+								</Typography>
+							</Stack>
+							<Box
+								sx={{
+									height: 8,
+									bgcolor: "warning.main",
+									borderRadius: br.lg,
+									opacity: 0.8,
+								}}
+							/>
+						</Box>
+					</Stack>
+
+					<Alert severity="info" sx={{ mt: 5, borderRadius: br.lg }}>
+						Los costos son estimativos basados en el modelo de precios actual de
+						los proveedores y el volumen de sesiones.
+					</Alert>
+				</Paper>
+			</Grid>
+			<Grid size={{ xs: 12, md: 4 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						height: "100%",
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Eficiencia de Costos
+					</Typography>
+					<Stack spacing={3} sx={{ mt: 3 }}>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Gasto Total Acumulado
+							</Typography>
+							<Typography variant="h5" fontWeight="bold" color="error.main">
+								{stats.aiBurnRate} USD
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Costo Promedio por Sesión
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								~ 0.15 USD
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								ROI (MRR / Burn Rate)
+							</Typography>
+							<Typography variant="h5" fontWeight="bold" color="success.main">
+								{Math.round(stats.mrr / 1000 / stats.aiBurnRate)}x
+							</Typography>
+						</Box>
+					</Stack>
+				</Paper>
+			</Grid>
+		</Grid>
+	);
+};
+
+const ConversionDetail = ({ stats, spacing, br }: any) => {
+	const freeUsers =
+		stats.totalUsers - stats.breakdown.proUsers - stats.breakdown.ultraUsers;
+
+	return (
+		<Grid container spacing={3}>
+			<Grid size={{ xs: 12, md: 8 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						minHeight: 400,
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Embudo de Conversión (Funnel)
+					</Typography>
+					<Box
+						sx={{
+							mt: 4,
+							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
+							gap: 1,
+						}}
+					>
+						<Box
+							sx={{
+								width: "80%",
+								height: 60,
+								bgcolor: (theme: any) => alpha(theme.palette.divider, 0.05),
+								borderRadius: br.md,
+								border: "1px solid",
+								borderColor: "divider",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Typography variant="subtitle2">
+								Total Usuarios de Lazo: {stats.totalUsers}
+							</Typography>
+						</Box>
+						<Box
+							sx={{
+								width: "0",
+								height: "0",
+								borderLeft: "20px solid transparent",
+								borderRight: "20px solid transparent",
+								borderTop: "10px solid rgba(0,0,0,0.1)",
+							}}
+						/>
+						<Box
+							sx={{
+								width: "60%",
+								height: 60,
+								bgcolor: (theme: any) =>
+									alpha(theme.palette.secondary.main, 0.1),
+								borderRadius: br.md,
+								border: "1px solid",
+								borderColor: (theme: any) =>
+									alpha(theme.palette.secondary.main, 0.3),
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Typography variant="subtitle2" color="secondary.main">
+								Premium (Pro/Ultra):{" "}
+								{stats.breakdown.proUsers + stats.breakdown.ultraUsers}
+							</Typography>
+						</Box>
+					</Box>
+
+					<Grid container spacing={2} sx={{ mt: 5 }}>
+						<Grid size={{ xs: 4 }}>
+							<Box
+								sx={{
+									textAlign: "center",
+									p: 2,
+									borderRadius: br.lg,
+									bgcolor: (theme: any) =>
+										alpha(theme.palette.text.primary, 0.02),
+								}}
+							>
+								<Typography variant="h5" fontWeight="bold">
+									{freeUsers}
+								</Typography>
+								<Typography variant="caption" color="text.secondary">
+									Free
+								</Typography>
+							</Box>
+						</Grid>
+						<Grid size={{ xs: 4 }}>
+							<Box
+								sx={{
+									textAlign: "center",
+									p: 2,
+									borderRadius: br.lg,
+									bgcolor: (theme: any) =>
+										alpha(theme.palette.primary.main, 0.05),
+								}}
+							>
+								<Typography variant="h5" fontWeight="bold" color="primary">
+									{stats.breakdown.proUsers}
+								</Typography>
+								<Typography variant="caption" color="text.secondary">
+									Pro
+								</Typography>
+							</Box>
+						</Grid>
+						<Grid size={{ xs: 4 }}>
+							<Box
+								sx={{
+									textAlign: "center",
+									p: 2,
+									borderRadius: br.lg,
+									bgcolor: (theme: any) =>
+										alpha(theme.palette.success.main, 0.05),
+								}}
+							>
+								<Typography variant="h5" fontWeight="bold" color="success.main">
+									{stats.breakdown.ultraUsers}
+								</Typography>
+								<Typography variant="caption" color="text.secondary">
+									Ultra
+								</Typography>
+							</Box>
+						</Grid>
+					</Grid>
+				</Paper>
+			</Grid>
+			<Grid size={{ xs: 12, md: 4 }}>
+				<Paper
+					elevation={0}
+					sx={{
+						p: spacing.lg,
+						borderRadius: br.xl,
+						background: (theme: any) =>
+							getBackgrounds(theme.palette.mode).glass.panel,
+						backdropFilter: "blur(20px)",
+						border: "1px solid",
+						borderColor: (theme: any) =>
+							getColors(theme.palette.mode).glassBorder,
+						height: "100%",
+					}}
+				>
+					<Typography variant="h6" fontWeight="bold" gutterBottom>
+						Eficiencia Conversion
+					</Typography>
+					<Stack spacing={3} sx={{ mt: 3 }}>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Tasa de Conversión Global
+							</Typography>
+							<Typography variant="h5" fontWeight="bold" color="warning.main">
+								{stats.conversionRate}%
+							</Typography>
+						</Box>
+						<Box>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								display="block"
+							>
+								Usuarios x Convertir
+							</Typography>
+							<Typography variant="h5" fontWeight="bold">
+								{freeUsers}
+							</Typography>
+						</Box>
+					</Stack>
+				</Paper>
+			</Grid>
+		</Grid>
 	);
 };

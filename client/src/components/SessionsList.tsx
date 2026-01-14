@@ -21,6 +21,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
@@ -40,6 +41,7 @@ import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
 import { getBackgrounds, getExtendedShadows } from "../styles.theme";
 import { Settings } from "./Settings";
+const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 import { ClinicalSession } from "./Dashboard";
 
@@ -49,6 +51,8 @@ interface SessionsListProps {
 	onNewSession: (date: string, time: string) => void;
 	onBack: () => void;
 	onLogout: () => void;
+	onNavigateToAdmin?: () => void;
+	userId?: string;
 }
 
 export const SessionsList: React.FC<SessionsListProps> = ({
@@ -57,6 +61,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	onNewSession,
 	onBack,
 	onLogout,
+	onNavigateToAdmin,
+	userId,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -226,6 +232,16 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				</Stack>
 
 				<Box sx={{ display: "flex", gap: 1 }}>
+					{userId === ADMIN_UUID && onNavigateToAdmin && (
+						<IconButton
+							onClick={onNavigateToAdmin}
+							color="primary"
+							size="small"
+							title="Panel de Administración"
+						>
+							<AdminPanelSettingsIcon />
+						</IconButton>
+					)}
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
 						color="default"
@@ -404,7 +420,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
-				onNavigateToAdmin={undefined}
+				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 
 			{/* New Session Dialog */}

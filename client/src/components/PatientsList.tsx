@@ -29,10 +29,13 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { Settings } from "./Settings";
 import { getBackgrounds } from "../styles.theme";
 import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
+
+const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 export interface Patient {
 	id: string;
@@ -45,11 +48,15 @@ export interface Patient {
 interface PatientsListProps {
 	onSelectPatient: (patient: Patient) => void;
 	onLogout: () => void;
+	onNavigateToAdmin?: () => void;
+	userId?: string;
 }
 
 export const PatientsList: React.FC<PatientsListProps> = ({
 	onSelectPatient,
 	onLogout,
+	onNavigateToAdmin,
+	userId,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -257,6 +264,16 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					lazo
 				</Typography>
 				<Box sx={{ display: "flex", gap: 1 }}>
+					{userId === ADMIN_UUID && onNavigateToAdmin && (
+						<IconButton
+							onClick={onNavigateToAdmin}
+							color="primary"
+							size="small"
+							title="Panel de Administración"
+						>
+							<AdminPanelSettingsIcon />
+						</IconButton>
+					)}
 					<IconButton
 						onClick={() => setSettingsOpen(true)}
 						color="default"
@@ -461,7 +478,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
-				onNavigateToAdmin={undefined}
+				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 		</Box>
 	);

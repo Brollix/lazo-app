@@ -22,6 +22,21 @@ export default defineConfig(({ mode }) => {
 				},
 			},
 		},
+		build: {
+			rollupOptions: {
+				output: {
+					manualChunks: {
+						vendor: [
+							"react",
+							"react-dom",
+							"@mui/material",
+							"@mui/icons-material",
+							"@supabase/supabase-js",
+						],
+					},
+				},
+			},
+		},
 		plugins: [react()],
 	};
 });

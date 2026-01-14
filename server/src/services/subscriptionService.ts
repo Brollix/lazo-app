@@ -87,6 +87,10 @@ export const createRecurringSubscription = async (
 	const preApproval = new PreApproval(client);
 
 	try {
+		// Use payment_email if available (from previous payments), otherwise use main email
+		// This allows users to have different emails for Lazo (professional) and MercadoPago (personal)
+		const payerEmail = userEmail; // First time: use Lazo email, will be updated by webhook
+
 		const preApprovalBody: any = {
 			reason: planTitle,
 			auto_recurring: {
@@ -96,7 +100,7 @@ export const createRecurringSubscription = async (
 				currency_id: "ARS",
 			},
 			back_url: `${frontUrl}/payment-success`,
-			payer_email: userEmail,
+			payer_email: payerEmail,
 			external_reference: userId,
 			status: "pending",
 		};
