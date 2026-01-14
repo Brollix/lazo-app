@@ -1,0 +1,257 @@
+src/components/AdminDashboard.tsx(1,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/AdminDashboard.tsx(154,18): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/components/AdminDashboard.tsx(154,30): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/AdminDashboard.tsx(416,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(417,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(420,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(431,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(444,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(445,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(450,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(460,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(483,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(484,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(490,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(494,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(507,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(508,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(508,7): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(509,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(518,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(520,8): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(521,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(521,7): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(522,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(531,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(533,8): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(541,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(549,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(549,6): error TS2304: Cannot find name 'CircularProgress'.
+src/components/AdminDashboard.tsx(554,3): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(558,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(574,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(575,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(586,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(590,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(591,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(594,18): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(603,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(615,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(615,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(616,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(616,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(617,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(618,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(622,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(622,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(626,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(626,6): error TS2552: Cannot find name 'Alert'. Did you mean 'alert'?
+src/components/AdminDashboard.tsx(636,7): error TS2552: Cannot find name 'Alert'. Did you mean 'alert'?
+src/components/AdminDashboard.tsx(640,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(642,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(642,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/AdminDashboard.tsx(644,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(650,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(657,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(664,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(671,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(675,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(675,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; key: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; key: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/AdminDashboard.tsx(676,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(691,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(701,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(702,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(707,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(708,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(718,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(726,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(742,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(743,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(755,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(766,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(782,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(782,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; lg: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; lg: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/AdminDashboard.tsx(783,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(799,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(805,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(813,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(818,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(818,10): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(819,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(820,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(822,11): error TS2304: Cannot find name 'Tooltip'.
+src/components/AdminDashboard.tsx(825,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(826,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(828,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(840,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(841,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(846,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(847,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(856,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(866,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(883,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(883,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; lg: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; lg: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/AdminDashboard.tsx(884,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(903,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(911,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(914,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(923,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(935,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(941,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(944,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(945,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(953,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(960,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(976,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(977,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(983,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(986,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(987,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(996,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1002,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1010,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1018,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1024,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1027,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1027,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; key: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; key: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/AdminDashboard.tsx(1028,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1036,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1037,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1060,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1063,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1073,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1089,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1090,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1096,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1099,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1100,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1108,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1109,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1110,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1111,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1112,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1113,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1114,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1115,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1118,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1120,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1121,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1122,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1123,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1124,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1131,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1132,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1136,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1142,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1143,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1155,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1161,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1162,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1163,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1171,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1180,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1180,6): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1181,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1182,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1187,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1187,20): error TS2304: Cannot find name 'CircularProgress'.
+src/components/AdminDashboard.tsx(1189,7): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1193,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1194,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1195,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1196,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1197,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1198,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1198,8): error TS2304: Cannot find name 'ToggleButtonGroup'.
+src/components/AdminDashboard.tsx(1205,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1205,9): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1205,47): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1206,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1206,9): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1206,47): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1207,9): error TS2304: Cannot find name 'ToggleButtonGroup'.
+src/components/AdminDashboard.tsx(1208,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1217,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1217,6): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1218,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1219,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1226,7): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1229,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1230,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1231,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1232,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1232,7): error TS2304: Cannot find name 'ToggleButtonGroup'.
+src/components/AdminDashboard.tsx(1240,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1240,8): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1240,40): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1241,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1241,8): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1241,38): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1242,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1242,8): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1242,42): error TS2304: Cannot find name 'ToggleButton'.
+src/components/AdminDashboard.tsx(1243,8): error TS2304: Cannot find name 'ToggleButtonGroup'.
+src/components/AdminDashboard.tsx(1245,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1245,6): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1246,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1247,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1254,7): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1256,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1262,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1263,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1265,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1266,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1266,9): error TS2304: Cannot find name 'CircularProgress'.
+src/components/AdminDashboard.tsx(1269,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1270,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1273,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1274,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1275,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1276,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1277,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1278,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1279,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1280,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1281,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1284,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1286,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1287,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1288,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1291,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1292,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1298,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1299,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1307,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1311,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1312,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1323,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1323,6): error TS2304: Cannot find name 'DialogActions'.
+src/components/AdminDashboard.tsx(1324,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/AdminDashboard.tsx(1325,7): error TS2304: Cannot find name 'DialogActions'.
+../node_modules/@mui/utils/requirePropFactory/requirePropFactory.d.ts(2,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/prop-types/index"' can only be default-imported using the 'esModuleInterop' flag
+../node_modules/@mui/x-data-grid/utils/cleanupTracking/FinalizationRegistryBasedCleanupTracking.d.ts(3,13): error TS2304: Cannot find name 'FinalizationRegistry'.

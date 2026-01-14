@@ -323,7 +323,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 						borderColor: "divider",
 						borderRadius: 4,
 						overflow: "hidden",
-						boxShadow: extendedShadows.panel,
+						boxShadow: (theme) => theme.shadows[2],
 					}}
 				>
 					{loading ? (
@@ -404,6 +404,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
+				onNavigateToAdmin={undefined}
 			/>
 
 			{/* New Session Dialog */}

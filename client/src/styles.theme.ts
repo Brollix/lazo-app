@@ -74,11 +74,11 @@ export const typography = {
 // DESIGN RULE: When nesting rounded elements, parent padding should be >= child border-radius
 // Example: If a card has borderRadius.md (2 = 16px), its container should have padding >= 2
 export const borderRadius = {
-	xs: 1, // 4px - Subtle rounding for small elements
-	sm: 1.5, // 6px - Small components, badges
-	md: 2, // 8px - Default for cards, buttons
-	lg: 3, // 12px - Large containers, dialogs
-	xl: 4, // 16px - Extra large for hero elements
+	xs: 0.25, // 1px
+	sm: 0.5, // 2px
+	md: 1, // 4px
+	lg: 1.5, // 6px
+	xl: 2, // 8px
 };
 
 // Spacing Scale (multiplier of 8px base unit)

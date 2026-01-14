@@ -1,11 +1,19 @@
 :root {
-	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	--font-main: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	--color-terracotta: #d6684e;
+	--color-dark-slate: #3d405b;
+	--color-cream: #f4f1de;
+	--color-white: #ffffff;
+	--color-terracotta-hover: rgba(224, 122, 95, 0.6);
+	--color-slate-hover: rgba(61, 64, 91, 0.2);
+
+	font-family: var(--font-main);
 	line-height: 1.5;
 	font-weight: 400;
 
 	color-scheme: light; /* Enforce light mode mostly for this theme */
-	color: #3d405b; /* Dark Slate text */
-	background-color: #f4f1de; /* Cream background */
+	color: var(--color-dark-slate);
+	background-color: var(--color-cream);
 
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
@@ -20,7 +28,7 @@
 	}
 }
 
-/* Custom Scrollbar (Terracotta Themed) */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;
@@ -31,21 +39,21 @@
 }
 
 ::-webkit-scrollbar-thumb {
-	background-color: rgba(61, 64, 91, 0.2); /* Dark Slate low opacity */
+	background-color: var(--color-slate-hover);
 	border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background-color: rgba(224, 122, 95, 0.6); /* Terracotta opacity */
+	background-color: var(--color-terracotta-hover);
 }
 
 a {
 	font-weight: 500;
-	color: #e07a5f; /* Terracotta */
+	color: var(--color-terracotta);
 	text-decoration: inherit;
 }
 a:hover {
-	color: #3d405b; /* Dark Slate */
+	color: var(--color-dark-slate);
 }
 
 body {
@@ -53,7 +61,7 @@ body {
 	min-width: 280px;
 	min-height: 100vh;
 	overflow: hidden; /* Prevent window scroll */
-	background-color: #f4f1de; /* Ensure body matches theme */
+	background-color: var(--color-cream);
 }
 
 /* Mobile-specific adjustments */
@@ -66,7 +74,7 @@ body {
 h1 {
 	font-size: 3.2em;
 	line-height: 1.1;
-	color: #3d405b;
+	color: var(--color-dark-slate);
 }
 
 @media (max-width: 600px) {
@@ -75,7 +83,6 @@ h1 {
 	}
 }
 
-/* Remove default button styles to let MUI handle it, or style minimally */
 button {
 	font-family: inherit;
 }

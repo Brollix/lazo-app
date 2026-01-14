@@ -11,6 +11,7 @@ import {
 	TextField,
 	Stack,
 	Divider,
+	alpha,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -20,6 +21,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import { GlassCard, StyledDropzone } from "./UploaderStyles";
 import { getGradients, typographyExtended } from "../styles.theme";
+import { UpgradeToProModal } from "./UpgradeToProModal";
 
 // Define the response structure
 export interface Topic {
@@ -132,6 +134,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
 	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
 	const [audioDuration, setAudioDuration] = useState<number | null>(null);
+	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+	const [monthlyLimitData, setMonthlyLimitData] = useState<{
+		used: number;
+		monthYear: string;
+	} | null>(null);
+	const [encryptionSalt, setEncryptionSalt] = useState<string>("");
 
 	const onDrop = useCallback(async (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
@@ -214,6 +222,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		if (userId) {
 			formData.append("userId", userId);
 		}
+		if (encryptionSalt) {
+			formData.append("encryptionSalt", encryptionSalt);
+		}
 
 		try {
 			setStatus("processing");
@@ -229,10 +240,31 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			});
 
 			if (response.status !== 200 && response.status !== 202) {
-				const errorText = await response.text();
-				throw new Error(
-					`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
-				);
+				try {
+					const errorData = await response.json();
+
+					// Check for monthly limit error
+					if (errorData.message === "monthly_limit_exceeded") {
+						setMonthlyLimitData({
+							used: errorData.used,
+							monthYear: errorData.monthYear,
+						});
+						setShowUpgradeModal(true);
+						setStatus("idle");
+						return;
+					}
+
+					const errorText = JSON.stringify(errorData);
+					throw new Error(
+						`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+					);
+				} catch (parseError) {
+					// If JSON parsing fails, get text
+					const errorText = await response.text();
+					throw new Error(
+						`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+					);
+				}
 			}
 
 			const initResponse = await response.json();
@@ -352,7 +384,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 						key="upload-area"
 					>
 						<GlassCard
-							sx={{ p: { xs: 3, sm: 4 }, boxShadow: "none", border: "none" }}
+							sx={{
+								p: { xs: 3, sm: 4 },
+								boxShadow: "none",
+								border: "none",
+								bgcolor: "transparent",
+							}}
 						>
 							<Typography
 								variant="h4"
@@ -370,18 +407,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 								Nueva Sesión
 							</Typography>
 
-							<Typography
-								variant="body2"
-								color="text.secondary"
-								align="center"
-								sx={{ mb: 4, px: 2 }}
-							>
-								Sube el audio para obtener la transcripción y el análisis
-								clínico automático.
-							</Typography>
-
 							<Stack spacing={2} sx={{ mb: 4 }}>
 								<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+									<TextField
+										fullWidth
+										label="Salt personalizado"
+										value={encryptionSalt}
+										onChange={(e) => setEncryptionSalt(e.target.value)}
+										sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+										variant="outlined"
+										size="small"
+									/>
 									<TextField
 										select
 										label="Idioma"
@@ -423,7 +459,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									px: 2,
 									borderStyle: "dashed",
 									borderColor: isDragActive ? "primary.main" : "divider",
-									bgcolor: isDragActive ? "primary.lighter" : "transparent",
+									bgcolor: isDragActive
+										? alpha(theme.palette.primary.main, 0.1)
+										: "transparent",
 								}}
 							>
 								<input {...getInputProps()} />
@@ -464,7 +502,8 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										variant="caption"
 										sx={{
 											color: "primary.main",
-											bgcolor: "primary.lighter",
+											bgcolor: (theme) =>
+												alpha(theme.palette.primary.main, 0.1),
 											px: 1.5,
 											py: 0.5,
 											borderRadius: 4,
@@ -503,7 +542,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									sx={{
 										mt: 3,
 										p: 2,
-										bgcolor: "error.lighter",
+										bgcolor: (theme) => alpha(theme.palette.error.main, 0.1),
 										borderRadius: 2,
 										border: "1px solid",
 										borderColor: "error.light",
@@ -532,7 +571,11 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 											py: 1.5,
 											textTransform: "none",
 											fontWeight: "bold",
-											boxShadow: "0 4px 14px 0 rgba(0,118,255,0.39)",
+											boxShadow: (theme) =>
+												`0 4px 14px 0 ${alpha(
+													theme.palette.primary.main,
+													0.4
+												)}`,
 										}}
 									>
 										Comenzar Análisis
@@ -739,7 +782,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										fontSize: "1rem",
 										fontWeight: "bold",
 										textTransform: "none",
-										boxShadow: "0 4px 14px 0 rgba(0,0,0,0.1)",
+										boxShadow: (theme) => theme.shadows[2],
 									}}
 								>
 									Listo, ver en el panel
@@ -749,6 +792,20 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 					</motion.div>
 				)}
 			</AnimatePresence>
+
+			{monthlyLimitData && (
+				<UpgradeToProModal
+					open={showUpgradeModal}
+					onClose={() => {
+						setShowUpgradeModal(false);
+						setMonthlyLimitData(null);
+					}}
+					userId={userId || ""}
+					userEmail={""}
+					usedTranscriptions={monthlyLimitData.used}
+					monthYear={monthlyLimitData.monthYear}
+				/>
+			)}
 		</Box>
 	);
 };

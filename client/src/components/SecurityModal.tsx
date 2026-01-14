@@ -23,20 +23,17 @@ import {
 	VisibilityOff,
 } from "@mui/icons-material";
 import { supabase } from "../supabaseClient";
-import { colors } from "../styles.theme";
 
 interface SecurityModalProps {
 	open: boolean;
 	onClose: () => void;
 	userEmail: string;
-	mode: "light" | "dark";
 }
 
 export const SecurityModal: React.FC<SecurityModalProps> = ({
 	open,
 	onClose,
 	userEmail,
-	mode,
 }) => {
 	const [newEmail, setNewEmail] = React.useState("");
 	const [oldPassword, setOldPassword] = React.useState("");
@@ -148,11 +145,8 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 			PaperProps={{
 				sx: {
 					borderRadius: 4,
-					bgcolor: mode === "dark" ? "#1A1C2E" : "background.paper",
-					boxShadow:
-						mode === "dark"
-							? "0 24px 48px rgba(0,0,0,0.8)"
-							: "0 24px 48px rgba(0,0,0,0.1)",
+					bgcolor: "background.paper",
+					boxShadow: (theme) => theme.shadows[24],
 				},
 			}}
 		>
@@ -200,7 +194,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 								label="Nuevo Correo"
 								value={newEmail}
 								onChange={(e) => setNewEmail(e.target.value)}
-								sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+								sx={{
+									"& .MuiOutlinedInput-root": {
+										borderRadius: 2,
+										bgcolor: "action.hover",
+									},
+								}}
 							/>
 							<Button
 								variant="contained"
@@ -236,7 +235,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 							<Lock fontSize="small" /> Cambiar Contraseña
 						</Typography>
 
-						<Stack spacing={2}>
+						<Stack spacing={2} sx={{ mt: 1 }}>
 							<TextField
 								fullWidth
 								size="small"
@@ -244,6 +243,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 								type={showOldPassword ? "text" : "password"}
 								value={oldPassword}
 								onChange={(e) => setOldPassword(e.target.value)}
+								sx={{
+									"& .MuiOutlinedInput-root": {
+										borderRadius: 2,
+										bgcolor: "action.hover",
+									},
+								}}
 								InputProps={{
 									endAdornment: (
 										<InputAdornment position="end">
@@ -260,7 +265,6 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 										</InputAdornment>
 									),
 								}}
-								sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
 							/>
 
 							<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -271,7 +275,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 									type={showNewPassword ? "text" : "password"}
 									value={newPassword}
 									onChange={(e) => setNewPassword(e.target.value)}
-									sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+									sx={{
+										"& .MuiOutlinedInput-root": {
+											borderRadius: 2,
+											bgcolor: "action.hover",
+										},
+									}}
 								/>
 								<TextField
 									fullWidth
@@ -280,7 +289,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 									type={showNewPassword ? "text" : "password"}
 									value={confirmPassword}
 									onChange={(e) => setConfirmPassword(e.target.value)}
-									sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+									sx={{
+										"& .MuiOutlinedInput-root": {
+											borderRadius: 2,
+											bgcolor: "action.hover",
+										},
+									}}
 								/>
 							</Stack>
 
@@ -294,7 +308,8 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
 									borderRadius: 2,
 									py: 1,
 									fontWeight: "bold",
-									background: `linear-gradient(135deg, ${colors.terracotta} 0%, ${colors.deepOrange} 100%)`,
+									background: (theme) =>
+										`linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
 								}}
 							>
 								{loading === "password" ? (

@@ -47,7 +47,7 @@ export const getPrices = () => {
 
 	return {
 		rate: currentDolarRate,
-		pro: Math.round(proUsd * currentDolarRate),
+		pro: 50, // PRECIO DE PRUEBA - Cambiar a: Math.round(proUsd * currentDolarRate) para producción
 		ultra: Math.round(ultraUsd * currentDolarRate),
 		updatedAt: new Date().toISOString(),
 	};

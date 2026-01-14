@@ -65,7 +65,11 @@ export const ThemeCloud: React.FC<ThemeCloudProps> = ({ topics }) => {
 			>
 				Temas Recurrentes
 			</Typography>
-			<TableContainer component={Paper} variant="outlined">
+			<TableContainer
+				component={Paper}
+				variant="outlined"
+				sx={{ borderRadius: 2, overflow: "hidden" }}
+			>
 				<Table size="small" sx={{ minWidth: 300 }}>
 					<TableHead>
 						<TableRow>

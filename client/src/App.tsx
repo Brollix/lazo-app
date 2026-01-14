@@ -1,11 +1,15 @@
 import { useState, useEffect, createContext, useMemo } from "react";
-import { ThemeProvider, CssBaseline, Box } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box, GlobalStyles } from "@mui/material";
 import { createAppTheme } from "./theme";
 import { Login } from "./components/Login";
 import { Dashboard, ClinicalSession } from "./components/Dashboard";
 import { PatientsList, Patient } from "./components/PatientsList";
 import { SessionsList } from "./components/SessionsList";
+import { AdminDashboard } from "./components/AdminDashboard";
 import { supabase } from "./supabaseClient";
+
+// Admin UUID - Only this user has access to admin panel
+const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 type ThemeMode = "light" | "dark";
 
@@ -21,7 +25,7 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 function App() {
 	const [currentView, setCurrentView] = useState<
-		"login" | "list" | "sessions" | "dashboard"
+		"login" | "list" | "sessions" | "dashboard" | "admin"
 	>("login");
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 	const [selectedSession, setSelectedSession] =
@@ -65,9 +69,17 @@ function App() {
 			if (!isMounted) return;
 
 			if (session) {
-				console.log("App: Session found, switching to list view");
+				console.log("App: Session found, user ID:", session.user.id);
 				setUserId(session.user.id);
-				setCurrentView("list");
+
+				// Check if user is admin
+				if (session.user.id === ADMIN_UUID) {
+					console.log("App: Admin user detected, redirecting to admin panel");
+					setCurrentView("admin");
+				} else {
+					console.log("App: Regular user, switching to list view");
+					setCurrentView("list");
+				}
 			} else {
 				console.log("App: No session, showing login");
 				setUserId(undefined);
@@ -125,6 +137,24 @@ function App() {
 		<ThemeContext.Provider value={{ mode: themeMode, toggleTheme }}>
 			<ThemeProvider theme={theme}>
 				<CssBaseline />
+				<GlobalStyles
+					styles={{
+						":root": {
+							"--color-terracotta": theme.palette.primary.main,
+							"--color-dark-slate": theme.palette.secondary.main,
+							"--color-cream": theme.palette.background.default,
+							"--color-white": theme.palette.common.white,
+							"--color-slate-hover":
+								themeMode === "light"
+									? "rgba(61, 64, 91, 0.2)"
+									: "rgba(255, 255, 255, 0.1)",
+							"--color-terracotta-hover":
+								themeMode === "light"
+									? "rgba(224, 122, 95, 0.6)"
+									: "rgba(214, 104, 78, 0.6)",
+						},
+					}}
+				/>
 				<Box
 					sx={{
 						display: "flex",
@@ -159,6 +189,14 @@ function App() {
 								initialTime={selectedTime}
 								onBack={handleBackToSessions}
 								userId={userId}
+								onNavigateToAdmin={() => setCurrentView("admin")}
+							/>
+						)}
+						{currentView === "admin" && (
+							<AdminDashboard
+								onLogout={handleLogout}
+								userId={userId}
+								onBack={() => setCurrentView("list")}
 							/>
 						)}
 					</Box>

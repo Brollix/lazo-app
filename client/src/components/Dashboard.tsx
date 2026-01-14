@@ -32,6 +32,7 @@ import {
 	History,
 	EventNote,
 	MenuBook,
+	NotificationsActive as NotifyIcon,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -84,6 +85,7 @@ export const Dashboard: React.FC<{
 	initialTime?: string;
 	onBack?: () => void;
 	userId?: string;
+	onNavigateToAdmin?: () => void;
 }> = ({
 	onLogout,
 	patient,
@@ -92,6 +94,7 @@ export const Dashboard: React.FC<{
 	initialTime,
 	onBack,
 	userId,
+	onNavigateToAdmin,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -111,6 +114,10 @@ export const Dashboard: React.FC<{
 	const [isFocusMode, setIsFocusMode] = useState(false);
 	const [draftDialogOpen, setDraftDialogOpen] = useState(false);
 	const [pendingDraft, setPendingDraft] = useState<any>(null);
+	const [announcement, setAnnouncement] = useState<{
+		message: string;
+		created_at: string;
+	} | null>(null);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const sessionDataRef = useRef<ProcessSessionResponse | null>(null);
@@ -134,17 +141,28 @@ export const Dashboard: React.FC<{
 	}, [messages]);
 
 	useEffect(() => {
+		const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+
+		// Fetch user plan
 		if (userId) {
-			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
 			fetch(`${apiUrl}/api/user-plan/${userId}`)
 				.then((res) => res.json())
 				.then((data) => {
 					setUserAppPlan(data.plan_type);
-					// Fallback to empty string if email is missing
 					setUserEmail(data.email || "");
 				})
 				.catch((err) => console.error("Error fetching user plan:", err));
 		}
+
+		// Fetch announcements
+		fetch(`${apiUrl}/api/announcements`)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data && data.length > 0) {
+					setAnnouncement(data[0]);
+				}
+			})
+			.catch((err) => console.error("Error fetching announcements:", err));
 	}, [userId]);
 
 	// Fetch sessions when patient changes
@@ -339,7 +357,11 @@ export const Dashboard: React.FC<{
 								key={i}
 								label={alert}
 								size="small"
-								sx={{ mr: 0.5, bgcolor: "error.main", color: "white" }}
+								sx={{
+									mr: 0.5,
+									bgcolor: "error.main",
+									color: "error.contrastText",
+								}}
 							/>
 						))}
 					</Box>
@@ -785,10 +807,41 @@ export const Dashboard: React.FC<{
 				</Box>
 			</Paper>
 
+			{/* Global Announcement Bar */}
+			{announcement && (
+				<Box
+					sx={{
+						bgcolor: "primary.main",
+						color: "primary.contrastText",
+						px: 3,
+						py: 1,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						gap: 1.5,
+						boxShadow: (theme) => theme.shadows[2],
+						zIndex: 9,
+					}}
+				>
+					<NotifyIcon sx={{ fontSize: 20 }} />
+					<Typography variant="body2" fontWeight="500">
+						{announcement.message}
+					</Typography>
+					<IconButton
+						size="small"
+						onClick={() => setAnnouncement(null)}
+						sx={{ color: "inherit", ml: 2 }}
+					>
+						<ChevronLeft sx={{ transform: "rotate(90deg)" }} />
+					</IconButton>
+				</Box>
+			)}
+
 			<Settings
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
+				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 
 			<SubscriptionModal
@@ -842,7 +895,7 @@ export const Dashboard: React.FC<{
 						flex: themeComponents.dashboard.panelFlex.center,
 						display: isFocusMode ? "none" : "flex", // Hide center in focus mode
 						flexDirection: "column",
-						borderRadius: 3,
+						borderRadius: 4,
 						overflow: "hidden",
 						border: "1px solid",
 						borderColor: "divider",
@@ -938,7 +991,7 @@ export const Dashboard: React.FC<{
 								onClick={handleUploadCheck}
 								sx={{
 									py: 2,
-									borderRadius: 3,
+									borderRadius: 4,
 									borderStyle: "dashed",
 									borderWidth: 2,
 									"&:hover": {
@@ -1136,7 +1189,10 @@ export const Dashboard: React.FC<{
 												msg.sender === "user"
 													? "primary.main"
 													: "background.default",
-											color: msg.sender === "user" ? "white" : "text.primary",
+											color:
+												msg.sender === "user"
+													? "primary.contrastText"
+													: "text.primary",
 											borderRadius:
 												msg.sender === "user"
 													? themeComponents.chatMessage.borderRadius.user
@@ -1214,7 +1270,7 @@ export const Dashboard: React.FC<{
 							flex: { xs: "0 0 auto", lg: 3 },
 							display: "flex",
 							flexDirection: "column",
-							borderRadius: 3,
+							borderRadius: 4,
 							overflow: "hidden",
 							border: "1px solid",
 							borderColor: "divider",

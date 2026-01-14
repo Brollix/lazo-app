@@ -254,8 +254,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 									py: 0.75,
 									fontSize: { xs: "0.8rem", sm: "0.875rem" },
 									"&:hover": {
-										bgcolor: (theme) =>
-											theme.palette.mode === "light" ? "grey.100" : "grey.800",
+										bgcolor: "action.hover",
 									},
 								}}
 							>

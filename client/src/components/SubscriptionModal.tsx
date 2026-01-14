@@ -9,15 +9,7 @@ import {
 	CardContent,
 	Divider,
 	CircularProgress,
-	useTheme,
 } from "@mui/material";
-import {
-	colors,
-	shadows,
-	borderRadius,
-	components,
-	getExtendedColors,
-} from "../styles.theme";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 interface SubscriptionModalProps {
@@ -33,8 +25,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	userId,
 	userEmail,
 }) => {
-	const theme = useTheme();
-	const extendedColors = getExtendedColors(theme.palette.mode);
 	const [dolarRate, setDolarRate] = useState<number>(1950);
 	const [prices, setPrices] = useState({ pro: 0, ultra: 0 });
 	const [loading, setLoading] = useState(false);
@@ -61,8 +51,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					fetch("https://dolarapi.com/v1/dolares/tarjeta")
 						.then((res) => res.json())
 						.then((data) => {
-							const promedio = Math.round((data.compra + data.venta) / 2);
-							setDolarRate(promedio);
+							const comp = data.compra || 0;
+							const vent = data.venta || 0;
+							const promedio = Math.round((comp + vent) / 2);
+							if (promedio > 0) setDolarRate(promedio);
 						});
 				});
 		}
@@ -121,9 +113,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				minHeight: { xs: "auto", sm: 480 },
 				display: "flex",
 				flexDirection: "column",
-				borderRadius: borderRadius.md,
-				boxShadow: shadows.card,
-				border: components.subscriptionCard.borderWidth,
+				borderRadius: 4,
+				boxShadow: (theme) => theme.shadows[2],
+				border: "1px solid",
 				borderColor: "transparent",
 				"&:hover": {
 					borderColor: color,
@@ -173,35 +165,26 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						</Typography>
 					)}
 				</Box>
-				<Typography
-					variant="body2"
-					color="text.secondary"
-					sx={{ mb: 2, display: "block", minHeight: "2rem", fontWeight: 500 }}
-				>
+				<Box sx={{ mb: 2, display: "block", minHeight: "2rem" }}>
 					{planId === "ultra" ? (
-						"Funcionalidades avanzadas en desarrollo"
+						<Typography variant="body2" color="text.secondary" fontWeight={500}>
+							Funcionalidades avanzadas en desarrollo
+						</Typography>
 					) : planId !== "free" ? (
 						<>
-							{price === 50 ? (
-								<Typography
-									component="span"
-									variant="body2"
-									sx={{ fontWeight: "bold", color: "primary.main" }}
-								>
-									Precio especial de prueba
-								</Typography>
-							) : (
-								<>
-									USD ${planId === "pro" ? 10 : 30} × Dólar Tarjeta
-									<br />
-									(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
-								</>
-							)}
-							<br />
 							<Typography
-								component="span"
+								variant="body2"
+								color="text.secondary"
+								fontWeight={500}
+							>
+								USD ${planId === "pro" ? 10 : 30} × Dólar Tarjeta
+								<br />
+								(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
+							</Typography>
+							<Typography
 								variant="caption"
 								sx={{
+									color: "text.secondary",
 									opacity: 0.8,
 									fontSize: "0.7rem",
 									display: "block",
@@ -212,9 +195,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							</Typography>
 						</>
 					) : (
-						"Perfecto para comenzar"
+						<Typography variant="body2" color="text.secondary" fontWeight={500}>
+							Perfecto para comenzar
+						</Typography>
 					)}
-				</Typography>
+				</Box>
 				<Divider sx={{ mb: 2 }} />
 				<Box sx={{ mb: 3, flexGrow: 1 }}>
 					{features.map((f: string, i: number) => (
@@ -232,9 +217,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					disableElevation
 					disabled={loading || planId === "ultra"}
 					sx={{
-						borderRadius: borderRadius.md,
-						py: components.planButton.py,
-						fontWeight: components.planButton.fontWeight,
+						borderRadius: 2,
+						py: 1.5,
+						fontWeight: "bold",
 						bgcolor: color,
 						color: "white",
 						"&:hover": {
@@ -266,7 +251,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 			fullWidth
 			PaperProps={{
 				sx: {
-					borderRadius: borderRadius.lg,
+					borderRadius: 4,
 					bgcolor: "background.default",
 					maxHeight: "95vh",
 					width: { xs: "100%", sm: "95%" },
@@ -291,7 +276,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					component="h1"
 					fontWeight="bold"
 					sx={{
-						color: colors.terracotta,
+						color: "primary.main",
 						fontSize: { xs: "1.75rem", sm: "2.5rem" },
 					}}
 				>
@@ -340,7 +325,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						<PlanCard
 							title="Plan Gratis"
 							price={0}
-							color={extendedColors.neutral.gray}
+							color="text.disabled"
 							planId="free"
 							features={[
 								"3 créditos de audio iniciales",
@@ -361,7 +346,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						<PlanCard
 							title="Plan Pro"
 							price={proPriceARS}
-							color={colors.terracotta}
+							color="primary.main"
 							planId="pro"
 							features={[
 								"Grabaciones ilimitadas",
@@ -383,7 +368,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						<PlanCard
 							title="Plan Ultra"
 							price={ultraPriceARS}
-							color={extendedColors.neutral.darkBlue}
+							color="secondary.main"
 							planId="ultra"
 							features={[
 								"Todo lo de Pro",

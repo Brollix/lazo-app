@@ -9,10 +9,10 @@ import {
 	Tooltip,
 	IconButton,
 	Chip,
+	alpha,
 } from "@mui/material";
 import { EditNote, Save, ChevronLeft, Download } from "@mui/icons-material";
 import {
-	getColors,
 	getExtendedShadows,
 	typographyExtended,
 	opacity,
@@ -44,7 +44,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 				flex: isFocused ? 1 : { xs: "1 1 auto", lg: 3 }, // Responsive flex
 				display: "flex",
 				flexDirection: "column",
-				borderRadius: 3,
+				borderRadius: 4,
 				overflow: "hidden",
 				border: "1px solid",
 				borderColor: "divider",
@@ -100,7 +100,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 								fontSize: "0.65rem",
 								fontWeight: typographyExtended.fontWeights.bold,
 								bgcolor: "primary.main",
-								color: "white",
+								color: "primary.contrastText",
 								opacity: opacity.high,
 							}}
 						/>
@@ -156,7 +156,7 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 							p: 0,
 							fontSize: "0.95rem",
 							lineHeight: 1.6,
-							fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+							fontFamily: "inherit",
 							"& textarea": {
 								p: 2,
 								height: "100% !important",
@@ -177,10 +177,8 @@ export const SoapNoteEditor: React.FC<SoapNoteEditorProps> = ({
 						onClick={onSave}
 						sx={{
 							boxShadow: (theme) =>
-								`0 4px 12px ${
-									getColors(theme.palette.mode as "light" | "dark").terracotta
-								}4D`,
-						}} // 30% opacity terracotta
+								`0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+						}}
 					>
 						<Save />
 					</Fab>

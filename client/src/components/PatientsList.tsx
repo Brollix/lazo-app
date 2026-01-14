@@ -74,6 +74,16 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	const fetchPatients = async () => {
 		try {
 			setLoading(true);
+
+			// Get current user ID for encryption
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) {
+				console.error("User not authenticated");
+				return;
+			}
+
 			const { data, error } = await supabase
 				.from("patients")
 				.select("*")
@@ -81,19 +91,12 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 
 			if (error) throw error;
 
-			const key = EncryptionService.getKey();
-			if (!key) {
-				console.error("Encryption key not found");
-				// Handle missing key (maybe redirect to login or prompt)
-				return;
-			}
-
 			const decryptedPatients: Patient[] = (data || [])
 				.map((row: any) => {
 					try {
 						const decryptedData = EncryptionService.decryptData(
 							row.encrypted_data,
-							key
+							user.id
 						);
 						return {
 							id: row.id,
@@ -117,15 +120,16 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	const handleCreatePatient = async () => {
 		if (!newPatientName || !newPatientAge) return;
 
-		const key = EncryptionService.getKey();
-		if (!key) {
-			alert(
-				"Error de seguridad: No se encontró la clave de encriptación. Por favor inicia sesión nuevamente."
-			);
-			return;
-		}
-
 		try {
+			// Get current user ID for encryption
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) {
+				alert("Error de seguridad: Usuario no autenticado.");
+				return;
+			}
+
 			const patientData = {
 				name: newPatientName,
 				age: parseInt(newPatientAge) || 0,
@@ -133,7 +137,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				lastVisit: new Date().toISOString().split("T")[0],
 			};
 
-			const encryptedData = EncryptionService.encryptData(patientData, key);
+			const encryptedData = EncryptionService.encryptData(patientData, user.id);
 
 			const { error } = await supabase
 				.from("patients")
@@ -164,13 +168,16 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	const handleEditPatient = async () => {
 		if (!editingPatient || !editName || !editAge) return;
 
-		const key = EncryptionService.getKey();
-		if (!key) {
-			alert("Error de seguridad: No se encontró la clave de encriptación.");
-			return;
-		}
-
 		try {
+			// Get current user ID for encryption
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) {
+				alert("Error de seguridad: Usuario no autenticado.");
+				return;
+			}
+
 			const patientData = {
 				name: editName,
 				age: parseInt(editAge) || 0,
@@ -178,7 +185,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				lastVisit: editingPatient.lastVisit,
 			};
 
-			const encryptedData = EncryptionService.encryptData(patientData, key);
+			const encryptedData = EncryptionService.encryptData(patientData, user.id);
 
 			const { error } = await supabase
 				.from("patients")
@@ -305,7 +312,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					sx={{
 						border: "1px solid",
 						borderColor: "divider",
-						borderRadius: 3,
+						borderRadius: 4,
 						overflow: "hidden",
 					}}
 				>
@@ -454,6 +461,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
+				onNavigateToAdmin={undefined}
 			/>
 		</Box>
 	);

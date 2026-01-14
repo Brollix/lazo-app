@@ -16,6 +16,7 @@ import {
 	Stack,
 	TextField,
 	InputAdornment,
+	alpha,
 } from "@mui/material";
 import {
 	Brightness4,
@@ -27,17 +28,21 @@ import {
 	Person,
 	Lock,
 	Save,
+	AdminPanelSettings,
 } from "@mui/icons-material";
 import { ThemeContext } from "../App";
-import { colors } from "../styles.theme";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
 import { supabase } from "../supabaseClient";
+
+// Admin UUID - Only this user has access to admin panel
+const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 interface SettingsProps {
 	open: boolean;
 	onClose: () => void;
 	onLogout?: () => void;
+	onNavigateToAdmin?: () => void;
 }
 
 interface UserProfile {
@@ -52,6 +57,7 @@ export const Settings: React.FC<SettingsProps> = ({
 	open,
 	onClose,
 	onLogout,
+	onNavigateToAdmin,
 }) => {
 	const { mode, toggleTheme } = React.useContext(ThemeContext);
 	const [showSubModal, setShowSubModal] = React.useState(false);
@@ -233,15 +239,12 @@ export const Settings: React.FC<SettingsProps> = ({
 					sx: {
 						borderRadius: 4,
 						p: 0,
-						boxShadow:
-							mode === "dark"
-								? "0 24px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)"
-								: "0 24px 48px rgba(61, 64, 91, 0.15)",
+						boxShadow: (theme) => theme.shadows[24],
 						border: "none",
 						m: { xs: 1, sm: 2 },
 						maxWidth: { xs: "calc(100% - 16px)", sm: 480 },
 						overflow: "hidden",
-						bgcolor: mode === "dark" ? "#15171E" : "background.paper",
+						bgcolor: "background.paper",
 					},
 				}}
 			>
@@ -253,10 +256,8 @@ export const Settings: React.FC<SettingsProps> = ({
 						pb: 2,
 						px: 3,
 						pt: 3,
-						borderBottom:
-							mode === "dark"
-								? "1px solid rgba(255,255,255,0.05)"
-								: "1px solid rgba(0,0,0,0.05)",
+						borderBottom: "1px solid",
+						borderColor: "divider",
 					}}
 				>
 					<Typography
@@ -278,13 +279,9 @@ export const Settings: React.FC<SettingsProps> = ({
 						size="medium"
 						sx={{
 							borderRadius: 2,
-							bgcolor:
-								mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+							bgcolor: "action.hover",
 							"&:hover": {
-								bgcolor:
-									mode === "dark"
-										? "rgba(255,255,255,0.08)"
-										: "rgba(0,0,0,0.08)",
+								bgcolor: "action.selected",
 							},
 						}}
 					>
@@ -308,11 +305,7 @@ export const Settings: React.FC<SettingsProps> = ({
 								gap: 2,
 							}}
 						>
-							<CircularProgress
-								size={32}
-								thickness={5}
-								sx={{ color: colors.terracotta }}
-							/>
+							<CircularProgress size={32} thickness={5} color="primary" />
 							<Typography variant="caption" color="text.secondary">
 								Cargando perfil...
 							</Typography>
@@ -349,14 +342,12 @@ export const Settings: React.FC<SettingsProps> = ({
 										sx={{
 											p: 2.5,
 											borderRadius: 4,
-											background:
+											background: (theme) =>
 												mode === "dark"
-													? `linear-gradient(135deg, ${colors.darkSlate} 0%, #1A1C2E 100%)`
-													: `linear-gradient(135deg, ${colors.cream} 0%, #FFFFFF 100%)`,
-											border:
-												mode === "dark"
-													? "1px solid rgba(255,255,255,0.05)"
-													: "1px solid rgba(0,0,0,0.05)",
+													? `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.background.default} 100%)`
+													: `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.common.white} 100%)`,
+											border: "1px solid",
+											borderColor: "divider",
 											display: "flex",
 											alignItems: "center",
 											gap: 2,
@@ -367,10 +358,12 @@ export const Settings: React.FC<SettingsProps> = ({
 											sx={{
 												width: 56,
 												height: 56,
-												bgcolor: colors.terracotta,
+												bgcolor: "primary.main",
 												fontWeight: "bold",
-												boxShadow: "0 8px 16px rgba(214, 104, 78, 0.2)",
-												border: "2px solid white",
+												boxShadow: (theme) =>
+													`0 8px 16px ${theme.palette.primary.main}33`,
+												border: "2px solid",
+												borderColor: "background.paper",
 											}}
 										>
 											{getInitials(userProfile.full_name, userProfile.email)}
@@ -460,10 +453,7 @@ export const Settings: React.FC<SettingsProps> = ({
 											sx={{
 												"& .MuiOutlinedInput-root": {
 													borderRadius: 2,
-													bgcolor:
-														mode === "dark"
-															? "rgba(255,255,255,0.02)"
-															: "rgba(0,0,0,0.02)",
+													bgcolor: "action.hover",
 												},
 											}}
 										/>
@@ -478,14 +468,12 @@ export const Settings: React.FC<SettingsProps> = ({
 												py: 1,
 												textTransform: "none",
 												fontWeight: "bold",
-												borderColor:
-													mode === "dark"
-														? "rgba(255,255,255,0.1)"
-														: "rgba(0,0,0,0.1)",
+												borderColor: "divider",
 												color: "text.primary",
 												"&:hover": {
-													borderColor: colors.terracotta,
-													bgcolor: "rgba(214, 104, 78, 0.05)",
+													borderColor: "primary.main",
+													bgcolor: "primary.main",
+													color: "primary.contrastText",
 												},
 											}}
 										>
@@ -515,14 +503,9 @@ export const Settings: React.FC<SettingsProps> = ({
 										sx={{
 											p: 2.5,
 											borderRadius: 4,
-											bgcolor:
-												mode === "dark"
-													? "rgba(255,255,255,0.02)"
-													: "rgba(0,0,0,0.02)",
-											border:
-												mode === "dark"
-													? "1px solid rgba(255,255,255,0.05)"
-													: "1px solid rgba(0,0,0,0.05)",
+											bgcolor: "action.hover",
+											border: "1px solid",
+											borderColor: "divider",
 										}}
 									>
 										<Stack direction="row" spacing={2} sx={{ mb: 2.5 }}>
@@ -544,7 +527,7 @@ export const Settings: React.FC<SettingsProps> = ({
 												<Typography
 													variant="body2"
 													sx={{
-														color: colors.terracotta,
+														color: "primary.main",
 														fontWeight: 800,
 													}}
 												>
@@ -583,7 +566,8 @@ export const Settings: React.FC<SettingsProps> = ({
 													borderRadius: 2,
 													py: 1,
 													fontWeight: "bold",
-													background: `linear-gradient(135deg, ${colors.terracotta} 0%, ${colors.deepOrange} 100%)`,
+													background: (theme) =>
+														`linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
 												}}
 												onClick={() => setShowSubModal(true)}
 											>
@@ -623,7 +607,6 @@ export const Settings: React.FC<SettingsProps> = ({
 								open={showSecurityModal}
 								onClose={() => setShowSecurityModal(false)}
 								userEmail={userProfile.email}
-								mode={mode}
 							/>
 						</>
 					) : null}
@@ -632,15 +615,37 @@ export const Settings: React.FC<SettingsProps> = ({
 				<DialogActions
 					sx={{
 						p: 3,
-						bgcolor:
-							mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
-						borderTop:
-							mode === "dark"
-								? "1px solid rgba(255,255,255,0.05)"
-								: "1px solid rgba(0,0,0,0.05)",
+						bgcolor: "action.hover",
+						borderTop: "1px solid",
+						borderColor: "divider",
 						gap: 1.5,
 					}}
 				>
+					{userProfile?.id === ADMIN_UUID && onNavigateToAdmin && (
+						<Button
+							onClick={() => {
+								onClose();
+								onNavigateToAdmin();
+							}}
+							variant="outlined"
+							color="secondary"
+							startIcon={<AdminPanelSettings />}
+							sx={{
+								borderRadius: 2,
+								px: 2,
+								fontWeight: "bold",
+								borderColor: "secondary.main",
+								color: "secondary.main",
+								"&:hover": {
+									bgcolor: "secondary.main",
+									color: "secondary.contrastText",
+									borderColor: "secondary.main",
+								},
+							}}
+						>
+							Panel Admin
+						</Button>
+					)}
 					{onLogout && (
 						<Button
 							onClick={() => {
@@ -657,8 +662,8 @@ export const Settings: React.FC<SettingsProps> = ({
 								opacity: 0.7,
 								"&:hover": {
 									opacity: 1,
-									bgcolor: "rgba(255,0,0,0.05)",
-									color: "error.main",
+									bgcolor: "error.main",
+									color: "error.contrastText",
 								},
 							}}
 						>
@@ -675,12 +680,10 @@ export const Settings: React.FC<SettingsProps> = ({
 							borderRadius: 2,
 							px: 3,
 							fontWeight: "bold",
-							bgcolor:
-								mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+							bgcolor: "action.selected",
 							color: "text.primary",
 							"&:hover": {
-								bgcolor:
-									mode === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+								bgcolor: "action.hover",
 							},
 						}}
 					>
@@ -700,11 +703,8 @@ export const Settings: React.FC<SettingsProps> = ({
 						borderRadius: 4,
 						p: 0,
 						overflow: "hidden",
-						bgcolor: mode === "dark" ? "#1A1C2E" : "background.paper",
-						boxShadow:
-							mode === "dark"
-								? "0 24px 48px rgba(0,0,0,0.8)"
-								: "0 24px 48px rgba(61, 64, 91, 0.15)",
+						bgcolor: "background.paper",
+						boxShadow: (theme) => theme.shadows[24],
 					},
 				}}
 			>
@@ -718,11 +718,10 @@ export const Settings: React.FC<SettingsProps> = ({
 						sx={{
 							mb: 2,
 							borderRadius: 2,
-							border: "1px solid rgba(242, 204, 143, 0.5)",
-							bgcolor:
-								mode === "dark"
-									? "rgba(242, 204, 143, 0.05)"
-									: "rgba(242, 204, 143, 0.1)",
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.primary.main, 0.5)}`,
+							bgcolor: "warning.main",
+							opacity: 0.1,
 						}}
 					>
 						<AlertTitle sx={{ fontWeight: "bold" }}>Importante</AlertTitle>
@@ -751,7 +750,7 @@ export const Settings: React.FC<SettingsProps> = ({
 										width: 6,
 										height: 6,
 										borderRadius: "50%",
-										bgcolor: colors.terracotta,
+										bgcolor: "primary.main",
 										flexShrink: 0,
 									}}
 								/>

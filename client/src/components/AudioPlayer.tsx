@@ -70,7 +70,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 			waveColor:
 				theme.palette.mode === "light"
 					? theme.palette.grey[300]
-					: "rgba(255, 255, 255, 0.2)",
+					: "rgba(255, 255, 255, 0.1)",
 			progressColor: theme.palette.primary.main,
 			cursorColor: theme.palette.primary.main,
 			barWidth: themeComponents.audioPlayer.barWidth,
@@ -163,7 +163,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 			elevation={0}
 			sx={{
 				p: { xs: 1.5, sm: 2 },
-				borderRadius: 3,
+				borderRadius: 4,
 				bgcolor: "background.paper",
 				border: 1,
 				borderColor: "divider",
@@ -308,7 +308,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 											borderRadius: "50%",
 											border: "2px solid",
 											borderColor: "background.paper",
-											boxShadow: 2,
+											boxShadow: (theme) => theme.shadows[2],
 											transition: "all 0.2s",
 										},
 										"&:hover": {

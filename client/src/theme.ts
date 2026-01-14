@@ -84,13 +84,13 @@ export const createAppTheme = (mode: "light" | "dark") => {
 			},
 		},
 		shape: {
-			borderRadius: 16,
+			borderRadius: 4,
 		},
 		components: {
 			MuiButton: {
 				styleOverrides: {
 					root: {
-						borderRadius: 12,
+						borderRadius: 4,
 						boxShadow: "none",
 						"&:hover": {
 							boxShadow: `0 4px 12px ${colors.terracotta}33`,
@@ -115,7 +115,7 @@ export const createAppTheme = (mode: "light" | "dark") => {
 				styleOverrides: {
 					root: {
 						"& .MuiOutlinedInput-root": {
-							borderRadius: 12,
+							borderRadius: 4,
 							"& fieldset": {
 								borderColor:
 									mode === "light"

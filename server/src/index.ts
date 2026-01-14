@@ -69,6 +69,7 @@ import {
 	processTranscriptWithClaude,
 	performAiAction,
 	transcribeAudio,
+	processWithLlama3,
 } from "./services/aiService";
 import {
 	getPrices,
@@ -87,6 +88,13 @@ import {
 	recordPaymentAndRenewCredits,
 	getSubscriptionByUserId,
 	getPaymentHistory,
+	createProcessingSession,
+	updateProcessingSession,
+	getProcessingSession,
+	renewMonthlyCredits,
+	checkMonthlyTranscriptionLimit,
+	incrementMonthlyTranscriptions,
+	supabase,
 } from "./services/dbService";
 
 // Configure Multer to store files in memory with size limit
@@ -96,12 +104,6 @@ const upload = multer({
 		fileSize: 100 * 1024 * 1024, // 100MB limit
 	},
 });
-
-// In-memory store for session results (active server session only)
-const sessionStore = new Map<
-	string,
-	{ status: string; data?: any; error?: string }
->();
 
 app.post(
 	"/api/process-session",
@@ -125,32 +127,88 @@ app.post(
 				? parseInt(req.body.patientAge)
 				: undefined;
 			const patientGender = req.body.patientGender;
+			const useHighPrecision =
+				req.body.useHighPrecision === "true" ||
+				req.body.useHighPrecision === true;
 
 			console.log(
-				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}`
+				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}, High Precision: ${useHighPrecision}`
 			);
 
 			const userId = req.body.userId || "anonymous"; // Should come from Auth header
+
+			// Check and renew monthly credits if needed
+			await renewMonthlyCredits(userId);
+
+			// Get fresh profile after potential renewal
 			const profile = await getUserProfile(userId);
 
-			// Check credits for ALL users (free, pro, ultra)
-			if (profile.credits_remaining <= 0) {
+			// Check monthly transcription limit for free users
+			const monthlyCheck = await checkMonthlyTranscriptionLimit(userId);
+			if (!monthlyCheck.allowed) {
 				return res.status(403).json({
-					message: "Créditos agotados. Compra más créditos para continuar.",
+					message: "monthly_limit_exceeded",
+					used: monthlyCheck.used,
+					limit: monthlyCheck.limit,
+					monthYear: monthlyCheck.monthYear,
+				});
+			}
+
+			// CREDIT VERIFICATION BASED ON PLAN TYPE
+			// Free plan: check regular credits
+			if (profile.plan_type === "free") {
+				if (profile.credits_remaining <= 0) {
+					return res.status(403).json({
+						message:
+							"Créditos agotados. Actualiza a Pro para transcripciones ilimitadas.",
+						upgradeRequired: true,
+						suggestedPlan: "pro",
+					});
+				}
+			}
+
+			// Pro plan: unlimited, no credit check needed
+			// (credits_remaining = -1 for Pro)
+
+			// Ultra plan with high precision: check premium credits
+			if (profile.plan_type === "ultra" && useHighPrecision) {
+				if (profile.premium_credits_remaining <= 0) {
+					return res.status(403).json({
+						message:
+							"Créditos premium agotados. Usa modo estándar o espera la renovación mensual.",
+						upgradeRequired: false,
+					});
+				}
+			}
+
+			// Additional validation: High Precision only for Ultra users
+			if (useHighPrecision && profile.plan_type !== "ultra") {
+				return res.status(403).json({
+					message:
+						"La opción de Alta Precisión solo está disponible para usuarios del plan Ultra.",
 				});
 			}
 
 			console.log(
-				`[${sessionId}] User: ${userId}, Plan: ${profile.plan_type}, Credits: ${profile.credits_remaining}`
+				`[${sessionId}] User: ${userId}, Plan: ${profile.plan_type}, Credits: ${
+					profile.credits_remaining
+				}, Premium: ${profile.premium_credits_remaining || 0}`
 			);
 
-			// Initialize status
-			sessionStore.set(sessionId, { status: "processing" });
+			// Create processing session in database
+			const dbSession = await createProcessingSession(
+				userId,
+				"processing",
+				useHighPrecision ? "high_precision" : "standard"
+			);
+			const dbSessionId = dbSession.id;
 
-			// Return immediately
+			console.log(`[${sessionId}] Created DB session: ${dbSessionId}`);
+
+			// Return immediately with database session ID
 			res.status(202).json({
 				message: "Procesamiento iniciado",
-				sessionId: sessionId,
+				sessionId: dbSessionId,
 			});
 
 			// Run processing in background
@@ -163,6 +221,7 @@ app.post(
 					const transcriptionResult = await transcribeAudio(
 						req.file.buffer,
 						profile.plan_type as any,
+						useHighPrecision,
 						req.file.mimetype
 					);
 
@@ -281,8 +340,11 @@ app.post(
 						transcriptText = (transcriptionResult as any).text || "";
 					}
 
-					// Decrement credits for ALL users after successful transcription
-					await decrementCredits(userId);
+					// Decrement credits based on plan and precision mode
+					await decrementCredits(userId, useHighPrecision);
+
+					// Track monthly transcription for free users
+					await incrementMonthlyTranscriptions(userId);
 
 					// --- CONSTRUCT TIMESTAMPED TRANSCRIPT ---
 					let timestampedTranscript = "";
@@ -388,22 +450,42 @@ app.post(
 							  }
 							: undefined;
 
-					console.log(`[${sessionId}] Transcript ready. Sending to Claude...`);
+					console.log(`[${sessionId}] Transcript ready. Processing with AI...`);
 
-					// 5. Process with Claude
-					const analysis = await processTranscriptWithClaude(
-						transcriptText,
-						outputLanguage,
-						noteFormat,
-						patientName,
-						patientAge,
-						patientGender
-					);
+					// AI ROUTING LOGIC:
+					// Free/Pro/Ultra (standard) → Groq Llama 3.1 70B
+					// Ultra (premium) → AWS Claude 3.5 Sonnet
+					let analysis;
+					if (profile.plan_type === "ultra" && useHighPrecision) {
+						// PREMIUM PATH: Claude 3.5 for maximum quality
+						console.log(`[${sessionId}] Using Claude 3.5 (Ultra Premium)`);
+						analysis = await processTranscriptWithClaude(
+							transcriptText,
+							outputLanguage,
+							noteFormat,
+							patientName,
+							patientAge,
+							patientGender
+						);
+					} else {
+						// STANDARD PATH: Llama 3.1 for cost-effective quality
+						console.log(
+							`[${sessionId}] Using Llama 3.1 (${profile.plan_type} plan)`
+						);
+						analysis = await processWithLlama3(
+							transcriptText,
+							outputLanguage,
+							noteFormat,
+							patientName,
+							patientAge,
+							patientGender
+						);
+					}
 
-					// Store Success Result
-					sessionStore.set(sessionId, {
+					// Store Success Result in Database
+					await updateProcessingSession(dbSessionId, {
 						status: "completed",
-						data: {
+						result: {
 							transcript: transcriptText,
 							analysis: analysis,
 							biometry: biometry,
@@ -413,9 +495,9 @@ app.post(
 					console.log(`[${sessionId}] Processing completed successfully.`);
 				} catch (err: any) {
 					console.error(`[${sessionId}] Error in background processing:`, err);
-					sessionStore.set(sessionId, {
+					await updateProcessingSession(dbSessionId, {
 						status: "error",
-						error: err.message,
+						error_message: err.message,
 					});
 				}
 			})(); // End background async IIFE
@@ -429,15 +511,24 @@ app.post(
 	}
 );
 
-app.get("/api/session/:sessionId", (req: any, res: any) => {
+app.get("/api/session/:sessionId", async (req: any, res: any) => {
 	const sessionId = req.params.sessionId;
-	const session = sessionStore.get(sessionId);
 
-	if (!session) {
+	try {
+		const session = await getProcessingSession(sessionId);
+
+		// Transform database format to expected client format
+		const response = {
+			status: session.status,
+			data: session.result,
+			error: session.error_message,
+		};
+
+		res.json(response);
+	} catch (error: any) {
+		console.error("Error fetching session:", error);
 		return res.status(404).json({ message: "Sesión no encontrada" });
 	}
-
-	res.json(session);
 });
 
 app.post("/api/ai-action", async (req: any, res: any) => {
@@ -764,14 +855,34 @@ app.post("/api/select-free-plan", async (req, res) => {
 				.json({ error: "El usuario ya tiene un plan asignado." });
 		}
 
-		// Update to Free plan with 3 credits
-		await updateUserPlan(userId, "free", 3);
+		// Update to Free plan (credits handled by renewMonthlyCredits or default)
+		await updateUserPlan(userId, "free");
 		res.json({ success: true, message: "Plan gratuito asignado" });
 	} catch (error: any) {
 		console.error("Error selecting free plan:", error);
 		res.status(500).json({ error: "Error al asignar plan gratuito" });
 	}
 });
+
+// Public Announcements
+app.get("/api/announcements", async (req, res) => {
+	try {
+		const { data, error } = await supabase
+			.from("announcements")
+			.select("message, created_at")
+			.eq("active", true)
+			.order("created_at", { ascending: false })
+			.limit(1);
+
+		res.json(data || []);
+	} catch (error) {
+		res.status(500).json({ error: "Error al obtener anuncios" });
+	}
+});
+
+// Admin routes - Protected by isAdmin middleware
+import adminRoutes from "./routes/admin";
+app.use("/api/admin", adminRoutes);
 
 app.listen(port, () => {
 	console.log(`Lazo Server listening at http://localhost:${port}`);

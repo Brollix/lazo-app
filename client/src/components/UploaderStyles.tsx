@@ -1,25 +1,18 @@
-import { Box, styled, Theme } from "@mui/material";
-import {
-	getColors,
-	getGradients,
-	getShadows,
-	getBackgrounds,
-} from "../styles.theme";
+import { Box, styled, alpha } from "@mui/material";
+import { getGradients, getShadows } from "../styles.theme";
 
 // Helper to get theme mode from MUI theme
-const getMode = (theme: Theme) => theme.palette.mode || "light";
+const getMode = (theme: any) => theme.palette.mode || "light";
 
 export const GlassCard = styled(Box)(({ theme }) => {
-	const mode = getMode(theme);
-	const gradients = getGradients(mode);
-	const shadows = getShadows(mode);
-	const colors = getColors(mode);
+	const gradients = getGradients(getMode(theme));
+	const shadows = getShadows(getMode(theme));
 
 	return {
 		background: gradients.glass,
 		backdropFilter: "blur(10px)",
-		borderRadius: "20px",
-		border: `1px solid ${colors.glassBorder}`,
+		borderRadius: (theme.shape.borderRadius as number) * 1.25,
+		border: "1px solid rgba(255, 255, 255, 0.18)",
 		boxShadow: shadows.card,
 		padding: theme.spacing(4),
 		transition: "transform 0.3s ease-in-out",
@@ -32,36 +25,31 @@ export const GlassCard = styled(Box)(({ theme }) => {
 export const StyledDropzone = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isDragActive",
 })<{ isDragActive: boolean }>(({ theme, isDragActive }) => {
-	const mode = getMode(theme);
-	const colors = getColors(mode);
-	const backgrounds = getBackgrounds(mode);
-
 	return {
 		border: "2px dashed",
 		borderColor: isDragActive
-			? colors.terracotta
-			: mode === "light"
-			? backgrounds.hover.light
-			: backgrounds.hover.dark,
-		borderRadius: "20px",
+			? theme.palette.primary.main
+			: theme.palette.divider,
+		borderRadius: (theme.shape.borderRadius as number) * 1.25,
 		padding: theme.spacing(6),
 		textAlign: "center",
 		cursor: "pointer",
 		transition: "all 0.3s ease",
-		backgroundColor: isDragActive ? `${colors.terracotta}1A` : "transparent",
+		backgroundColor: isDragActive
+			? alpha(theme.palette.primary.main, 0.1)
+			: "transparent",
 		"&:hover": {
-			borderColor: colors.terracotta,
-			backgroundColor: `${colors.terracotta}0D`,
+			borderColor: theme.palette.primary.main,
+			backgroundColor: alpha(theme.palette.primary.main, 0.05),
 		},
 	};
 });
 
-export const getStatusColors = (mode: "light" | "dark") => {
-	const colors = getColors(mode);
+export const getStatusColors = (theme: any) => {
 	return {
-		uploading: colors.terracotta,
-		processing: colors.deepOrange,
-		completed: colors.softGreen,
-		error: colors.status.error,
+		uploading: theme.palette.primary.main,
+		processing: theme.palette.warning.main,
+		completed: theme.palette.success.main,
+		error: theme.palette.error.main,
 	};
 };

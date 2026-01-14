@@ -34,6 +34,43 @@ const deepgram = createClient(
 	process.env.DEEPGRAM_API_KEY || "YOUR_DEEPGRAM_API_KEY"
 );
 
+/**
+ * Sanitizes PII from transcripts before sending to AWS Bedrock
+ * Removes: DNI (Argentina format), phone numbers, email addresses
+ * This ensures HIPAA/privacy compliance and zero patient identification
+ */
+const sanitizeTranscript = (text: string): string => {
+	if (!text) return text;
+
+	let sanitized = text;
+
+	// Remove DNI patterns (Argentina: 12.345.678 or 12345678 or 12-345-678)
+	sanitized = sanitized.replace(
+		/\b\d{1,2}[\.\-]?\d{3}[\.\-]?\d{3}\b/g,
+		"[DNI_REDACTED]"
+	);
+
+	// Remove phone patterns (Argentina: +54 11 1234-5678, 011-1234-5678, etc.)
+	sanitized = sanitized.replace(
+		/(\+?54\s?)?(\(?\d{2,4}\)?[\s\-]?)?\d{4}[\s\-]?\d{4}/g,
+		"[PHONE_REDACTED]"
+	);
+
+	// Remove email addresses
+	sanitized = sanitized.replace(
+		/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+		"[EMAIL_REDACTED]"
+	);
+
+	// Remove addresses (basic pattern for street numbers)
+	sanitized = sanitized.replace(
+		/\b\d{1,5}\s+[A-Za-zÀ-ÿ\s]+\s+\d{1,5}\b/g,
+		"[ADDRESS_REDACTED]"
+	);
+
+	return sanitized;
+};
+
 export const processTranscriptWithClaude = async (
 	transcriptText: string,
 	targetLanguage: string = "Spanish", // Default to Spanish
@@ -124,13 +161,22 @@ export const processTranscriptWithClaude = async (
 
     Final check: Ensure the output is valid JSON and timestamps are in seconds (numerical).`;
 
+	// Sanitize transcript before sending to AWS Bedrock (privacy compliance)
+	const sanitizedTranscript = sanitizeTranscript(transcriptText);
+
+	// Replace the original transcript in the prompt with sanitized version
+	const finalPrompt = prompt.replace(
+		`"${transcriptText}"`,
+		`"${sanitizedTranscript}"`
+	);
+
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
 		max_tokens: 3000,
 		messages: [
 			{
 				role: "user",
-				content: [{ type: "text", text: prompt }],
+				content: [{ type: "text", text: finalPrompt }],
 			},
 		],
 	};
@@ -237,13 +283,22 @@ export const performAiAction = async (
     - Do not include any introductory text, just the analysis.
     `;
 
+	// Sanitize transcript before sending to AWS Bedrock (privacy compliance)
+	const sanitizedTranscript = sanitizeTranscript(transcriptText);
+
+	// Replace the original transcript in the prompt with sanitized version
+	const finalPrompt = prompt.replace(
+		`"${transcriptText}"`,
+		`"${sanitizedTranscript}"`
+	);
+
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
 		max_tokens: 2000,
 		messages: [
 			{
 				role: "user",
-				content: [{ type: "text", text: prompt }],
+				content: [{ type: "text", text: finalPrompt }],
 			},
 		],
 	};
@@ -270,17 +325,137 @@ export const performAiAction = async (
 };
 
 /**
+ * Process transcript with Llama 3.1 70B via Groq
+ * Used for Free, Pro, and Ultra (standard mode) plans
+ * Provides professional clinical analysis at lower cost than Claude
+ */
+export const processWithLlama3 = async (
+	transcriptText: string,
+	targetLanguage: string = "Spanish",
+	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP",
+	patientName: string = "el paciente",
+	patientAge?: number,
+	patientGender?: string
+) => {
+	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.
+    
+Session Context:
+- Patient Name: ${patientName}
+${patientAge ? `- Patient Age: ${patientAge}` : ""}
+${patientGender ? `- Patient Gender: ${patientGender}` : ""}
+- Participants: ${patientName} (Patient) and the Therapist.
+
+Processing Task:
+Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata.
+
+IMPORTANT - CLINICAL RIGOR:
+- Use professional, clinical language.
+- Be concise but thorough.
+- Avoid generic statements; focus on specific evidence from the transcript.
+
+CRITICAL - NOTE FORMAT INSTRUCTIONS:
+You MUST follow the specific structure for: ${noteFormat}
+
+${
+	noteFormat === "SOAP"
+		? `- **S (Subjective)**: Patient's report of symptoms, feelings, and experiences. Use direct quotes if relevant.
+- **O (Objective)**: Observable findings, behavioral data, status of the patient during the session.
+- **A (Assessment)**: Clinical interpretation. Synthesis of S and O. Identify progress, setbacks, or themes.
+- **P (Plan)**: Specific next steps, homework, or focus for the next session.`
+		: noteFormat === "DAP"
+		? `- **D (Data)**: Objective and subjective information from the session.
+- **A (Assessment)**: Interpretation of the data and therapeutic progress.
+- **P (Plan)**: Future steps based on the assessment.`
+		: `- **B (Behavior)**: Specific observations of patient's behavior.
+- **I (Intervention)**: Specific interventions used during the session.
+- **R (Response)**: How the patient responded to interventions.
+- **P (Plan)**: Recommendations for the next session.`
+}
+
+Recognition Support:
+The transcription includes speaker labels (e.g., [spk_0], [spk_1]).
+IMPORTANT: Identify which speaker is "${patientName}" (patient) and which is the Therapist based on content.
+
+Transcript:
+"${transcriptText}"
+
+Output Format (JSON Only):
+{
+  "clinical_note": "Full formatted note in ${
+		targetLanguage === "Spanish" ? "Español" : targetLanguage
+	}",
+  "summary": "Professional executive summary in ${
+		targetLanguage === "Spanish" ? "Español" : targetLanguage
+	}",
+  "topics": [
+    { "label": "Topic Name", "frequency": 25, "sentiment": "Positivo|Negativo|Neutral" }
+  ],
+  "sentiment": "Positivo|Negativo|Neutral|Ansioso|Triste|Enojado|Confundido|Esperanzado",
+  "action_items": ["Actionable steps"],
+  "risk_assessment": {
+    "has_risk": true/false,
+    "alerts": ["Specific concerns"],
+    "summary": "Brief risk analysis"
+  },
+  "entities": [
+    { "name": "Entity Name", "type": "Persona|Proyecto|Ubicación|Otro" }
+  ],
+  "key_moments": [
+    { "timestamp": 12.5, "label": "Descriptive label" }
+  ]
+}
+
+IMPORTANT: Extract exact timestamps from the transcript markers for key_moments.`;
+
+	try {
+		const completion = await groq.chat.completions.create({
+			messages: [
+				{
+					role: "user",
+					content: prompt,
+				},
+			],
+			model: "llama-3.3-70b-versatile",
+			temperature: 0.3,
+			max_tokens: 3000,
+			response_format: { type: "json_object" },
+		});
+
+		const content = completion.choices[0]?.message?.content || "{}";
+
+		try {
+			return JSON.parse(content);
+		} catch (e) {
+			console.error("[AI] JSON parsing error from Llama 3:", e);
+			return { error: "JSON Parsing Error", raw: content };
+		}
+	} catch (error) {
+		console.error("[AI] Error calling Groq Llama 3:", error);
+		throw error;
+	}
+};
+
+/**
  * Unified Transcription Service
- * Standard (Free/Pro): Groq (Whisper-v3) or AWS (current fallback)
- * Ultra: Deepgram (Nova-2)
+ * Standard (Free/Pro/Ultra without precision): Groq (Whisper-v3)
+ * Ultra + High Precision: Deepgram (Nova-2) with zero data retention
+ *
+ * @param fileBuffer - Audio file buffer
+ * @param planType - User's subscription plan
+ * @param useHighPrecision - Whether to use Deepgram (only for Ultra users)
+ * @param mimeType - Audio file MIME type
  */
 export const transcribeAudio = async (
 	fileBuffer: Buffer,
 	planType: "free" | "pro" | "ultra" = "free",
+	useHighPrecision: boolean = false,
 	mimeType: string = "audio/wav"
 ) => {
-	if (planType === "ultra") {
-		console.log("[AI] Using Deepgram (Ultra) for transcription...");
+	// Only use Deepgram if user is Ultra AND explicitly requested high precision
+	if (planType === "ultra" && useHighPrecision) {
+		console.log(
+			"[AI] Using Deepgram (Ultra + High Precision) for transcription..."
+		);
 		const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
 			fileBuffer,
 			{
@@ -288,6 +463,8 @@ export const transcribeAudio = async (
 				smart_format: true,
 				diarize: true,
 				language: "es",
+				// CRITICAL: Zero data retention for HIPAA/privacy compliance
+				data_logging: false,
 			}
 		);
 

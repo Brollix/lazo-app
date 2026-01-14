@@ -28,7 +28,7 @@ export const ContextPanel: React.FC<{
 				flex: { xs: "0 0 auto", lg: 3 }, // Hidden on mobile by default, visible on desktop
 				display: { xs: "none", lg: "flex" }, // Hide on mobile, show on desktop
 				flexDirection: "column",
-				borderRadius: 3,
+				borderRadius: 4,
 				overflow: "hidden",
 				border: "1px solid",
 				borderColor: "divider",
@@ -105,19 +105,26 @@ export const ContextPanel: React.FC<{
 								<Typography variant="caption" sx={{ fontWeight: 600 }}>
 									Silencios Detectados: {biometry.silences.length}
 								</Typography>
-								<ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+								<Box
+									component="ul"
+									sx={{
+										m: "4px 0",
+										pl: 2,
+										"& li": { color: "text.secondary" },
+									}}
+								>
 									{biometry.silences.slice(0, 3).map((s, i) => (
-										<li key={i}>
-											<Typography variant="caption" color="text.secondary">
+										<Box component="li" key={i}>
+											<Typography variant="caption">
 												Min {Math.floor(s.start / 60)}:
 												{Math.floor(s.start % 60)
 													.toString()
 													.padStart(2, "0")}{" "}
 												({Math.round(s.duration)}s)
 											</Typography>
-										</li>
+										</Box>
 									))}
-								</ul>
+								</Box>
 							</Box>
 						</Stack>
 					</Box>

@@ -2,20 +2,18 @@ import { Box, Typography, ButtonBase } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import React, { useContext } from "react";
 import { ThemeContext } from "../App";
-import { components as themeComponents, getBackgrounds } from "../styles.theme";
+import { components as themeComponents } from "../styles.theme";
 
 interface WindowControlProps {
 	onClick: () => void;
 	children: React.ReactNode;
 	hoverColor: string | ((theme: any) => string);
-	hoverIconColor?: string;
 }
 
 const WindowControl = ({
 	onClick,
 	children,
 	hoverColor,
-	hoverIconColor,
 }: WindowControlProps) => {
 	const theme = useTheme();
 	return (
@@ -37,10 +35,10 @@ const WindowControl = ({
 					backgroundColor:
 						typeof hoverColor === "function" ? hoverColor(theme) : hoverColor,
 					"& svg path": {
-						fill: hoverIconColor || theme.palette.text.primary,
+						fill: theme.palette.text.primary,
 					},
 					"& svg": {
-						stroke: hoverIconColor || theme.palette.text.primary,
+						stroke: theme.palette.text.primary,
 					},
 				},
 			}}
@@ -53,7 +51,6 @@ const WindowControl = ({
 
 const TitleBar = () => {
 	const theme = useTheme();
-	const backgrounds = getBackgrounds(theme.palette.mode);
 	const { mode, toggleTheme } = useContext(ThemeContext);
 
 	return (
@@ -83,12 +80,7 @@ const TitleBar = () => {
 			<Box
 				sx={{ display: "flex", height: "100%", alignItems: "center", gap: 0.5 }}
 			>
-				<WindowControl
-					onClick={toggleTheme}
-					hoverColor={
-						backgrounds.hover[theme.palette.mode === "light" ? "light" : "dark"]
-					}
-				>
+				<WindowControl onClick={toggleTheme} hoverColor="action.hover">
 					{mode === "light" ? (
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
 							<path
