@@ -51,6 +51,7 @@ interface UserProfile {
 	full_name: string | null;
 	plan_type: string;
 	credits_remaining: number;
+	subscription_status?: string;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
