@@ -8,18 +8,36 @@ DEPLOY_DIR="/var/www/lazo/client"
 
 echo "🚀 Starting Client Deployment..."
 
-# 1. Update source code
+# 1. Cleanup Docker images from previous builds (node:20-alpine)
+echo "🗑️  Removing old Docker images and containers..."
+# Remove stopped containers
+docker container prune -f
+# Remove dangling images (untagged)
+docker image prune -f
+# Remove unused images (not just dangling)
+docker image prune -a -f --filter "until=24h"
+# Clean up build cache
+docker builder prune -f
+
+# 2. Update source code
 echo "📥 Fetching latest changes from GitHub..."
 cd $PROJECT_ROOT
+# Remove stale git lock files if they exist
+rm -f .git/index.lock .git/refs/heads/master.lock .git/refs/remotes/origin/master.lock
 # Clean up any corrupted refs and stash local changes
-git update-ref -d refs/remotes/origin/master
+git update-ref -d refs/remotes/origin/master 2>/dev/null || true
 git remote prune origin
 git stash --include-untracked || true
 git fetch origin master
 git reset --hard origin/master
 git clean -fd
 
-# 2. Build the application (using Docker to avoid host dependencies)
+# 3. Clean old build artifacts before building
+echo "🧹 Cleaning old build artifacts..."
+cd $CLIENT_DIR
+rm -rf dist/ node_modules/ .vite/
+
+# 4. Build the application (using Docker to avoid host dependencies)
 echo "📦 Building application using Docker..."
 docker run --rm \
     -v "$CLIENT_DIR":/app \
@@ -28,28 +46,33 @@ docker run --rm \
     node:20-alpine \
     sh -c "npm install && npm run build"
 
-# 3. Deploy to Nginx directory
+# 5. Deploy to Nginx directory
 echo "🚚 Moving build artifacts to $DEPLOY_DIR..."
 cd $CLIENT_DIR
 sudo mkdir -p $DEPLOY_DIR
 sudo rm -rf $DEPLOY_DIR/*
 sudo cp -r dist/* $DEPLOY_DIR/
 
-# 4. Nginx Configuration (if updated)
+# 6. Nginx Configuration (if updated)
 if [ -f "nginx.conf" ]; then
     echo "⚙️  Updating Nginx configuration..."
     sudo cp nginx.conf /etc/nginx/sites-available/client
     sudo ln -sf /etc/nginx/sites-available/client /etc/nginx/sites-enabled/
 fi
 
-# 5. Restart Nginx
+# 7. Restart Nginx
 echo "🔄 Restarting Nginx..."
 sudo nginx -t
 sudo systemctl restart nginx
 
-# 6. Cleanup
-echo "🧹 Cleaning up build artifacts..."
-# We keep dist/ for reference, but could remove node_modules if space is tight
-# npm prune --production
+# 8. Final cleanup - Remove ALL build artifacts to free space
+echo "🧹 Removing ALL build artifacts to free disk space..."
+cd $CLIENT_DIR
+rm -rf dist/ node_modules/ .vite/ package-lock.json
+
+# 9. Final Docker cleanup
+echo "🗑️  Final Docker cleanup..."
+docker system prune -f
 
 echo "✅ Client deployed successfully to https://soylazo.com"
+echo "💾 Disk space freed!"
