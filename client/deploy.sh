@@ -35,6 +35,9 @@ git clean -fd
 # 3. Clean old build artifacts before building
 echo "🧹 Cleaning old build artifacts..."
 cd $CLIENT_DIR
+# Fix permissions before removing (files may be owned by Docker root user)
+sudo chown -R $USER:$USER . 2>/dev/null || true
+sudo chmod -R u+rw . 2>/dev/null || true
 rm -rf dist/ node_modules/ .vite/
 
 # 4. Build the application (using Docker to avoid host dependencies)
@@ -68,6 +71,9 @@ sudo systemctl restart nginx
 # 8. Final cleanup - Remove ALL build artifacts to free space
 echo "🧹 Removing ALL build artifacts to free disk space..."
 cd $CLIENT_DIR
+# Fix permissions before removing (files created by Docker may be owned by root)
+sudo chown -R $USER:$USER . 2>/dev/null || true
+sudo chmod -R u+rw . 2>/dev/null || true
 rm -rf dist/ node_modules/ .vite/ package-lock.json
 
 # 9. Final Docker cleanup
