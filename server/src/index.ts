@@ -1,8 +1,24 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 
-dotenv.config();
+// Load environment variables
+// Priority: .env.local (development/test) > .env (production)
+const envLocalPath = path.resolve(__dirname, "../.env.local");
+const envPath = path.resolve(__dirname, "../.env");
+
+if (fs.existsSync(envLocalPath)) {
+	console.log("[Config] 🧪 Cargando .env.local (modo desarrollo/test)");
+	dotenv.config({ path: envLocalPath });
+} else if (fs.existsSync(envPath)) {
+	console.log("[Config] 🚀 Cargando .env (modo producción)");
+	dotenv.config({ path: envPath });
+} else {
+	console.warn("[Config] ⚠️  No se encontró .env ni .env.local");
+	dotenv.config(); // Fallback to default behavior
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -610,6 +626,20 @@ app.post("/api/create-subscription", async (req, res) => {
 			`[API] Creating subscription for user ${userId}, plan ${planId}`
 		);
 
+		// Check if user already has an active subscription
+		const profile = await getUserProfile(userId);
+		if (
+			profile.subscription_id &&
+			profile.subscription_status &&
+			profile.subscription_status !== "cancelled" &&
+			profile.plan_type !== "free"
+		) {
+			return res.status(400).json({
+				error: "El usuario ya tiene una suscripción activa",
+				existingSubscription: profile.subscription_id,
+			});
+		}
+
 		const subscription = await createRecurringSubscription(
 			planId,
 			userId,
@@ -634,9 +664,39 @@ app.post("/api/create-subscription", async (req, res) => {
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 import crypto from "crypto";
 
+// Determine MercadoPago mode (test or production) - same logic as subscriptionService
+const mpMode = (process.env.MP_MODE || "production").toLowerCase();
+const isTestMode = mpMode === "test";
+
+// Get the appropriate access token based on mode
+const getMercadoPagoAccessToken = () => {
+	if (isTestMode) {
+		const testToken = process.env.MP_ACCESS_TOKEN_TEST;
+		if (!testToken) {
+			console.warn(
+				"[Webhook] ⚠️  MODO TEST activado pero MP_ACCESS_TOKEN_TEST no está configurado"
+			);
+		}
+		return testToken || "";
+	} else {
+		const prodToken = process.env.MP_ACCESS_TOKEN;
+		if (!prodToken) {
+			console.warn(
+				"[Webhook] ⚠️  MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado"
+			);
+		}
+		return prodToken || "";
+	}
+};
+
 const mpClient = new MercadoPagoConfig({
-	accessToken: process.env.MP_ACCESS_TOKEN || "",
+	accessToken: getMercadoPagoAccessToken(),
 });
+
+// Log current mode on startup
+console.log(
+	`[Webhook] 🔧 MercadoPago modo: ${isTestMode ? "TEST 🧪" : "PRODUCCIÓN 🚀"}`
+);
 
 app.post("/api/mercadopago-webhook", async (req, res) => {
 	const { data, type, action } = req.body;
@@ -694,16 +754,12 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 			const paymentData = payment as any;
 			console.log(`[Webhook] Preapproval ID: ${paymentData.preapproval_id}`);
 
-			if (payment.status === "approved" && paymentData.preapproval_id) {
+			// Handle all payment statuses for recurring subscriptions
+			if (paymentData.preapproval_id) {
 				// This is a recurring subscription payment
 				const userId = payment.external_reference;
 				const mpSubscriptionId = paymentData.preapproval_id;
 				const payerEmail = payment.payer?.email;
-
-				console.log(`[Webhook] Recurring payment APPROVED!`);
-				console.log(
-					`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Payer Email: ${payerEmail}`
-				);
 
 				if (userId && mpSubscriptionId) {
 					try {
@@ -718,20 +774,44 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 								.eq("id", userId);
 						}
 
-						// Record payment and renew credits
-						const result = await recordPaymentAndRenewCredits(
-							userId,
-							payment.id?.toString() ?? "",
-							mpSubscriptionId,
-							payment.transaction_amount || 0,
-							payment.status ?? "unknown",
-							payment.status_detail,
-							50 // Credits to add
-						);
+						if (payment.status === "approved") {
+							console.log(`[Webhook] Recurring payment APPROVED!`);
+							console.log(
+								`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Payer Email: ${payerEmail}`
+							);
 
-						console.log(
-							`[Webhook] SUCCESS: Payment recorded, ${result.credits_added} credits added`
-						);
+							// Record payment and renew credits (function will determine renewal based on plan)
+							const result = await recordPaymentAndRenewCredits(
+								userId,
+								payment.id?.toString() ?? "",
+								mpSubscriptionId,
+								payment.transaction_amount || 0,
+								payment.status ?? "unknown",
+								payment.status_detail,
+								0 // No longer used, function determines renewal
+							);
+
+							console.log(
+								`[Webhook] SUCCESS: Payment recorded, credits renewed according to plan`
+							);
+						} else {
+							// Payment failed/rejected - only record, don't renew credits
+							console.log(
+								`[Webhook] Payment ${payment.status} for subscription ${mpSubscriptionId}`
+							);
+							await recordPaymentAndRenewCredits(
+								userId,
+								payment.id?.toString() ?? "",
+								mpSubscriptionId,
+								payment.transaction_amount || 0,
+								payment.status ?? "unknown",
+								payment.status_detail,
+								0
+							);
+							console.log(
+								`[Webhook] Payment ${payment.status} recorded (no credits renewed)`
+							);
+						}
 					} catch (dbError) {
 						console.error(`[Webhook] DB Error recording payment:`, dbError);
 					}

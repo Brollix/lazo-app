@@ -2,13 +2,65 @@ import axios from "axios";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 import cron from "node-cron";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 
-dotenv.config();
+// Load environment variables
+// Priority: .env.local (development/test) > .env (production)
+const envLocalPath = path.resolve(__dirname, "../../.env.local");
+const envPath = path.resolve(__dirname, "../../.env");
+
+if (fs.existsSync(envLocalPath)) {
+	console.log("[Config] 🧪 Cargando .env.local (modo desarrollo/test)");
+	dotenv.config({ path: envLocalPath });
+} else if (fs.existsSync(envPath)) {
+	console.log("[Config] 🚀 Cargando .env (modo producción)");
+	dotenv.config({ path: envPath });
+} else {
+	console.warn("[Config] ⚠️  No se encontró .env ni .env.local");
+	dotenv.config(); // Fallback to default behavior
+}
+
+// Determine MercadoPago mode (test or production)
+const mpMode = (process.env.MP_MODE || "production").toLowerCase();
+const isTestMode = mpMode === "test";
+
+// Get the appropriate access token based on mode
+const getAccessToken = () => {
+	if (isTestMode) {
+		const testToken = process.env.MP_ACCESS_TOKEN_TEST;
+		if (!testToken) {
+			console.warn(
+				"[MercadoPago] ⚠️  MODO TEST activado pero MP_ACCESS_TOKEN_TEST no está configurado"
+			);
+		}
+		return testToken || "";
+	} else {
+		const prodToken = process.env.MP_ACCESS_TOKEN;
+		if (!prodToken) {
+			console.warn(
+				"[MercadoPago] ⚠️  MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado"
+			);
+		}
+		return prodToken || "";
+	}
+};
 
 // MercadoPago Configuration
+const accessToken = getAccessToken();
 export const client = new MercadoPagoConfig({
-	accessToken: process.env.MP_ACCESS_TOKEN || "",
+	accessToken: accessToken,
 });
+
+// Log current mode on startup
+console.log(
+	`[MercadoPago] 🔧 Modo configurado: ${isTestMode ? "TEST 🧪" : "PRODUCCIÓN 🚀"}`
+);
+if (!accessToken) {
+	console.error(
+		`[MercadoPago] ❌ ERROR: Access Token no configurado para modo ${mpMode}`
+	);
+}
 
 const DOLAR_API_URL = "https://dolarapi.com/v1/dolares/tarjeta";
 
