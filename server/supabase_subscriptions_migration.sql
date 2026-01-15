@@ -106,6 +106,18 @@ BEGIN
       plan_type = p_plan_type,
       next_billing_date = p_next_billing_date,
       subscription_started_at = CASE WHEN subscription_started_at IS NULL THEN timezone('utc'::text, now()) ELSE subscription_started_at END,
+      -- INICIALIZAR CRÉDITOS SEGÚN PLAN
+      credits_remaining = CASE 
+        WHEN p_plan_type = 'pro' THEN 100
+        WHEN p_plan_type = 'ultra' THEN 100
+        ELSE credits_remaining
+      END,
+      premium_credits_remaining = CASE 
+        WHEN p_plan_type = 'ultra' THEN 20
+        WHEN p_plan_type = 'pro' THEN 0
+        ELSE premium_credits_remaining
+      END,
+      last_credit_renewal = timezone('utc'::text, now()),
       updated_at = timezone('utc'::text, now())
     WHERE id = p_user_id;
   ELSE
@@ -138,52 +150,56 @@ CREATE OR REPLACE FUNCTION record_payment_and_renew_credits(
   p_amount DECIMAL,
   p_status TEXT,
   p_status_detail TEXT DEFAULT NULL,
-  p_credits_to_add INTEGER DEFAULT 50
+  p_credits_to_add INTEGER DEFAULT 0
 )
 RETURNS json AS $$
 DECLARE
   v_subscription_id UUID;
-  v_current_credits INTEGER;
-  v_new_credits INTEGER;
+  v_plan_type TEXT;
   result json;
 BEGIN
-  -- Get subscription ID
-  SELECT id INTO v_subscription_id
+  -- Get subscription ID and plan_type
+  SELECT id, plan_type INTO v_subscription_id, v_plan_type
   FROM public.subscriptions
   WHERE mp_subscription_id = p_mp_subscription_id;
 
-  -- Record payment in history
+  -- Record payment in history (always)
   INSERT INTO public.payment_history (
     user_id, subscription_id, mp_payment_id, mp_subscription_id,
     amount, status, status_detail, credits_added, payment_date
   )
   VALUES (
     p_user_id, v_subscription_id, p_mp_payment_id, p_mp_subscription_id,
-    p_amount, p_status, p_status_detail, p_credits_to_add, timezone('utc'::text, now())
+    p_amount, p_status, p_status_detail, 0, timezone('utc'::text, now())
   )
   ON CONFLICT (mp_payment_id) DO NOTHING;
 
-  -- If payment approved, add credits
+  -- If payment approved, RENEW credits according to plan
   IF p_status = 'approved' THEN
-    SELECT credits_remaining INTO v_current_credits
-    FROM public.profiles
-    WHERE id = p_user_id;
-
-    v_new_credits := COALESCE(v_current_credits, 0) + p_credits_to_add;
-
-    UPDATE public.profiles
-    SET 
-      credits_remaining = v_new_credits,
-      updated_at = timezone('utc'::text, now())
-    WHERE id = p_user_id;
-  ELSE
-    v_new_credits := v_current_credits;
+    IF v_plan_type = 'pro' THEN
+      -- Pro: RENEW regular credits to 100
+      UPDATE public.profiles
+      SET 
+        credits_remaining = 100,
+        last_credit_renewal = timezone('utc'::text, now()),
+        updated_at = timezone('utc'::text, now())
+      WHERE id = p_user_id;
+    ELSIF v_plan_type = 'ultra' THEN
+      -- Ultra: RENEW regular credits to 100 AND premium credits to 20
+      UPDATE public.profiles
+      SET 
+        credits_remaining = 100,
+        premium_credits_remaining = 20,
+        last_credit_renewal = timezone('utc'::text, now()),
+        updated_at = timezone('utc'::text, now())
+      WHERE id = p_user_id;
+    END IF;
   END IF;
 
   result := json_build_object(
     'payment_recorded', true,
-    'credits_added', p_credits_to_add,
-    'new_total_credits', v_new_credits,
+    'credits_renewed', CASE WHEN p_status = 'approved' THEN true ELSE false END,
+    'plan_type', v_plan_type,
     'payment_status', p_status
   );
 

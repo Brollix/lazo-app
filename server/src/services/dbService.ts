@@ -236,10 +236,10 @@ export const recordPaymentAndRenewCredits = async (
 	amount: number,
 	status: string,
 	statusDetail?: string,
-	creditsToAdd: number = 50
+	creditsToAdd: number = 0
 ) => {
 	console.log(
-		`[DB] Recording payment ${mpPaymentId} for user ${userId}, adding ${creditsToAdd} credits`
+		`[DB] Recording payment ${mpPaymentId} for user ${userId}, status: ${status}. Function will renew credits according to plan if approved.`
 	);
 
 	const { data, error } = await supabase.rpc(
