@@ -178,11 +178,12 @@ export const Settings: React.FC<SettingsProps> = ({
 			const result = await response.json();
 			console.log("Subscription cancelled:", result);
 
-			// Update local state
+			// Update local state - keep remaining credits, only change plan_type
 			setUserProfile({
 				...userProfile,
 				plan_type: "free",
-				credits_remaining: 3,
+				subscription_status: "cancelled",
+				// Keep existing credits_remaining and premium_credits_remaining
 			});
 
 			setSuccessMessage(
