@@ -42,10 +42,13 @@ rm -rf dist/ node_modules/ .vite/
 
 # 4. Build the application (using Docker to avoid host dependencies)
 echo "📦 Building application using Docker..."
+# Run Docker as current user to avoid permission issues
 docker run --rm \
+    --user $(id -u):$(id -g) \
     -v "$CLIENT_DIR":/app \
     -w /app \
     -e NODE_OPTIONS="--max-old-space-size=1024" \
+    -e HOME=/tmp \
     node:20-alpine \
     sh -c "npm install && npm run build"
 
@@ -71,10 +74,8 @@ sudo systemctl restart nginx
 # 8. Final cleanup - Remove ALL build artifacts to free space
 echo "🧹 Removing ALL build artifacts to free disk space..."
 cd $CLIENT_DIR
-# Fix permissions before removing (files created by Docker may be owned by root)
-sudo chown -R $USER:$USER . 2>/dev/null || true
-sudo chmod -R u+rw . 2>/dev/null || true
-rm -rf dist/ node_modules/ .vite/ package-lock.json
+# Use sudo to remove files if they have permission issues (as a fallback)
+sudo rm -rf dist/ node_modules/ .vite/ package-lock.json 2>/dev/null || rm -rf dist/ node_modules/ .vite/ package-lock.json
 
 # 9. Final Docker cleanup
 echo "🗑️  Final Docker cleanup..."
