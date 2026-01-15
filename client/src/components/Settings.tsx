@@ -176,16 +176,18 @@ export const Settings: React.FC<SettingsProps> = ({
 				throw new Error(errorData.error || "Error al cancelar suscripción");
 			}
 
-			const result = await response.json();
-			console.log("Subscription cancelled:", result);
+		const result = await response.json();
+		console.log("Subscription cancelled:", result);
 
-			// Update local state - keep remaining credits, only change plan_type
-			setUserProfile({
-				...userProfile,
+		// Update local state - keep remaining credits, only change plan_type
+		setUserProfile((prev) => {
+			if (!prev) return null;
+			return {
+				...prev,
 				plan_type: "free",
 				subscription_status: "cancelled",
-				// Keep existing credits_remaining and premium_credits_remaining
-			});
+			};
+		});
 
 			setSuccessMessage(
 				"Suscripción cancelada exitosamente. Has vuelto al plan gratuito."
