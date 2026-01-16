@@ -144,9 +144,8 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 			.in("plan_type", ["pro", "ultra"]);
 
 		if (premiumError) throw premiumError;
-		const conversionRate = totalUsers
-			? ((premiumUsersCount || 0) / (totalUsers || 1)) * 100
-			: 0;
+		const conversionRate =
+			totalUsers ? ((premiumUsersCount || 0) / (totalUsers || 1)) * 100 : 0;
 
 		// 4. MRR
 		const { data: subsData, error: subsError } = await supabase
@@ -757,7 +756,9 @@ router.patch(
 			if (error) throw error;
 
 			// Clear cache for this user
-			adminCache.delete(userId);
+			if (typeof userId === "string") {
+				adminCache.delete(userId);
+			}
 
 			res.json({ success: true, admin: data });
 		} catch (error: any) {
@@ -796,7 +797,9 @@ router.delete(
 			if (error) throw error;
 
 			// Clear cache for this user
-			adminCache.delete(userId);
+			if (typeof userId === "string") {
+				adminCache.delete(userId);
+			}
 
 			res.json({ success: true });
 		} catch (error: any) {
