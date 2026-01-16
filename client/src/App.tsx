@@ -58,7 +58,7 @@ function App() {
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((event, session) => {
+		} = supabase.auth.onAuthStateChange(async (event, session) => {
 			console.log(
 				"App: onAuthStateChange event:",
 				event,
@@ -71,6 +71,19 @@ function App() {
 			if (session) {
 				console.log("App: Session found, user ID:", session.user.id);
 				setUserId(session.user.id);
+
+				// Check if password is available for encryption
+				// If session was restored but password is not in sessionStorage, redirect to login
+				const { EncryptionService } = await import("./services/encryptionService");
+				if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
+					console.log("App: Session restored but password not available, redirecting to login");
+					// Clear session to force re-login
+					await supabase.auth.signOut();
+					setUserId(undefined);
+					setCurrentView("login");
+					setSelectedPatient(null);
+					return;
+				}
 
 				// Check if user is admin
 				if (session.user.id === ADMIN_UUID) {
@@ -99,6 +112,10 @@ function App() {
 	};
 
 	const handleLogout = async () => {
+		// Clear encryption password on logout
+		const { EncryptionService } = await import("./services/encryptionService");
+		EncryptionService.clearPassword();
+		
 		await supabase.auth.signOut();
 		setCurrentView("login");
 		setSelectedPatient(null);

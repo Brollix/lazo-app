@@ -67,6 +67,7 @@ import {
 	typographyExtended,
 	getColors,
 } from "../styles.theme";
+import { AlertModal } from "./AlertModal";
 
 interface AdminDashboardProps {
 	onLogout: () => void;
@@ -147,6 +148,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 	const [userSessions, setUserSessions] = useState<ActivityItem[]>([]);
 	const [loadingSessions, setLoadingSessions] = useState(false);
 	const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+	const [alertModal, setAlertModal] = useState<{
+		open: boolean;
+		title?: string;
+		message: string;
+		severity?: "success" | "error" | "warning" | "info";
+	}>({
+		open: false,
+		message: "",
+		severity: "error",
+	});
 
 	const [editModalOpen, setEditModalOpen] = useState(false);
 	const [planModalOpen, setPlanModalOpen] = useState(false);
@@ -330,7 +341,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			await fetchData();
 			setEditModalOpen(false);
 		} catch (err: any) {
-			alert(err.message);
+			setAlertModal({
+				open: true,
+				message: err.message,
+				severity: "error",
+			});
 		} finally {
 			setUpdating(false);
 		}
@@ -353,7 +368,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			await fetchData();
 			setPlanModalOpen(false);
 		} catch (err: any) {
-			alert(err.message);
+			setAlertModal({
+				open: true,
+				message: err.message,
+				severity: "error",
+			});
 		} finally {
 			setUpdating(false);
 		}
@@ -373,7 +392,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			setAnnouncementMsg("");
 			fetchAnnouncements();
 		} catch (err: any) {
-			alert(err.message);
+			setAlertModal({
+				open: true,
+				message: err.message,
+				severity: "error",
+			});
 		} finally {
 			setUpdating(false);
 		}
@@ -424,7 +447,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			setEditPlanModalOpen(false);
 			setSelectedPlan(null);
 		} catch (err: any) {
-			alert(err.message);
+			setAlertModal({
+				open: true,
+				message: err.message,
+				severity: "error",
+			});
 		} finally {
 			setUpdating(false);
 		}
@@ -1752,6 +1779,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			<AlertModal
+				open={alertModal.open}
+				onClose={() => setAlertModal({ ...alertModal, open: false })}
+				title={alertModal.title}
+				message={alertModal.message}
+				severity={alertModal.severity}
+			/>
 		</Box>
 	);
 };

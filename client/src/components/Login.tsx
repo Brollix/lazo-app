@@ -121,8 +121,18 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				console.log("Login successful, redirecting...");
 				setSuccess("¡Bienvenido! Iniciando sesión...");
 
-				// Store encryption key
-				EncryptionService.setKey(password);
+				// Store password for encryption (stored in sessionStorage)
+				EncryptionService.setPassword(password);
+				
+				// Verify password was stored correctly
+				if (!EncryptionService.isSetup()) {
+					console.error("Failed to store encryption password");
+					setError("Error al configurar la encriptación. Por favor, intenta de nuevo.");
+					setLoading(false);
+					return;
+				}
+
+				console.log("Encryption password stored successfully");
 
 				// Wait a bit to show success message before redirecting
 				setTimeout(() => {
@@ -278,7 +288,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 					{isSignUp && (
 						<TextField
 							fullWidth
-							label="Nombre Completo"
+							label="Nombre"
 							variant="outlined"
 							margin="normal"
 							value={fullName}

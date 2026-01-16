@@ -37,6 +37,7 @@ import {
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
+import { AlertModal } from "./AlertModal";
 import {
 	getBackgrounds,
 	getExtendedShadows,
@@ -121,6 +122,16 @@ export const Dashboard: React.FC<{
 		message: string;
 		created_at: string;
 	} | null>(null);
+	const [alertModal, setAlertModal] = useState<{
+		open: boolean;
+		title?: string;
+		message: string;
+		severity?: "success" | "error" | "warning" | "info";
+	}>({
+		open: false,
+		message: "",
+		severity: "info",
+	});
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const sessionDataRef = useRef<ProcessSessionResponse | null>(null);
@@ -504,7 +515,11 @@ export const Dashboard: React.FC<{
 
 	const handleExportTxt = () => {
 		if (!soapContent) {
-			alert("No hay contenido para exportar.");
+			setAlertModal({
+				open: true,
+				message: "No hay contenido para exportar.",
+				severity: "warning",
+			});
 			return;
 		}
 
@@ -524,9 +539,24 @@ export const Dashboard: React.FC<{
 		try {
 			setIsActionLoading(true);
 
-			const key = EncryptionService.getKey();
-			if (!key) {
-				alert("Error de seguridad: No se encontró la clave de encriptación.");
+			if (!userId) {
+				setAlertModal({
+					open: true,
+					message: "Error de seguridad: Usuario no autenticado.",
+					severity: "error",
+				});
+				setIsActionLoading(false);
+				return;
+			}
+
+			// Verify encryption is set up
+			if (!EncryptionService.isSetup()) {
+				setAlertModal({
+					open: true,
+					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					severity: "error",
+				});
+				setIsActionLoading(false);
 				return;
 			}
 
@@ -551,7 +581,7 @@ export const Dashboard: React.FC<{
 					: null,
 			};
 
-			const encryptedData = EncryptionService.encryptData(sessionRecord, key);
+			const encryptedData = EncryptionService.encryptData(sessionRecord, userId);
 
 			if (initialSession?.id) {
 				// --- UPDATE EXISTING SESSION ---
@@ -566,7 +596,11 @@ export const Dashboard: React.FC<{
 					.eq("id", initialSession.id);
 
 				if (updateError) throw updateError;
-				alert("✓ Sesión actualizada exitosamente");
+				setAlertModal({
+					open: true,
+					message: "✓ Sesión actualizada exitosamente",
+					severity: "success",
+				});
 			} else {
 				// --- CREATE NEW SESSION ---
 				// 1. Get next session number via RPC
@@ -590,7 +624,11 @@ export const Dashboard: React.FC<{
 				});
 
 				if (insertError) throw insertError;
-				alert(`✓ Sesión #${nextNum} guardada exitosamente`);
+				setAlertModal({
+					open: true,
+					message: `✓ Sesión #${nextNum} guardada exitosamente`,
+					severity: "success",
+				});
 
 				// Clear draft only on new save
 				const draftKey = getStorageKey();
@@ -609,7 +647,7 @@ export const Dashboard: React.FC<{
 			};
 			const encryptedPatientData = EncryptionService.encryptData(
 				updatedPatientData,
-				key
+				userId
 			);
 
 			await supabase
@@ -628,7 +666,11 @@ export const Dashboard: React.FC<{
 			if (onBack) onBack(); // Go back to sessions list after save
 		} catch (err: any) {
 			console.error("Error saving session:", err);
-			alert(`Error al guardar sesión: ${err.message}`);
+			setAlertModal({
+				open: true,
+				message: `Error al guardar sesión: ${err.message}`,
+				severity: "error",
+			});
 		} finally {
 			setIsActionLoading(false);
 		}
@@ -636,18 +678,41 @@ export const Dashboard: React.FC<{
 
 	const handleLoadSession = (session: ClinicalSession) => {
 		try {
-			const key = EncryptionService.getKey();
-			if (!key) {
-				alert("Error de seguridad: No se encontró la clave de encriptación.");
+			if (!userId) {
+				setAlertModal({
+					open: true,
+					message: "Error de seguridad: Usuario no autenticado.",
+					severity: "error",
+				});
+				return;
+			}
+
+			// Verify encryption is set up
+			if (!EncryptionService.isSetup()) {
+				setAlertModal({
+					open: true,
+					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					severity: "error",
+				});
 				return;
 			}
 
 			let data;
 			try {
-				data = EncryptionService.decryptData(session.encrypted_data, key);
+				data = EncryptionService.decryptData(session.encrypted_data, userId);
 			} catch (decryptErr) {
 				console.warn("Decrypt failed, trying JSON parse for old sessions");
-				data = JSON.parse(session.encrypted_data);
+				try {
+					data = JSON.parse(session.encrypted_data);
+				} catch (jsonErr) {
+					setAlertModal({
+						open: true,
+						message: "Error al cargar la sesión: No se pudo desencriptar ni parsear los datos.",
+						severity: "error",
+					});
+					console.error("Failed to decrypt or parse session:", decryptErr, jsonErr);
+					return;
+				}
 			}
 
 			// Patch session object with time from encrypted data if available
@@ -676,7 +741,11 @@ export const Dashboard: React.FC<{
 			setShowSessionsSidebar(false);
 		} catch (err) {
 			console.error("Error parsing session data:", err);
-			alert("Error al cargar la sesión");
+			setAlertModal({
+				open: true,
+				message: "Error al cargar la sesión",
+				severity: "error",
+			});
 		}
 	};
 
@@ -1398,6 +1467,15 @@ export const Dashboard: React.FC<{
 					/>
 				</DialogContent>
 			</Dialog>
+
+			{/* Alert Modal */}
+			<AlertModal
+				open={alertModal.open}
+				onClose={() => setAlertModal({ ...alertModal, open: false })}
+				title={alertModal.title}
+				message={alertModal.message}
+				severity={alertModal.severity}
+			/>
 		</Box>
 	);
 };

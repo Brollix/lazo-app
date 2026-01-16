@@ -41,6 +41,7 @@ import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
 import { getBackgrounds, getExtendedShadows } from "../styles.theme";
 import { Settings } from "./Settings";
+import { AlertModal } from "./AlertModal";
 const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 import { ClinicalSession } from "./Dashboard";
@@ -83,6 +84,16 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	const [selectedActionSession, setSelectedActionSession] =
 		useState<ClinicalSession | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [alertModal, setAlertModal] = useState<{
+		open: boolean;
+		title?: string;
+		message: string;
+		severity?: "success" | "error" | "warning" | "info";
+	}>({
+		open: false,
+		message: "",
+		severity: "info",
+	});
 
 	const handleMenuOpen = (
 		event: React.MouseEvent<HTMLButtonElement>,
@@ -132,7 +143,11 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 			await fetchSessions();
 		} catch (error) {
 			console.error("Error deleting session:", error);
-			alert("Error al eliminar la sesión");
+			setAlertModal({
+				open: true,
+				message: "Error al eliminar la sesión",
+				severity: "error",
+			});
 		} finally {
 			setLoading(false);
 			setDeleteDialogOpen(false);
@@ -157,22 +172,26 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 
 			if (error) throw error;
 
-			const key = EncryptionService.getKey();
+			// Verify encryption is set up before attempting to decrypt
+			const canDecrypt = userId && EncryptionService.isSetup();
+
 			const mappedSessions = (data || []).map((s: any) => {
 				let sessionTime = s.session_time; // Fallback to column if it exists
-				if (key) {
+				if (canDecrypt) {
 					try {
 						const decoded = EncryptionService.decryptData(
 							s.encrypted_data,
-							key
+							userId!
 						);
 						if (decoded.session_time) sessionTime = decoded.session_time;
 					} catch (e) {
-						// Fallback to JSON if not encrypted
+						// Fallback to JSON if not encrypted (for old sessions)
 						try {
 							const decoded = JSON.parse(s.encrypted_data);
 							if (decoded.session_time) sessionTime = decoded.session_time;
-						} catch (e2) {}
+						} catch (e2) {
+							console.warn("Failed to decrypt or parse session", s.id);
+						}
 					}
 				}
 				return { ...s, session_time: sessionTime };
@@ -520,6 +539,14 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			<AlertModal
+				open={alertModal.open}
+				onClose={() => setAlertModal({ ...alertModal, open: false })}
+				title={alertModal.title}
+				message={alertModal.message}
+				severity={alertModal.severity}
+			/>
 		</Box>
 	);
 };

@@ -31,6 +31,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { Settings } from "./Settings";
+import { AlertModal } from "./AlertModal";
 import { getBackgrounds } from "../styles.theme";
 import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
@@ -72,6 +73,16 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	const [editName, setEditName] = useState("");
 	const [editAge, setEditAge] = useState("");
 	const [editGender, setEditGender] = useState("");
+	const [alertModal, setAlertModal] = useState<{
+		open: boolean;
+		title?: string;
+		message: string;
+		severity?: "success" | "error" | "warning" | "info";
+	}>({
+		open: false,
+		message: "",
+		severity: "info",
+	});
 
 	// Fetch patients on mount
 	React.useEffect(() => {
@@ -91,6 +102,13 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				return;
 			}
 
+			// Verify encryption is set up before attempting to decrypt
+			if (!EncryptionService.isSetup()) {
+				console.error("Encryption password not available - cannot decrypt patients");
+				setPatients([]);
+				return;
+			}
+
 			const { data, error } = await supabase
 				.from("patients")
 				.select("*")
@@ -101,6 +119,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			const decryptedPatients: Patient[] = (data || [])
 				.map((row: any) => {
 					try {
+						// Try to decrypt with password-based system
 						const decryptedData = EncryptionService.decryptData(
 							row.encrypted_data,
 							user.id
@@ -109,8 +128,10 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 							id: row.id,
 							...decryptedData,
 						};
-					} catch (e) {
-						console.error("Failed to decrypt patient", row.id, e);
+					} catch (e: any) {
+						// If decryption fails, log the error but don't show the patient
+						// This handles cases where data was encrypted with old system or corrupted
+						console.error("Failed to decrypt patient", row.id, "-", e.message);
 						return null;
 					}
 				})
@@ -133,7 +154,21 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				alert("Error de seguridad: Usuario no autenticado.");
+				setAlertModal({
+					open: true,
+					message: "Error de seguridad: Usuario no autenticado.",
+					severity: "error",
+				});
+				return;
+			}
+
+			// Verify encryption is set up
+			if (!EncryptionService.isSetup()) {
+				setAlertModal({
+					open: true,
+					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					severity: "error",
+				});
 				return;
 			}
 
@@ -168,7 +203,11 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			setNewPatientGender("");
 		} catch (error) {
 			console.error("Error creating patient:", error);
-			alert("Error al crear el paciente");
+			setAlertModal({
+				open: true,
+				message: "Error al crear el paciente",
+				severity: "error",
+			});
 		}
 	};
 
@@ -181,7 +220,21 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				alert("Error de seguridad: Usuario no autenticado.");
+				setAlertModal({
+					open: true,
+					message: "Error de seguridad: Usuario no autenticado.",
+					severity: "error",
+				});
+				return;
+			}
+
+			// Verify encryption is set up
+			if (!EncryptionService.isSetup()) {
+				setAlertModal({
+					open: true,
+					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					severity: "error",
+				});
 				return;
 			}
 
@@ -212,7 +265,11 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			setEditGender("");
 		} catch (error) {
 			console.error("Error updating patient:", error);
-			alert("Error al actualizar el paciente");
+			setAlertModal({
+				open: true,
+				message: "Error al actualizar el paciente",
+				severity: "error",
+			});
 		}
 	};
 
@@ -394,7 +451,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					<TextField
 						autoFocus
 						margin="dense"
-						label="Nombre Completo"
+						label="Nombre"
 						fullWidth
 						variant="outlined"
 						value={newPatientName}
@@ -438,7 +495,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					<TextField
 						autoFocus
 						margin="dense"
-						label="Nombre Completo"
+						label="Nombre"
 						fullWidth
 						variant="outlined"
 						value={editName}
@@ -479,6 +536,13 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
 				onNavigateToAdmin={onNavigateToAdmin}
+			/>
+			<AlertModal
+				open={alertModal.open}
+				onClose={() => setAlertModal({ ...alertModal, open: false })}
+				title={alertModal.title}
+				message={alertModal.message}
+				severity={alertModal.severity}
 			/>
 		</Box>
 	);
