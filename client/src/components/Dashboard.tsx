@@ -352,8 +352,8 @@ export const Dashboard: React.FC<{
 				<Box
 					sx={{
 						p: 2,
-						bgcolor: "error.light",
-						color: "error.contrastText",
+						bgcolor: "error.dark",
+						color: "#ffffff",
 						borderRadius: 2,
 						border: "2px solid",
 						borderColor: "error.main",
@@ -373,8 +373,9 @@ export const Dashboard: React.FC<{
 								size="small"
 								sx={{
 									mr: 0.5,
-									bgcolor: "error.main",
-									color: "error.contrastText",
+									bgcolor: "#ffffff",
+									color: "error.dark",
+									fontWeight: "bold",
 								}}
 							/>
 						))}
@@ -553,7 +554,8 @@ export const Dashboard: React.FC<{
 			if (!EncryptionService.isSetup()) {
 				setAlertModal({
 					open: true,
-					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					message:
+						"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
 					severity: "error",
 				});
 				setIsActionLoading(false);
@@ -581,7 +583,10 @@ export const Dashboard: React.FC<{
 					: null,
 			};
 
-			const encryptedData = EncryptionService.encryptData(sessionRecord, userId);
+			const encryptedData = EncryptionService.encryptData(
+				sessionRecord,
+				userId
+			);
 
 			if (initialSession?.id) {
 				// --- UPDATE EXISTING SESSION ---
@@ -691,7 +696,8 @@ export const Dashboard: React.FC<{
 			if (!EncryptionService.isSetup()) {
 				setAlertModal({
 					open: true,
-					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					message:
+						"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
 					severity: "error",
 				});
 				return;
@@ -707,10 +713,15 @@ export const Dashboard: React.FC<{
 				} catch (jsonErr) {
 					setAlertModal({
 						open: true,
-						message: "Error al cargar la sesión: No se pudo desencriptar ni parsear los datos.",
+						message:
+							"Error al cargar la sesión: No se pudo desencriptar ni parsear los datos.",
 						severity: "error",
 					});
-					console.error("Failed to decrypt or parse session:", decryptErr, jsonErr);
+					console.error(
+						"Failed to decrypt or parse session:",
+						decryptErr,
+						jsonErr
+					);
 					return;
 				}
 			}

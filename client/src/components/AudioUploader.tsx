@@ -725,21 +725,21 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										<Box
 											sx={{
 												p: 2,
-												bgcolor: "error.lighter",
+												bgcolor: "error.dark",
 												borderRadius: 2,
-												border: "1px solid",
-												borderColor: "error.light",
+												border: "2px solid",
+												borderColor: "error.main",
 											}}
 										>
 											<Typography
 												variant="subtitle2"
-												color="error.main"
+												color="#ffffff"
 												fontWeight="bold"
 												mb={0.5}
 											>
 												Atención: Factores de Riesgo
 											</Typography>
-											<Typography variant="caption" color="error.main">
+											<Typography variant="body2" color="#ffffff">
 												{result.analysis.risk_assessment.summary}
 											</Typography>
 										</Box>
