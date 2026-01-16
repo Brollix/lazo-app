@@ -116,11 +116,11 @@ import {
 	supabase,
 } from "./services/dbService";
 
-// Configure Multer to store files in memory with size limit
+// Configure Multer to store files in memory with size limit (100MB for audio files)
 const upload = multer({
 	storage: multer.memoryStorage(),
 	limits: {
-		fileSize: 100 * 1024 * 1024, // 100MB limit
+		fileSize: 100 * 1024 * 1024, // 100MB limit for audio uploads
 	},
 });
 
