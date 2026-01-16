@@ -34,9 +34,6 @@ import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
 import { supabase } from "../supabaseClient";
 
-// Admin UUID - Only this user has access to admin panel
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
-
 interface SettingsProps {
 	open: boolean;
 	onClose: () => void;

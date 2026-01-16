@@ -17,7 +17,7 @@ import {
 	Warning,
 	Info,
 } from "@mui/icons-material";
-import { getBackgrounds, getExtendedShadows } from "../styles.theme";
+import { getExtendedShadows } from "../styles.theme";
 
 export type AlertSeverity = "success" | "error" | "warning" | "info";
 
@@ -45,7 +45,6 @@ export const AlertModal: React.FC<AlertModalProps> = ({
 	onConfirm,
 }) => {
 	const theme = useTheme();
-	const backgrounds = getBackgrounds(theme.palette.mode);
 	const extendedShadows = getExtendedShadows(theme.palette.mode);
 
 	const getSeverityConfig = () => {
@@ -112,7 +111,14 @@ export const AlertModal: React.FC<AlertModalProps> = ({
 				<Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
 					{config.icon}
 					<Typography variant="h6" fontWeight="800">
-						{title || (severity === "error" ? "Error" : severity === "success" ? "Éxito" : severity === "warning" ? "Advertencia" : "Información")}
+						{title ||
+							(severity === "error"
+								? "Error"
+								: severity === "success"
+								? "Éxito"
+								: severity === "warning"
+								? "Advertencia"
+								: "Información")}
 					</Typography>
 				</Box>
 				<IconButton onClick={onClose} size="small">

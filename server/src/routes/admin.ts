@@ -1,16 +1,51 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { supabase } from "../services/dbService";
 
-const router = Router();
+// Cache for admin roles to avoid excessive database queries
+// Cache expires after 5 minutes
+const adminCache = new Map<string, { role: string; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Admin UUID - Only this user can access admin endpoints
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
+/**
+ * Check if a user is an admin by querying the admin_roles table
+ */
+async function checkAdminRole(userId: string): Promise<string | null> {
+	// Check cache first
+	const cached = adminCache.get(userId);
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.role;
+	}
+
+	try {
+		const { data, error } = await supabase
+			.from("admin_roles")
+			.select("role")
+			.eq("user_id", userId)
+			.single();
+
+		if (error || !data) {
+			adminCache.delete(userId);
+			return null;
+		}
+
+		// Update cache
+		adminCache.set(userId, { role: data.role, timestamp: Date.now() });
+		return data.role;
+	} catch (err) {
+		console.error("[Admin] Error checking admin role:", err);
+		return null;
+	}
+}
 
 /**
  * Middleware to verify admin access
- * Checks if the userId in request body matches the admin UUID
+ * Checks if the userId has an entry in the admin_roles table
  */
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const isAdmin = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
 	const userId = req.body.userId || req.query.userId;
 
 	if (!userId) {
@@ -20,7 +55,9 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 		});
 	}
 
-	if (userId !== ADMIN_UUID) {
+	const role = await checkAdminRole(userId);
+
+	if (!role) {
 		console.warn(`[Admin] Unauthorized access attempt by user: ${userId}`);
 		return res.status(403).json({
 			error: "Forbidden",
@@ -28,9 +65,49 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 		});
 	}
 
-	console.log(`[Admin] Authorized access by admin: ${userId}`);
+	console.log(`[Admin] Authorized access by ${role}: ${userId}`);
+
+	// Attach role to request for use in route handlers
+	(req as any).adminRole = role;
 	next();
 };
+
+/**
+ * Middleware to verify super admin access
+ * Only super_admins can access routes protected by this middleware
+ */
+export const isSuperAdmin = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	const userId = req.body.userId || req.query.userId;
+
+	if (!userId) {
+		return res.status(401).json({
+			error: "No userId provided",
+			message: "Autenticación requerida",
+		});
+	}
+
+	const role = await checkAdminRole(userId);
+
+	if (role !== "super_admin") {
+		console.warn(
+			`[Admin] Unauthorized super admin access attempt by user: ${userId}`
+		);
+		return res.status(403).json({
+			error: "Forbidden",
+			message: "Solo super administradores pueden acceder a esta sección",
+		});
+	}
+
+	console.log(`[Admin] Authorized super admin access: ${userId}`);
+	(req as any).adminRole = role;
+	next();
+};
+
+const router = Router();
 
 /**
  * GET /admin/stats
@@ -539,5 +616,194 @@ router.delete("/plans/:id", isAdmin, async (req: Request, res: Response) => {
 		res.status(500).json({ error: error.message });
 	}
 });
+
+/**
+ * GET /admin/admins
+ * List all admin users with their roles
+ * Only accessible by super_admins
+ */
+router.get("/admins", isSuperAdmin, async (req: Request, res: Response) => {
+	try {
+		const { data: admins, error } = await supabase
+			.from("admin_roles")
+			.select(
+				`
+				id,
+				user_id,
+				role,
+				created_at,
+				created_by,
+				profiles:user_id (
+					email,
+					full_name
+				)
+			`
+			)
+			.order("created_at", { ascending: false });
+
+		if (error) throw error;
+
+		res.json({ admins });
+	} catch (error: any) {
+		console.error("[Admin] Error fetching admins:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * POST /admin/admins
+ * Add a new admin user
+ * Only accessible by super_admins
+ */
+router.post("/admins", isSuperAdmin, async (req: Request, res: Response) => {
+	try {
+		const { email, role } = req.body;
+		const currentAdminId = req.body.userId;
+
+		if (!email || !role) {
+			return res.status(400).json({
+				error: "Missing required fields",
+				message: "Email y rol son requeridos",
+			});
+		}
+
+		if (!["super_admin", "admin", "moderator"].includes(role)) {
+			return res.status(400).json({
+				error: "Invalid role",
+				message: "Rol inválido. Debe ser: super_admin, admin, o moderator",
+			});
+		}
+
+		// Find user by email
+		const { data: userData, error: userError } = await supabase
+			.from("profiles")
+			.select("id")
+			.eq("email", email)
+			.single();
+
+		if (userError || !userData) {
+			return res.status(404).json({
+				error: "User not found",
+				message: "No se encontró un usuario con ese email",
+			});
+		}
+
+		// Insert admin role
+		const { data, error } = await supabase
+			.from("admin_roles")
+			.insert({
+				user_id: userData.id,
+				role,
+				created_by: currentAdminId,
+			})
+			.select()
+			.single();
+
+		if (error) {
+			if (error.code === "23505") {
+				// Unique constraint violation
+				return res.status(409).json({
+					error: "User already admin",
+					message: "Este usuario ya es administrador",
+				});
+			}
+			throw error;
+		}
+
+		// Clear cache for this user
+		adminCache.delete(userData.id);
+
+		res.json({ success: true, admin: data });
+	} catch (error: any) {
+		console.error("[Admin] Error adding admin:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * PATCH /admin/admins/:userId
+ * Update an admin user's role
+ * Only accessible by super_admins
+ */
+router.patch(
+	"/admins/:userId",
+	isSuperAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const { userId } = req.params;
+			const { role } = req.body;
+
+			if (!role) {
+				return res.status(400).json({
+					error: "Missing role",
+					message: "Rol es requerido",
+				});
+			}
+
+			if (!["super_admin", "admin", "moderator"].includes(role)) {
+				return res.status(400).json({
+					error: "Invalid role",
+					message: "Rol inválido. Debe ser: super_admin, admin, o moderator",
+				});
+			}
+
+			const { data, error } = await supabase
+				.from("admin_roles")
+				.update({ role })
+				.eq("user_id", userId)
+				.select()
+				.single();
+
+			if (error) throw error;
+
+			// Clear cache for this user
+			adminCache.delete(userId);
+
+			res.json({ success: true, admin: data });
+		} catch (error: any) {
+			console.error("[Admin] Error updating admin:", error);
+			res.status(500).json({ error: error.message });
+		}
+	}
+);
+
+/**
+ * DELETE /admin/admins/:userId
+ * Remove admin access from a user
+ * Only accessible by super_admins
+ */
+router.delete(
+	"/admins/:userId",
+	isSuperAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const { userId } = req.params;
+			const currentAdminId = req.body.userId;
+
+			// Prevent self-deletion
+			if (userId === currentAdminId) {
+				return res.status(400).json({
+					error: "Cannot remove self",
+					message: "No puedes remover tu propio acceso de administrador",
+				});
+			}
+
+			const { error } = await supabase
+				.from("admin_roles")
+				.delete()
+				.eq("user_id", userId);
+
+			if (error) throw error;
+
+			// Clear cache for this user
+			adminCache.delete(userId);
+
+			res.json({ success: true });
+		} catch (error: any) {
+			console.error("[Admin] Error removing admin:", error);
+			res.status(500).json({ error: error.message });
+		}
+	}
+);
 
 export default router;

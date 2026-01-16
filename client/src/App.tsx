@@ -8,8 +8,23 @@ import { SessionsList } from "./components/SessionsList";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { supabase } from "./supabaseClient";
 
-// Admin UUID - Only this user has access to admin panel
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
+/**
+ * Check if a user is an admin by querying the admin_roles table
+ */
+async function checkIsAdmin(userId: string): Promise<boolean> {
+	try {
+		const { data, error } = await supabase
+			.from("admin_roles")
+			.select("role")
+			.eq("user_id", userId)
+			.single();
+
+		return !error && !!data;
+	} catch (err) {
+		console.error("Error checking admin status:", err);
+		return false;
+	}
+}
 
 type ThemeMode = "light" | "dark";
 
@@ -74,9 +89,13 @@ function App() {
 
 				// Check if password is available for encryption
 				// If session was restored but password is not in sessionStorage, redirect to login
-				const { EncryptionService } = await import("./services/encryptionService");
+				const { EncryptionService } = await import(
+					"./services/encryptionService"
+				);
 				if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
-					console.log("App: Session restored but password not available, redirecting to login");
+					console.log(
+						"App: Session restored but password not available, redirecting to login"
+					);
 					// Clear session to force re-login
 					await supabase.auth.signOut();
 					setUserId(undefined);
@@ -86,7 +105,8 @@ function App() {
 				}
 
 				// Check if user is admin
-				if (session.user.id === ADMIN_UUID) {
+				const isAdmin = await checkIsAdmin(session.user.id);
+				if (isAdmin) {
 					console.log("App: Admin user detected, redirecting to admin panel");
 					setCurrentView("admin");
 				} else {
@@ -115,7 +135,7 @@ function App() {
 		// Clear encryption password on logout
 		const { EncryptionService } = await import("./services/encryptionService");
 		EncryptionService.clearPassword();
-		
+
 		await supabase.auth.signOut();
 		setCurrentView("login");
 		setSelectedPatient(null);

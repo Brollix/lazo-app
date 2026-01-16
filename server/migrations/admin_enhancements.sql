@@ -28,7 +28,7 @@ CREATE POLICY "Anyone can view active announcements" ON public.announcements
 -- Only admin can manage announcements (using service role or we could check the admin UUID)
 -- For simplicity and security via API, we often use service role, but for RLS:
 CREATE POLICY "Admins can manage announcements" ON public.announcements
-    ALL USING (auth.uid() = '91501b61-418d-4767-9c8f-e85b3ab58432');
+    ALL USING (auth.uid() = 'a9860376-392e-439a-9a70-8d9c513d1dce');
 
 -- Update existing processing_sessions to guess mode from system_prompt or plan if needed
 -- But defaulting to 'standard' is safer.
