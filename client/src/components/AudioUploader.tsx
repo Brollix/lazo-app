@@ -139,7 +139,6 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		used: number;
 		monthYear: string;
 	} | null>(null);
-	const [encryptionSalt, setEncryptionSalt] = useState<string>("");
 
 	const onDrop = useCallback(async (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
@@ -221,9 +220,6 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		}
 		if (userId) {
 			formData.append("userId", userId);
-		}
-		if (encryptionSalt) {
-			formData.append("encryptionSalt", encryptionSalt);
 		}
 
 		try {
@@ -409,15 +405,6 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
 							<Stack spacing={2} sx={{ mb: 4 }}>
 								<Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-									<TextField
-										fullWidth
-										label="Salt personalizado"
-										value={encryptionSalt}
-										onChange={(e) => setEncryptionSalt(e.target.value)}
-										sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-										variant="outlined"
-										size="small"
-									/>
 									<TextField
 										select
 										label="Idioma"
