@@ -30,6 +30,7 @@ import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+
 import { Settings } from "./Settings";
 import { AlertModal } from "./AlertModal";
 import { getBackgrounds } from "../styles.theme";
@@ -104,7 +105,9 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 
 			// Verify encryption is set up before attempting to decrypt
 			if (!EncryptionService.isSetup()) {
-				console.error("Encryption password not available - cannot decrypt patients");
+				console.error(
+					"Encryption password not available - cannot decrypt patients"
+				);
 				setPatients([]);
 				return;
 			}
@@ -166,7 +169,8 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			if (!EncryptionService.isSetup()) {
 				setAlertModal({
 					open: true,
-					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					message:
+						"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
 					severity: "error",
 				});
 				return;
@@ -232,7 +236,8 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			if (!EncryptionService.isSetup()) {
 				setAlertModal({
 					open: true,
-					message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+					message:
+						"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
 					severity: "error",
 				});
 				return;
@@ -321,6 +326,13 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					lazo
 				</Typography>
 				<Box sx={{ display: "flex", gap: 1 }}>
+					<IconButton
+						onClick={() => setSettingsOpen(true)}
+						color="default"
+						size="small"
+					>
+						<SettingsIcon />
+					</IconButton>
 					{userId === ADMIN_UUID && onNavigateToAdmin && (
 						<IconButton
 							onClick={onNavigateToAdmin}
@@ -331,13 +343,6 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 							<AdminPanelSettingsIcon />
 						</IconButton>
 					)}
-					<IconButton
-						onClick={() => setSettingsOpen(true)}
-						color="default"
-						size="small"
-					>
-						<SettingsIcon />
-					</IconButton>
 					<IconButton onClick={onLogout} color="default" size="small">
 						<LogoutIcon />
 					</IconButton>
@@ -535,7 +540,6 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
-				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 			<AlertModal
 				open={alertModal.open}

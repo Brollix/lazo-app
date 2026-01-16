@@ -28,7 +28,6 @@ import {
 	Person,
 	Lock,
 	Save,
-	AdminPanelSettings,
 } from "@mui/icons-material";
 import { ThemeContext } from "../App";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -42,7 +41,6 @@ interface SettingsProps {
 	open: boolean;
 	onClose: () => void;
 	onLogout?: () => void;
-	onNavigateToAdmin?: () => void;
 }
 
 interface UserProfile {
@@ -58,7 +56,6 @@ export const Settings: React.FC<SettingsProps> = ({
 	open,
 	onClose,
 	onLogout,
-	onNavigateToAdmin,
 }) => {
 	const { mode, toggleTheme } = React.useContext(ThemeContext);
 	const [showSubModal, setShowSubModal] = React.useState(false);
@@ -176,18 +173,18 @@ export const Settings: React.FC<SettingsProps> = ({
 				throw new Error(errorData.error || "Error al cancelar suscripción");
 			}
 
-		const result = await response.json();
-		console.log("Subscription cancelled:", result);
+			const result = await response.json();
+			console.log("Subscription cancelled:", result);
 
-		// Update local state - keep remaining credits, only change plan_type
-		setUserProfile((prev) => {
-			if (!prev) return null;
-			return {
-				...prev,
-				plan_type: "free",
-				subscription_status: "cancelled",
-			};
-		});
+			// Update local state - keep remaining credits, only change plan_type
+			setUserProfile((prev) => {
+				if (!prev) return null;
+				return {
+					...prev,
+					plan_type: "free",
+					subscription_status: "cancelled",
+				};
+			});
 
 			setSuccessMessage(
 				"Suscripción cancelada exitosamente. Has vuelto al plan gratuito."
@@ -625,31 +622,6 @@ export const Settings: React.FC<SettingsProps> = ({
 						gap: 1.5,
 					}}
 				>
-					{userProfile?.id === ADMIN_UUID && onNavigateToAdmin && (
-						<Button
-							onClick={() => {
-								onClose();
-								onNavigateToAdmin();
-							}}
-							variant="outlined"
-							color="secondary"
-							startIcon={<AdminPanelSettings />}
-							sx={{
-								borderRadius: 2,
-								px: 2,
-								fontWeight: "bold",
-								borderColor: "secondary.main",
-								color: "secondary.main",
-								"&:hover": {
-									bgcolor: "secondary.main",
-									color: "secondary.contrastText",
-									borderColor: "secondary.main",
-								},
-							}}
-						>
-							Panel Admin
-						</Button>
-					)}
 					{onLogout && (
 						<Button
 							onClick={() => {

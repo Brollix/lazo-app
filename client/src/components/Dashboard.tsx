@@ -887,6 +887,17 @@ export const Dashboard: React.FC<{
 					>
 						<SettingsIcon />
 					</IconButton>
+					{userId === ADMIN_UUID && onNavigateToAdmin && (
+						<IconButton
+							onClick={onNavigateToAdmin}
+							size="small"
+							color="primary"
+							title="Panel de Administración"
+							sx={{ borderRadius: 2 }}
+						>
+							<AdminIcon />
+						</IconButton>
+					)}
 				</Box>
 			</Paper>
 
@@ -924,7 +935,6 @@ export const Dashboard: React.FC<{
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
-				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 
 			<SubscriptionModal
@@ -1126,16 +1136,6 @@ export const Dashboard: React.FC<{
 								</Typography>
 							</Stack>
 							<Stack direction="row" spacing={1}>
-								{userId === ADMIN_UUID && onNavigateToAdmin && (
-									<IconButton
-										size="small"
-										onClick={onNavigateToAdmin}
-										color="primary"
-										title="Panel Admin"
-									>
-										<AdminIcon fontSize="small" />
-									</IconButton>
-								)}
 								<IconButton
 									size="small"
 									onClick={() => setSettingsOpen(true)}

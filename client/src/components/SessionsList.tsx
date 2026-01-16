@@ -22,6 +22,7 @@ import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
@@ -251,6 +252,13 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				</Stack>
 
 				<Box sx={{ display: "flex", gap: 1 }}>
+					<IconButton
+						onClick={() => setSettingsOpen(true)}
+						color="default"
+						size="small"
+					>
+						<SettingsIcon />
+					</IconButton>
 					{userId === ADMIN_UUID && onNavigateToAdmin && (
 						<IconButton
 							onClick={onNavigateToAdmin}
@@ -261,13 +269,6 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 							<AdminPanelSettingsIcon />
 						</IconButton>
 					)}
-					<IconButton
-						onClick={() => setSettingsOpen(true)}
-						color="default"
-						size="small"
-					>
-						<SettingsIcon />
-					</IconButton>
 					<IconButton onClick={onLogout} color="default" size="small">
 						<LogoutIcon />
 					</IconButton>
@@ -439,7 +440,6 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				open={settingsOpen}
 				onClose={() => setSettingsOpen(false)}
 				onLogout={onLogout}
-				onNavigateToAdmin={onNavigateToAdmin}
 			/>
 
 			{/* New Session Dialog */}

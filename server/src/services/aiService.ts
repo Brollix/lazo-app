@@ -416,7 +416,7 @@ IMPORTANT: Extract exact timestamps from the transcript markers for key_moments.
 				},
 			],
 			model: "llama-3.3-70b-versatile",
-			temperature: 0.3,
+			temperature: 0.0,
 			max_tokens: 3000,
 			response_format: { type: "json_object" },
 		});
