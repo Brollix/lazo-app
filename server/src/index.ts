@@ -775,9 +775,15 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						}
 
 						if (payment.status === "approved") {
-							console.log(`[Webhook] Recurring payment APPROVED!`);
+							console.log(`[Webhook] ✅ Recurring payment APPROVED!`);
 							console.log(
-								`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Payer Email: ${payerEmail}`
+								`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Amount: ${payment.transaction_amount}, Payer Email: ${payerEmail}`
+							);
+
+							// Get user profile before renewal to log current state
+							const profileBefore = await getUserProfile(userId);
+							console.log(
+								`[Webhook] Profile BEFORE renewal - Plan: ${profileBefore.plan_type}, Credits: ${profileBefore.credits_remaining}, Premium: ${profileBefore.premium_credits_remaining}`
 							);
 
 							// Record payment and renew credits (function will determine renewal based on plan)
@@ -791,13 +797,37 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 								0 // No longer used, function determines renewal
 							);
 
+							// Check if plan could not be determined (edge case: payment webhook before subscription webhook)
+							if (result?.warning) {
+								console.warn(
+									`[Webhook] ⚠️ WARNING: ${result.warning}`
+								);
+								console.warn(
+									`[Webhook] This may indicate a race condition. Subscription record may need to be created first.`
+								);
+							}
+
+							// Get user profile after renewal to verify
+							const profileAfter = await getUserProfile(userId);
 							console.log(
-								`[Webhook] SUCCESS: Payment recorded, credits renewed according to plan`
+								`[Webhook] Profile AFTER renewal - Plan: ${profileAfter.plan_type}, Credits: ${profileAfter.credits_remaining}, Premium: ${profileAfter.premium_credits_remaining}`
 							);
+
+							if (result?.plan_determined) {
+								console.log(
+									`[Webhook] ✅ SUCCESS: Payment recorded, credits renewed according to plan:`,
+									result
+								);
+							} else {
+								console.log(
+									`[Webhook] ⚠️ Payment recorded but plan not determined - credits not renewed:`,
+									result
+								);
+							}
 						} else {
 							// Payment failed/rejected - only record, don't renew credits
 							console.log(
-								`[Webhook] Payment ${payment.status} for subscription ${mpSubscriptionId}`
+								`[Webhook] ⚠️ Payment ${payment.status} for subscription ${mpSubscriptionId} (status_detail: ${payment.status_detail})`
 							);
 							await recordPaymentAndRenewCredits(
 								userId,
@@ -813,7 +843,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 							);
 						}
 					} catch (dbError) {
-						console.error(`[Webhook] DB Error recording payment:`, dbError);
+						console.error(`[Webhook] ❌ DB Error recording payment:`, dbError);
 					}
 				} else {
 					console.warn(
@@ -864,8 +894,8 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 					console.log(
 						`[Webhook] ${
-							shouldUpdatePlan ? "UPDATING PLAN" : "RECORDING SUBSCRIPTION"
-						} - Status: ${status}, Action: ${action}`
+							shouldUpdatePlan ? "UPDATING PLAN AND CREDITS" : "RECORDING SUBSCRIPTION ONLY"
+						} - Status: ${status}, Action: ${action}, Plan: ${planType}, Amount: ${amount}`
 					);
 
 					// Create or update subscription in database
@@ -883,11 +913,15 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						shouldUpdatePlan
 					);
 
-					console.log(
-						`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} in database${
-							shouldUpdatePlan ? " with plan update" : " (plan NOT updated)"
-						}`
-					);
+					if (shouldUpdatePlan) {
+						console.log(
+							`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} - Plan updated to ${planType}, credits initialized`
+						);
+					} else {
+						console.log(
+							`[Webhook] SUCCESS: Subscription ${subscriptionId} ${action} - Recorded (waiting for payment approval to update plan)`
+						);
+					}
 				} catch (dbError) {
 					console.error(`[Webhook] DB Error updating subscription:`, dbError);
 				}
@@ -908,36 +942,54 @@ app.post("/api/cancel-subscription", async (req, res) => {
 	}
 
 	try {
-		console.log(`[Cancel] Processing cancellation for user ${userId}`);
+		console.log(`[Cancel] 🔄 Processing cancellation for user ${userId}`);
 
 		// Get user profile
 		const profile = await getUserProfile(userId);
 
 		if (!profile || !profile.email) {
+			console.error(`[Cancel] ❌ User not found: ${userId}`);
 			return res.status(404).json({ error: "Usuario no encontrado" });
 		}
 
+		console.log(
+			`[Cancel] Current profile - Plan: ${profile.plan_type}, Subscription: ${profile.subscription_id}, Credits: ${profile.credits_remaining}`
+		);
+
 		if (profile.plan_type === "free" || !profile.subscription_id) {
+			console.warn(
+				`[Cancel] ⚠️ User ${userId} has no active subscription (plan: ${profile.plan_type})`
+			);
 			return res.status(400).json({
 				error: "El usuario no tiene una suscripción activa",
 			});
 		}
 
-		// Cancel subscription in Mercado Pago
+		// Cancel subscription in Mercado Pago (stops future charges)
+		console.log(
+			`[Cancel] Cancelling in MercadoPago: ${profile.subscription_id}`
+		);
 		await cancelMPSubscription(profile.subscription_id);
+		console.log(`[Cancel] ✅ MercadoPago subscription cancelled`);
 
-		// Cancel subscription in database
+		// Cancel subscription in database (keeps remaining credits)
+		console.log(`[Cancel] Updating database...`);
 		const result = await cancelUserSubscription(userId);
 
-		console.log(`[Cancel] Subscription cancelled successfully:`, result);
+		// Get updated profile to verify
+		const updatedProfile = await getUserProfile(userId);
+		console.log(
+			`[Cancel] ✅ Subscription cancelled successfully - New plan: ${updatedProfile.plan_type}, Remaining credits: ${updatedProfile.credits_remaining}`
+		);
 
 		res.json({
 			success: true,
 			message: "Suscripción cancelada exitosamente",
 			data: result,
+			note: "Los créditos restantes se mantienen disponibles. No se realizan reembolsos automáticos en MercadoPago.",
 		});
 	} catch (error: any) {
-		console.error("[Cancel] Error cancelling subscription:", error);
+		console.error("[Cancel] ❌ Error cancelling subscription:", error);
 		res.status(500).json({
 			error: "Error al cancelar la suscripción",
 			details: error.message,

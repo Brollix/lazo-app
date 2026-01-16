@@ -161,3 +161,4 @@ Este proyecto es **UNLICENSED** y de uso privado.
 - [DEV_LOCAL.md](./DEV_LOCAL.md) - Guía detallada de desarrollo local
 - [WEBHOOK_SECURITY.md](./server/WEBHOOK_SECURITY.md) - Seguridad de webhooks MercadoPago
 - [cloudfront_config.md](./cloudfront_config.md) - Configuración de CloudFront CDN
+

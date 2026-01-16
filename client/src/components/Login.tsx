@@ -66,7 +66,7 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				await supabase.auth.signOut();
 
 				setSuccess(
-					"Registro exitoso! Por favor verifica tu correo e inicia sesión con tu contraseña."
+					"¡Cuenta creada! Revisa tu correo para verificar tu cuenta y luego inicia sesión."
 				);
 
 				// Clear form and switch to login view

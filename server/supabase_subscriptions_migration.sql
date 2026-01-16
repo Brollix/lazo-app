@@ -143,6 +143,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 7. Function to record payment and renew credits
+-- FIXED: Removed hardcoded amount thresholds to prevent mismatch with JavaScript dynamic pricing
+-- Relies on subscription record or profile plan_type only
 CREATE OR REPLACE FUNCTION record_payment_and_renew_credits(
   p_user_id UUID,
   p_mp_payment_id TEXT,
@@ -156,14 +158,32 @@ RETURNS json AS $$
 DECLARE
   v_subscription_id UUID;
   v_plan_type TEXT;
+  v_current_profile_plan TEXT;
+  v_plan_determined BOOLEAN := FALSE;
   result json;
 BEGIN
-  -- Get subscription ID and plan_type
+  -- Try to get plan from subscriptions table (primary source of truth)
   SELECT id, plan_type INTO v_subscription_id, v_plan_type
   FROM public.subscriptions
   WHERE mp_subscription_id = p_mp_subscription_id;
 
-  -- Record payment in history (always)
+  -- If subscription found, use its plan_type
+  IF v_plan_type IS NOT NULL THEN
+    v_plan_determined := TRUE;
+  ELSE
+    -- If no subscription found yet, try to get plan from profile (secondary source)
+    SELECT plan_type INTO v_current_profile_plan
+    FROM public.profiles
+    WHERE id = p_user_id;
+    
+    -- If profile has a paid plan, use it
+    IF v_current_profile_plan IN ('pro', 'ultra') THEN
+      v_plan_type := v_current_profile_plan;
+      v_plan_determined := TRUE;
+    END IF;
+  END IF;
+
+  -- Record payment in history (always, even if plan not determined)
   INSERT INTO public.payment_history (
     user_id, subscription_id, mp_payment_id, mp_subscription_id,
     amount, status, status_detail, credits_added, payment_date
@@ -174,33 +194,43 @@ BEGIN
   )
   ON CONFLICT (mp_payment_id) DO NOTHING;
 
-  -- If payment approved, RENEW credits according to plan
-  IF p_status = 'approved' THEN
+  -- If payment approved AND plan determined, RENEW credits and UPDATE plan
+  IF p_status = 'approved' AND v_plan_determined THEN
     IF v_plan_type = 'pro' THEN
-      -- Pro: RENEW regular credits to 100
       UPDATE public.profiles
       SET 
+        plan_type = 'pro',
         credits_remaining = 100,
+        premium_credits_remaining = 0,
+        subscription_status = 'authorized',
         last_credit_renewal = timezone('utc'::text, now()),
         updated_at = timezone('utc'::text, now())
       WHERE id = p_user_id;
     ELSIF v_plan_type = 'ultra' THEN
-      -- Ultra: RENEW regular credits to 100 AND premium credits to 20
       UPDATE public.profiles
       SET 
+        plan_type = 'ultra',
         credits_remaining = 100,
         premium_credits_remaining = 20,
+        subscription_status = 'authorized',
         last_credit_renewal = timezone('utc'::text, now()),
         updated_at = timezone('utc'::text, now())
       WHERE id = p_user_id;
     END IF;
   END IF;
 
+  -- Build result with warning if plan could not be determined
   result := json_build_object(
     'payment_recorded', true,
-    'credits_renewed', CASE WHEN p_status = 'approved' THEN true ELSE false END,
-    'plan_type', v_plan_type,
-    'payment_status', p_status
+    'credits_renewed', CASE WHEN p_status = 'approved' AND v_plan_determined THEN true ELSE false END,
+    'plan_type', COALESCE(v_plan_type, 'unknown'),
+    'plan_determined', v_plan_determined,
+    'payment_status', p_status,
+    'warning', CASE 
+      WHEN NOT v_plan_determined AND p_status = 'approved' 
+      THEN 'Plan type could not be determined from subscription or profile. Payment recorded but credits not renewed. Subscription record may need to be created first.'
+      ELSE NULL
+    END
   );
 
   RETURN result;
