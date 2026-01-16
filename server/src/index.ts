@@ -72,8 +72,8 @@ app.use((req, res, next) => {
 	next();
 });
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
 
 import multer from "multer";
 import {
@@ -799,9 +799,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 							// Check if plan could not be determined (edge case: payment webhook before subscription webhook)
 							if (result?.warning) {
-								console.warn(
-									`[Webhook] ⚠️ WARNING: ${result.warning}`
-								);
+								console.warn(`[Webhook] ⚠️ WARNING: ${result.warning}`);
 								console.warn(
 									`[Webhook] This may indicate a race condition. Subscription record may need to be created first.`
 								);
@@ -894,7 +892,9 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 					console.log(
 						`[Webhook] ${
-							shouldUpdatePlan ? "UPDATING PLAN AND CREDITS" : "RECORDING SUBSCRIPTION ONLY"
+							shouldUpdatePlan
+								? "UPDATING PLAN AND CREDITS"
+								: "RECORDING SUBSCRIPTION ONLY"
 						} - Status: ${status}, Action: ${action}, Plan: ${planType}, Amount: ${amount}`
 					);
 
