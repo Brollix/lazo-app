@@ -10,7 +10,11 @@ import {
 	Divider,
 	CircularProgress,
 	Alert,
+	TextField,
+	InputAdornment,
+	Chip,
 } from "@mui/material";
+import { LocalOffer as PromoIcon } from "@mui/icons-material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 interface SubscriptionModalProps {
@@ -25,7 +29,6 @@ interface Plan {
 	plan_type: string;
 	name: string;
 	description: string;
-	price_usd: number;
 	price_ars: number;
 	features: string[];
 	credits_initial: number;
@@ -40,9 +43,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	userId,
 	userEmail,
 }) => {
-	const [dolarRate, setDolarRate] = useState<number>(1950);
 	const [plans, setPlans] = useState<Plan[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [promoCode, setPromoCode] = useState("");
+	const [validatedPromo, setValidatedPromo] = useState<any>(null);
+	const [validating, setValidating] = useState(false);
+	const [promoError, setPromoError] = useState<string | null>(null);
+	const [selectedPlanForPromo, setSelectedPlanForPromo] = useState<Plan | null>(
+		null
+	);
 
 	const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -54,13 +63,48 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				.then((data) => {
 					console.log("Plans from backend:", data);
 					setPlans(data.plans || []);
-					if (data.rate) setDolarRate(data.rate);
 				})
 				.catch((err) => {
 					console.error("Error fetching plans from backend:", err);
 				});
 		}
 	}, [open, apiUrl]);
+
+	const handleValidatePromo = async () => {
+		if (!promoCode || promoCode.length !== 4) {
+			setPromoError("El código debe tener 4 caracteres");
+			return;
+		}
+
+		setValidating(true);
+		setPromoError(null);
+		try {
+			const res = await fetch(`${apiUrl}/api/validate-promo-code`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ code: promoCode, userId }),
+			});
+			const data = await res.json();
+			if (data.valid) {
+				setValidatedPromo(data.promo_code);
+				setPromoError(null);
+			} else {
+				setPromoError(data.error || "Código inválido");
+				setValidatedPromo(null);
+			}
+		} catch (err: any) {
+			setPromoError("Error al validar código");
+			setValidatedPromo(null);
+		} finally {
+			setValidating(false);
+		}
+	};
+
+	const calculateDiscountedPrice = (basePrice: number) => {
+		if (!validatedPromo) return basePrice;
+		const discount = basePrice * (validatedPromo.discount_percentage / 100);
+		return Math.round(basePrice - discount);
+	};
 
 	const handleSubscribe = async (planId: "free" | "pro" | "ultra") => {
 		if (planId === "free") {
@@ -89,10 +133,34 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 			const response = await fetch(`${apiUrl}/api/create-subscription`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ planId, userId, userEmail, redirectUrl }),
+				body: JSON.stringify({
+					planId,
+					userId,
+					userEmail,
+					redirectUrl,
+					promoCode: validatedPromo?.code || null,
+				}),
 			});
 			const data = await response.json();
 			console.log("Subscription created:", data);
+
+			// If promo code is valid, apply it
+			if (validatedPromo && data.id) {
+				const plan = plans.find((p) => p.plan_type === planId);
+				if (plan) {
+					await fetch(`${apiUrl}/api/apply-promo-code`, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							code: validatedPromo.code,
+							userId,
+							subscriptionId: data.id,
+							planType: planId,
+							originalPrice: plan.price_ars,
+						}),
+					});
+				}
+			}
 
 			if (data.init_point) {
 				// Open MercadoPago subscription page
@@ -126,6 +194,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		const color = getColorForPlan(plan.plan_type);
 		const isUltra = plan.plan_type === "ultra";
 		const isFree = plan.plan_type === "free";
+		const basePrice = plan.price_ars;
+		const discountedPrice = calculateDiscountedPrice(basePrice);
+		const hasDiscount = validatedPromo && !isFree;
 
 		return (
 			<Card
@@ -162,31 +233,54 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						{plan.name}
 					</Typography>
 					<Box sx={{ mb: 1 }}>
-						<Typography
-							variant="h3"
-							fontWeight="bold"
-							component="span"
-							sx={{ color: color, fontSize: { xs: "1.75rem", sm: "2.5rem" } }}
-						>
-							{isFree
-								? "Gratis"
-								: isUltra && !plan.is_active
-								? "Próximamente"
-								: `ARS $${plan.price_ars?.toLocaleString("es-AR")}`}
-						</Typography>
-						{!isFree && !isUltra && (
+						{hasDiscount && (
 							<Typography
-								variant="body1"
+								variant="body2"
 								color="text.secondary"
-								component="span"
-								sx={{ ml: 1 }}
+								sx={{ textDecoration: "line-through", mb: 0.5 }}
 							>
-								/mes
+								ARS ${basePrice?.toLocaleString("es-AR")}
 							</Typography>
+						)}
+						<Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+							<Typography
+								variant="h3"
+								fontWeight="bold"
+								component="span"
+								sx={{
+									color: hasDiscount ? "success.main" : color,
+									fontSize: { xs: "1.75rem", sm: "2.5rem" },
+								}}
+							>
+								{isFree ?
+									"Gratis"
+								: isUltra && !plan.is_active ?
+									"Próximamente"
+								:	`ARS $${(hasDiscount ? discountedPrice : basePrice)?.toLocaleString("es-AR")}`
+								}
+							</Typography>
+							{!isFree && !isUltra && (
+								<Typography
+									variant="body1"
+									color="text.secondary"
+									component="span"
+								>
+									/mes
+								</Typography>
+							)}
+						</Box>
+						{hasDiscount && (
+							<Chip
+								label={`${validatedPromo.discount_percentage}% OFF por ${validatedPromo.duration_months} meses`}
+								color="success"
+								size="small"
+								icon={<PromoIcon />}
+								sx={{ mt: 1 }}
+							/>
 						)}
 					</Box>
 					<Box sx={{ mb: 2, display: "block", minHeight: "2rem" }}>
-						{isUltra && !plan.is_active ? (
+						{isUltra && !plan.is_active ?
 							<Typography
 								variant="body2"
 								color="text.secondary"
@@ -194,7 +288,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							>
 								{plan.description}
 							</Typography>
-						) : !isFree ? (
+						: !isFree ?
 							<>
 								<Typography
 									variant="body2"
@@ -218,15 +312,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 									Suscripción mensual recurrente • Cancela cuando quieras
 								</Typography>
 							</>
-						) : (
-							<Typography
+						:	<Typography
 								variant="body2"
 								color="text.secondary"
 								fontWeight={500}
 							>
 								{plan.description}
 							</Typography>
-						)}
+						}
 					</Box>
 					<Divider sx={{ mb: 2 }} />
 					<Box sx={{ mb: 3, flexGrow: 1 }}>
@@ -257,15 +350,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						}}
 						onClick={() => handleSubscribe(plan.plan_type as any)}
 					>
-						{loading ? (
+						{loading ?
 							<CircularProgress size={24} color="inherit" />
-						) : isUltra && !plan.is_active ? (
+						: isUltra && !plan.is_active ?
 							"Próximamente"
-						) : isFree ? (
+						: isFree ?
 							"Continuar Gratis"
-						) : (
-							"Elegir Plan"
-						)}
+						:	"Elegir Plan"}
 					</Button>
 				</CardContent>
 			</Card>
@@ -334,6 +425,71 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					alignItems: "center",
 				}}
 			>
+				{/* Promo Code Input */}
+				<Box
+					sx={{
+						mb: 3,
+						width: "100%",
+						maxWidth: { xs: "100%", md: 900 },
+					}}
+				>
+					<TextField
+						fullWidth
+						size="small"
+						label="Código Promocional (opcional)"
+						value={promoCode}
+						onChange={(e) =>
+							setPromoCode(e.target.value.toUpperCase().slice(0, 4))
+						}
+						placeholder="Ej: PROMO"
+						error={!!promoError}
+						helperText={promoError}
+						InputProps={{
+							startAdornment: (
+								<InputAdornment position="start">
+									<PromoIcon color="action" />
+								</InputAdornment>
+							),
+							endAdornment: (
+								<InputAdornment position="end">
+									<Button
+										size="small"
+										onClick={handleValidatePromo}
+										disabled={
+											validating || promoCode.length !== 4 || !!validatedPromo
+										}
+										variant="contained"
+										sx={{ borderRadius: 1 }}
+									>
+										{validating ?
+											<CircularProgress size={20} color="inherit" />
+										: validatedPromo ?
+											"✓"
+										:	"Aplicar"}
+									</Button>
+								</InputAdornment>
+							),
+						}}
+						sx={{
+							"& .MuiOutlinedInput-root": {
+								borderRadius: 2,
+							},
+						}}
+					/>
+					{validatedPromo && (
+						<Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
+							<Typography variant="body2" fontWeight="bold">
+								¡Código válido! 🎉
+							</Typography>
+							<Typography variant="body2">
+								{validatedPromo.discount_percentage}% de descuento por{" "}
+								{validatedPromo.duration_months}{" "}
+								{validatedPromo.duration_months === 1 ? "mes" : "meses"}
+							</Typography>
+						</Alert>
+					)}
+				</Box>
+
 				<Alert
 					severity="info"
 					sx={{
@@ -371,12 +527,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							<PlanCard plan={plan} />
 						</Box>
 					))}
-				</Box>
-				<Box sx={{ mt: 4, textAlign: "center" }}>
-					<Typography variant="caption" color="text.secondary">
-						* Precios basados en la cotización diaria del Dólar Tarjeta (ARS $
-						{dolarRate.toLocaleString("es-AR")}).
-					</Typography>
 				</Box>
 			</DialogContent>
 		</Dialog>

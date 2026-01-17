@@ -68,6 +68,7 @@ import {
 	getColors,
 } from "../styles.theme";
 import { AlertModal } from "./AlertModal";
+import { PromoCodesManager } from "./PromoCodesManager";
 
 interface AdminDashboardProps {
 	onLogout: () => void;
@@ -561,7 +562,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			headerName: "MP ID",
 			width: 150,
 			renderCell: (params: GridRenderCellParams) =>
-				params.value ? (
+				params.value ?
 					<Box sx={{ display: "flex", alignItems: "center" }}>
 						<Typography
 							variant="caption"
@@ -576,9 +577,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 							<CopyIcon fontSize="inherit" />
 						</IconButton>
 					</Box>
-				) : (
-					"-"
-				),
+				:	"-",
 		},
 		{
 			field: "actions",
@@ -714,6 +713,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 				/>
 				<Tab icon={<NotifyIcon />} iconPosition="start" label="Anuncios" />
 				<Tab icon={<SubscriptionsIcon />} iconPosition="start" label="Planes" />
+				<Tab icon={<MoneyIcon />} iconPosition="start" label="Códigos Promo" />
 			</Tabs>
 
 			{error && (
@@ -732,7 +732,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 			{activeTab === 0 && (
 				<Box>
-					{overviewView === "grid" ? (
+					{overviewView === "grid" ?
 						<Grid container spacing={4}>
 							{/* KPI Section directly here for Overview */}
 							<Grid size={{ xs: 12 }}>
@@ -864,7 +864,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																{kpi.icon}
 															</Box>
 														</Stack>
-														{kpi.progress !== undefined ? (
+														{kpi.progress !== undefined ?
 															<Box sx={{ mt: spacing.md }}>
 																<Box
 																	sx={{
@@ -888,15 +888,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																	/>
 																</Box>
 															</Box>
-														) : (
-															<Typography
+														:	<Typography
 																variant="caption"
 																color="text.secondary"
 																sx={{ mt: spacing.md, display: "block" }}
 															>
 																{kpi.subtitle}
 															</Typography>
-														)}
+														}
 													</CardContent>
 												</Card>
 											</Grid>
@@ -936,7 +935,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 											px: 1,
 										}}
 									>
-										{stats ? (
+										{stats ?
 											stats.dailyStats.map((day, idx) => {
 												const maxCount = Math.max(
 													...stats.dailyStats.map((d) => d.count),
@@ -966,9 +965,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																	height: `${heightPct}%`,
 																	minHeight: day.count > 0 ? 4 : 0,
 																	background: (theme) =>
-																		isLatest
-																			? theme.palette.primary.main
-																			: alpha(theme.palette.primary.main, 0.4),
+																		isLatest ?
+																			theme.palette.primary.main
+																		:	alpha(theme.palette.primary.main, 0.4),
 																	borderRadius: "4px 4px 0 0",
 																	transition:
 																		"height 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -996,8 +995,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 													</Tooltip>
 												);
 											})
-										) : (
-											<Box
+										:	<Box
 												sx={{
 													width: "100%",
 													height: "100%",
@@ -1008,7 +1006,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 											>
 												<CircularProgress size={24} />
 											</Box>
-										)}
+										}
 									</Box>
 									<Typography
 										variant="caption"
@@ -1110,9 +1108,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																size="small"
 																label={item.status}
 																color={
-																	item.status === "completed"
-																		? "success"
-																		: "error"
+																	item.status === "completed" ?
+																		"success"
+																	:	"error"
 																}
 																variant="outlined"
 															/>
@@ -1125,8 +1123,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 								</Paper>
 							</Grid>
 						</Grid>
-					) : (
-						<Box sx={{ mb: 4 }}>
+					:	<Box sx={{ mb: 4 }}>
 							<Button
 								startIcon={<ArrowBackIcon />}
 								onClick={() => setOverviewView("grid")}
@@ -1148,7 +1145,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 								<ConversionDetail stats={stats} spacing={spacing} br={br} />
 							)}
 						</Box>
-					)}
+					}
 				</Box>
 			)}
 
@@ -1248,17 +1245,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 								{
 									name: "Groq (AI Standard)",
 									status: health?.groq.status,
-									info: health?.groq.code
-										? `HTTP ${health.groq.code}`
-										: health?.groq.error,
+									info:
+										health?.groq.code ?
+											`HTTP ${health.groq.code}`
+										:	health?.groq.error,
 									icon: <CloudIcon fontSize="small" />,
 								},
 								{
 									name: "Deepgram (High Precision)",
 									status: health?.deepgram.status,
-									info: health?.deepgram.code
-										? `HTTP ${health.deepgram.code}`
-										: health?.deepgram.error,
+									info:
+										health?.deepgram.code ?
+											`HTTP ${health.deepgram.code}`
+										:	health?.deepgram.error,
 									icon: <SpeedIcon fontSize="small" />,
 								},
 								{
@@ -1287,17 +1286,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 													borderRadius: "50%",
 													bgcolor: (theme) =>
 														alpha(
-															svc.status === "healthy" ||
-																svc.status === "configured"
-																? theme.palette.success.main
-																: theme.palette.error.main,
+															(
+																svc.status === "healthy" ||
+																	svc.status === "configured"
+															) ?
+																theme.palette.success.main
+															:	theme.palette.error.main,
 															0.1
 														),
 													color:
-														svc.status === "healthy" ||
-														svc.status === "configured"
-															? "success.main"
-															: "error.main",
+														(
+															svc.status === "healthy" ||
+															svc.status === "configured"
+														) ?
+															"success.main"
+														:	"error.main",
 													mb: 1.5,
 													display: "inline-flex",
 												}}
@@ -1314,10 +1317,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 											<Chip
 												label={svc.status?.toUpperCase() || "PENDIENTE"}
 												color={
-													svc.status === "healthy" ||
-													svc.status === "configured"
-														? "success"
-														: "error"
+													(
+														svc.status === "healthy" ||
+														svc.status === "configured"
+													) ?
+														"success"
+													:	"error"
 												}
 												size="small"
 												sx={{ mb: 1 }}
@@ -1422,12 +1427,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 							</Typography>
 						</Stack>
 
-						{loadingPlans ? (
+						{loadingPlans ?
 							<Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
 								<CircularProgress />
 							</Box>
-						) : (
-							<TableContainer
+						:	<TableContainer
 								component={Paper}
 								sx={{ borderRadius: br.lg, maxWidth: 1200 }}
 							>
@@ -1461,9 +1465,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 												</TableCell>
 												<TableCell>${plan.price_usd}</TableCell>
 												<TableCell>
-													{plan.price_ars
-														? formatCurrency(plan.price_ars)
-														: "-"}
+													{plan.price_ars ?
+														formatCurrency(plan.price_ars)
+													:	"-"}
 												</TableCell>
 												<TableCell>{plan.credits_initial}</TableCell>
 												<TableCell>{plan.credits_monthly}</TableCell>
@@ -1491,7 +1495,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 									</TableBody>
 								</Table>
 							</TableContainer>
-						)}
+						}
 					</Box>
 				</Box>
 			)}
@@ -1529,7 +1533,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 						disabled={!announcementMsg || updating}
 						onClick={handleSendAnnouncement}
 					>
-						{updating ? <CircularProgress size={24} /> : "Enviar a todos"}
+						{updating ?
+							<CircularProgress size={24} />
+						:	"Enviar a todos"}
 					</Button>
 				</DialogActions>
 			</Dialog>
@@ -1606,12 +1612,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			>
 				<DialogTitle>Detalles del Usuario: {selectedUser?.email}</DialogTitle>
 				<DialogContent dividers>
-					{loadingSessions ? (
+					{loadingSessions ?
 						<Box sx={{ p: 4, textAlign: "center" }}>
 							<CircularProgress />
 						</Box>
-					) : (
-						<Box>
+					:	<Box>
 							<Typography variant="h6" sx={{ mb: 2 }}>
 								Historial de Sesiones (Últimos 50)
 							</Typography>
@@ -1663,7 +1668,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 								</Table>
 							</TableContainer>
 						</Box>
-					)}
+					}
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setDetailsModalOpen(false)}>Cerrar</Button>
@@ -1775,10 +1780,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 						onClick={handleUpdatePlanDetails}
 						disabled={updating}
 					>
-						{updating ? <CircularProgress size={24} /> : "Guardar Cambios"}
+						{updating ?
+							<CircularProgress size={24} />
+						:	"Guardar Cambios"}
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* Tab 5: Promo Codes */}
+			{activeTab === 5 && (
+				<Box>
+					<PromoCodesManager userId={userId || ""} />
+				</Box>
+			)}
 
 			<AlertModal
 				open={alertModal.open}

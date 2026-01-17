@@ -91,7 +91,6 @@ import {
 	processWithLlama3,
 } from "./services/aiService";
 import {
-	getPrices,
 	createRecurringSubscription,
 	getSubscriptionDetails,
 	cancelSubscription as cancelMPSubscription,
@@ -142,9 +141,8 @@ app.post(
 			const outputLanguage = req.body.outputLanguage || "Spanish";
 			const noteFormat = req.body.noteFormat || "SOAP";
 			const patientName = req.body.patientName || "el paciente";
-			const patientAge = req.body.patientAge
-				? parseInt(req.body.patientAge)
-				: undefined;
+			const patientAge =
+				req.body.patientAge ? parseInt(req.body.patientAge) : undefined;
 			const patientGender = req.body.patientGender;
 			const useHighPrecision =
 				req.body.useHighPrecision === "true" ||
@@ -457,17 +455,15 @@ app.post(
 					const totalSpeech = patientSeconds + therapistSeconds || 1;
 					// Only return biometry if we have actual speaker data (avoid 0% | 0% display)
 					const biometry =
-						patientSeconds > 0 || therapistSeconds > 0
-							? {
-									talkListenRatio: {
-										patient: Math.round((patientSeconds / totalSpeech) * 100),
-										therapist: Math.round(
-											(therapistSeconds / totalSpeech) * 100
-										),
-									},
-									silences: silences,
-							  }
-							: undefined;
+						patientSeconds > 0 || therapistSeconds > 0 ?
+							{
+								talkListenRatio: {
+									patient: Math.round((patientSeconds / totalSpeech) * 100),
+									therapist: Math.round((therapistSeconds / totalSpeech) * 100),
+								},
+								silences: silences,
+							}
+						:	undefined;
 
 					console.log(`[${sessionId}] Transcript ready. Processing with AI...`);
 
@@ -578,11 +574,6 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 	}
 });
 
-// Subscription Endpoints
-app.get("/api/prices", (req, res) => {
-	res.json(getPrices());
-});
-
 // Get all active subscription plans
 app.get("/api/plans", async (req, res) => {
 	try {
@@ -594,19 +585,14 @@ app.get("/api/plans", async (req, res) => {
 
 		if (error) throw error;
 
-		// Get current dolar rate for dynamic pricing
-		const prices = getPrices();
-		const dolarRate = prices.rate;
-
-		// Calculate ARS prices if not set
+		// Use fixed peso prices from database
 		const plansWithPrices = plans.map((plan) => ({
 			...plan,
-			price_ars: plan.price_ars || Math.round(plan.price_usd * dolarRate),
+			price_ars: plan.price_ars,
 		}));
 
 		res.json({
 			plans: plansWithPrices,
-			rate: dolarRate,
 		});
 	} catch (error: any) {
 		console.error("Error fetching plans:", error);
@@ -877,10 +863,19 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 			);
 
 			if (userId && subscription.auto_recurring) {
-				// Determine plan type from amount
+				// Determine plan type from amount by comparing with database prices
 				const amount = subscription.auto_recurring.transaction_amount || 0;
-				const prices = getPrices();
-				const planType = amount >= prices.ultra ? "ultra" : "pro";
+
+				// Get plan prices from database to determine plan type
+				const { data: planData } = await supabase
+					.from("subscription_plans")
+					.select("plan_type, price_ars")
+					.in("plan_type", ["pro", "ultra"]);
+
+				const ultraPlan = planData?.find((p) => p.plan_type === "ultra");
+				const ultraPrice = ultraPlan?.price_ars || 999999; // High default to avoid false ultra detection
+
+				const planType = amount >= ultraPrice ? "ultra" : "pro";
 
 				// Type assertion for auto_recurring properties not in SDK types
 				const autoRecurring = subscription.auto_recurring as any;
@@ -892,9 +887,9 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 					console.log(
 						`[Webhook] ${
-							shouldUpdatePlan
-								? "UPDATING PLAN AND CREDITS"
-								: "RECORDING SUBSCRIPTION ONLY"
+							shouldUpdatePlan ?
+								"UPDATING PLAN AND CREDITS"
+							:	"RECORDING SUBSCRIPTION ONLY"
 						} - Status: ${status}, Action: ${action}, Plan: ${planType}, Amount: ${amount}`
 					);
 
@@ -907,9 +902,9 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						status || "pending",
 						amount,
 						autoRecurring.billing_day,
-						subscription.next_payment_date
-							? new Date(subscription.next_payment_date)
-							: undefined,
+						subscription.next_payment_date ?
+							new Date(subscription.next_payment_date)
+						:	undefined,
 						shouldUpdatePlan
 					);
 
@@ -1073,7 +1068,10 @@ app.get("/api/announcements", async (req, res) => {
 
 // Admin routes - Protected by isAdmin middleware
 import adminRoutes from "./routes/admin";
+import promoRoutes from "./routes/promo";
+
 app.use("/api/admin", adminRoutes);
+app.use("/api", promoRoutes);
 
 app.listen(port, () => {
 	console.log(`Lazo Server listening at http://localhost:${port}`);

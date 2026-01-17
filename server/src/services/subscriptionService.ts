@@ -1,6 +1,4 @@
-import axios from "axios";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
-import cron from "node-cron";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
@@ -62,49 +60,6 @@ if (!accessToken) {
 	);
 }
 
-const DOLAR_API_URL = "https://dolarapi.com/v1/dolares/tarjeta";
-
-let currentDolarRate = 1950; // Fallback rate
-
-export const fetchDolarTarjeta = async () => {
-	try {
-		const response = await axios.get(DOLAR_API_URL);
-		if (response.data && response.data.compra && response.data.venta) {
-			const compra = response.data.compra;
-			const venta = response.data.venta;
-			currentDolarRate = Math.round((compra + venta) / 2);
-			console.log(
-				`[Subscription] Dolar Tarjeta updated: ${currentDolarRate} (Compra: ${compra}, Venta: ${venta})`
-			);
-			return currentDolarRate;
-		}
-	} catch (error) {
-		console.error("[Subscription] Error fetching Dolar rate:", error);
-	}
-	return currentDolarRate;
-};
-
-// Sync daily at 00:00
-cron.schedule("0 0 * * *", () => {
-	console.log("[Subscription] Running daily Dolar rate sync...");
-	fetchDolarTarjeta();
-});
-
-// Initial fetch
-fetchDolarTarjeta();
-
-export const getPrices = () => {
-	const proUsd = 10;
-	const ultraUsd = 30;
-
-	return {
-		rate: currentDolarRate,
-		pro: 50, // PRECIO DE PRUEBA - Cambiar a: Math.round(proUsd * currentDolarRate) para producción
-		ultra: Math.round(ultraUsd * currentDolarRate),
-		updatedAt: new Date().toISOString(),
-	};
-};
-
 /**
  * Create a recurring subscription using Mercado Pago PreApproval API
  */
@@ -132,8 +87,24 @@ export const createRecurringSubscription = async (
 		);
 	}
 
-	const prices = getPrices();
-	const amount = planId === "pro" ? prices.pro : prices.ultra;
+	// Get plan price from database
+	const { createClient } = await import("@supabase/supabase-js");
+	const supabase = createClient(
+		process.env.SUPABASE_URL!,
+		process.env.SUPABASE_SERVICE_KEY!
+	);
+
+	const { data: planData, error: planError } = await supabase
+		.from("subscription_plans")
+		.select("price_ars")
+		.eq("plan_type", planId)
+		.single();
+
+	if (planError || !planData) {
+		throw new Error(`Plan ${planId} not found in database`);
+	}
+
+	const amount = planData.price_ars;
 	const planTitle = `Lazo ${planId.charAt(0).toUpperCase() + planId.slice(1)}`;
 
 	const preApproval = new PreApproval(client);

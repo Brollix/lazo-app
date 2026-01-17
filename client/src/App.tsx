@@ -17,11 +17,21 @@ async function checkIsAdmin(userId: string): Promise<boolean> {
 			.from("admin_roles")
 			.select("role")
 			.eq("user_id", userId)
-			.single();
+			.maybeSingle();
 
-		return !error && !!data;
+		// If there's an error or no data, user is not an admin
+		// This handles both RLS permission errors and cases where the user simply isn't an admin
+		if (error) {
+			console.log(
+				"Admin check error (expected for non-admin users):",
+				error.message
+			);
+			return false;
+		}
+
+		return !!data;
 	} catch (err) {
-		console.error("Error checking admin status:", err);
+		console.error("Unexpected error checking admin status:", err);
 		return false;
 	}
 }
@@ -73,7 +83,7 @@ function App() {
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (event, session) => {
+		} = supabase.auth.onAuthStateChange((event, session) => {
 			console.log(
 				"App: onAuthStateChange event:",
 				event,
@@ -83,42 +93,47 @@ function App() {
 
 			if (!isMounted) return;
 
-			if (session) {
-				console.log("App: Session found, user ID:", session.user.id);
-				setUserId(session.user.id);
+			// Use setTimeout to break out of the Supabase client's callback context
+			// This prevents deadlock when making database queries
+			setTimeout(async () => {
+				if (!isMounted) return;
 
-				// Check if password is available for encryption
-				// If session was restored but password is not in sessionStorage, redirect to login
-				const { EncryptionService } = await import(
-					"./services/encryptionService"
-				);
-				if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
-					console.log(
-						"App: Session restored but password not available, redirecting to login"
-					);
-					// Clear session to force re-login
-					await supabase.auth.signOut();
+				if (session) {
+					console.log("App: Session found, user ID:", session.user.id);
+					setUserId(session.user.id);
+
+					// Check if password is available for encryption
+					// If session was restored but password is not in sessionStorage, redirect to login
+					const { EncryptionService } =
+						await import("./services/encryptionService");
+					if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
+						console.log(
+							"App: Session restored but password not available, redirecting to login"
+						);
+						// Clear session to force re-login
+						await supabase.auth.signOut();
+						setUserId(undefined);
+						setCurrentView("login");
+						setSelectedPatient(null);
+						return;
+					}
+
+					// Check if user is admin
+					const isAdmin = await checkIsAdmin(session.user.id);
+					if (isAdmin) {
+						console.log("App: Admin user detected, redirecting to admin panel");
+						setCurrentView("admin");
+					} else {
+						console.log("App: Regular user, switching to list view");
+						setCurrentView("list");
+					}
+				} else {
+					console.log("App: No session, showing login");
 					setUserId(undefined);
 					setCurrentView("login");
 					setSelectedPatient(null);
-					return;
 				}
-
-				// Check if user is admin
-				const isAdmin = await checkIsAdmin(session.user.id);
-				if (isAdmin) {
-					console.log("App: Admin user detected, redirecting to admin panel");
-					setCurrentView("admin");
-				} else {
-					console.log("App: Regular user, switching to list view");
-					setCurrentView("list");
-				}
-			} else {
-				console.log("App: No session, showing login");
-				setUserId(undefined);
-				setCurrentView("login");
-				setSelectedPatient(null);
-			}
+			}, 0);
 		});
 
 		return () => {
@@ -182,13 +197,13 @@ function App() {
 							"--color-cream": theme.palette.background.default,
 							"--color-white": theme.palette.common.white,
 							"--color-slate-hover":
-								themeMode === "light"
-									? "rgba(61, 64, 91, 0.2)"
-									: "rgba(255, 255, 255, 0.1)",
+								themeMode === "light" ?
+									"rgba(61, 64, 91, 0.2)"
+								:	"rgba(255, 255, 255, 0.1)",
 							"--color-terracotta-hover":
-								themeMode === "light"
-									? "rgba(224, 122, 95, 0.6)"
-									: "rgba(214, 104, 78, 0.6)",
+								themeMode === "light" ?
+									"rgba(224, 122, 95, 0.6)"
+								:	"rgba(214, 104, 78, 0.6)",
 						},
 					}}
 				/>

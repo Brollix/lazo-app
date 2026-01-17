@@ -158,18 +158,16 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 		// Get plan prices from database
 		const { data: planData, error: planError } = await supabase
 			.from("subscription_plans")
-			.select("plan_type, price_usd, price_ars");
+			.select("plan_type, price_ars");
 
 		if (planError) throw planError;
 
 		const proPlan = planData.find((p) => p.plan_type === "pro");
 		const ultraPlan = planData.find((p) => p.plan_type === "ultra");
 
-		// Use price_ars if set, otherwise calculate from USD
-		const PRO_PRICE =
-			proPlan?.price_ars || Math.round((proPlan?.price_usd || 10) * 1950);
-		const ULTRA_PRICE =
-			ultraPlan?.price_ars || Math.round((ultraPlan?.price_usd || 30) * 1950);
+		// Use fixed peso prices from database
+		const PRO_PRICE = proPlan?.price_ars || 0;
+		const ULTRA_PRICE = ultraPlan?.price_ars || 0;
 
 		const proCount = subsData.filter((u) => u.plan_type === "pro").length;
 		const ultraCount = subsData.filter((u) => u.plan_type === "ultra").length;
@@ -804,6 +802,199 @@ router.delete(
 			res.json({ success: true });
 		} catch (error: any) {
 			console.error("[Admin] Error removing admin:", error);
+			res.status(500).json({ error: error.message });
+		}
+	}
+);
+
+/**
+ * GET /admin/promo-codes
+ * List all promotional codes
+ */
+router.get("/promo-codes", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { data, error } = await supabase
+			.from("promotional_codes")
+			.select("*")
+			.order("created_at", { ascending: false });
+
+		if (error) throw error;
+		res.json({ promoCodes: data });
+	} catch (error: any) {
+		console.error("[Admin] Error fetching promo codes:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * POST /admin/promo-codes
+ * Create a new promotional code
+ */
+router.post("/promo-codes", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { code, discount_percentage, duration_months, max_uses, expires_at } =
+			req.body;
+		const currentAdminId = req.body.userId;
+
+		// Validate code format (4 uppercase characters)
+		if (!code || !/^[A-Z]{4}$/.test(code)) {
+			return res.status(400).json({
+				error: "Invalid code format",
+				message: "El código debe tener exactamente 4 letras mayúsculas",
+			});
+		}
+
+		// Validate discount percentage
+		if (
+			!discount_percentage ||
+			discount_percentage < 1 ||
+			discount_percentage > 100
+		) {
+			return res.status(400).json({
+				error: "Invalid discount percentage",
+				message: "El descuento debe estar entre 1% y 100%",
+			});
+		}
+
+		// Validate duration
+		if (!duration_months || duration_months < 1) {
+			return res.status(400).json({
+				error: "Invalid duration",
+				message: "La duración debe ser al menos 1 mes",
+			});
+		}
+
+		const { data, error } = await supabase
+			.from("promotional_codes")
+			.insert({
+				code,
+				discount_percentage,
+				duration_months,
+				max_uses: max_uses || null,
+				expires_at: expires_at || null,
+				created_by: currentAdminId,
+			})
+			.select()
+			.single();
+
+		if (error) {
+			if (error.code === "23505") {
+				// Unique constraint violation
+				return res.status(409).json({
+					error: "Code already exists",
+					message: "Este código promocional ya existe",
+				});
+			}
+			throw error;
+		}
+
+		res.json({ success: true, promoCode: data });
+	} catch (error: any) {
+		console.error("[Admin] Error creating promo code:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * PATCH /admin/promo-codes/:id
+ * Update a promotional code
+ */
+router.patch(
+	"/promo-codes/:id",
+	isAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const { id } = req.params;
+			const {
+				discount_percentage,
+				duration_months,
+				max_uses,
+				expires_at,
+				is_active,
+			} = req.body;
+
+			const updateData: any = {};
+			if (discount_percentage !== undefined)
+				updateData.discount_percentage = discount_percentage;
+			if (duration_months !== undefined)
+				updateData.duration_months = duration_months;
+			if (max_uses !== undefined) updateData.max_uses = max_uses;
+			if (expires_at !== undefined) updateData.expires_at = expires_at;
+			if (is_active !== undefined) updateData.is_active = is_active;
+
+			const { data, error } = await supabase
+				.from("promotional_codes")
+				.update(updateData)
+				.eq("id", id)
+				.select()
+				.single();
+
+			if (error) throw error;
+			res.json({ success: true, promoCode: data });
+		} catch (error: any) {
+			console.error("[Admin] Error updating promo code:", error);
+			res.status(500).json({ error: error.message });
+		}
+	}
+);
+
+/**
+ * DELETE /admin/promo-codes/:id
+ * Deactivate a promotional code
+ */
+router.delete(
+	"/promo-codes/:id",
+	isAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const { id } = req.params;
+
+			// Instead of deleting, we deactivate the code
+			const { data, error } = await supabase
+				.from("promotional_codes")
+				.update({ is_active: false })
+				.eq("id", id)
+				.select()
+				.single();
+
+			if (error) throw error;
+			res.json({ success: true, promoCode: data });
+		} catch (error: any) {
+			console.error("[Admin] Error deleting promo code:", error);
+			res.status(500).json({ error: error.message });
+		}
+	}
+);
+
+/**
+ * GET /admin/promo-codes/:id/usage
+ * Get usage statistics for a promotional code
+ */
+router.get(
+	"/promo-codes/:id/usage",
+	isAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const { id } = req.params;
+
+			const { data, error } = await supabase
+				.from("user_promo_codes")
+				.select(
+					`
+        *,
+        profiles:user_id (
+          email,
+          full_name
+        )
+      `
+				)
+				.eq("promo_code_id", id)
+				.order("applied_at", { ascending: false });
+
+			if (error) throw error;
+			res.json({ usage: data });
+		} catch (error: any) {
+			console.error("[Admin] Error fetching promo code usage:", error);
 			res.status(500).json({ error: error.message });
 		}
 	}
