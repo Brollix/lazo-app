@@ -16,6 +16,12 @@ import {
 	Switch,
 	FormControlLabel,
 	Tooltip,
+	InputAdornment,
+	Checkbox,
+	MenuItem,
+	Select,
+	FormControl,
+	InputLabel,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
@@ -24,8 +30,11 @@ import {
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
 	ContentCopy as CopyIcon,
+	Shuffle as ShuffleIcon,
+	AllInclusive as InfiniteIcon,
 } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
+import { AdminTable } from "./AdminTable";
 
 interface PromoCode {
 	id: string;
@@ -36,6 +45,7 @@ interface PromoCode {
 	max_uses: number | null;
 	current_uses: number;
 	expires_at: string | null;
+	applicable_plan: string | null;
 	created_at: string;
 }
 
@@ -64,7 +74,22 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		max_uses: null as number | null,
 		expires_at: null as string | null,
 		is_active: true,
+		is_unlimited: false,
+		applicable_plan: null as string | null,
 	});
+
+	const generateRandomCode = () => {
+		const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		let code = "";
+		for (let i = 0; i < 4; i++) {
+			code += chars.charAt(Math.floor(Math.random() * chars.length));
+		}
+		return code;
+	};
+
+	const handleGenerateCode = () => {
+		setFormData({ ...formData, code: generateRandomCode() });
+	};
 
 	const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -183,18 +208,23 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 			max_uses: null,
 			expires_at: null,
 			is_active: true,
+			is_unlimited: false,
+			applicable_plan: null,
 		});
 	};
 
 	const openEditModal = (promoCode: PromoCode) => {
 		setSelectedPromoCode(promoCode);
+		const isUnlimited = promoCode.duration_months >= 999;
 		setFormData({
 			code: promoCode.code,
 			discount_percentage: promoCode.discount_percentage,
-			duration_months: promoCode.duration_months,
+			duration_months: isUnlimited ? 999 : promoCode.duration_months,
 			max_uses: promoCode.max_uses,
 			expires_at: promoCode.expires_at,
 			is_active: promoCode.is_active,
+			is_unlimited: isUnlimited,
+			applicable_plan: promoCode.applicable_plan,
 		});
 		setEditModalOpen(true);
 	};
@@ -203,9 +233,19 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		{
 			field: "code",
 			headerName: "Código",
-			width: 120,
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
-				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+				<Box
+					sx={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						gap: 1,
+						width: "100%",
+					}}
+				>
 					<Typography variant="body2" fontWeight="bold">
 						{params.value}
 					</Typography>
@@ -224,7 +264,9 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		{
 			field: "discount_percentage",
 			headerName: "Descuento",
-			width: 120,
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
 				<Chip
 					label={`${params.value}%`}
@@ -237,17 +279,44 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		{
 			field: "duration_months",
 			headerName: "Duración",
-			width: 120,
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
 				<Typography variant="body2">
-					{params.value} {params.value === 1 ? "mes" : "meses"}
+					{params.value >= 999 ?
+						"Infinito"
+					:	`${params.value} ${params.value === 1 ? "mes" : "meses"}`}
 				</Typography>
 			),
 		},
 		{
+			field: "applicable_plan",
+			headerName: "Plan",
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
+			renderCell: (params: GridRenderCellParams) =>
+				params.value ?
+					<Chip
+						label={params.value.toUpperCase()}
+						size="small"
+						color={params.value === "ultra" ? "secondary" : "primary"}
+					/>
+				:	"Cualquiera",
+		},
+		{
 			field: "usage",
 			headerName: "Usos",
-			width: 150,
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
+			valueGetter: (params: any) => {
+				// valueGetter is simpler for sorting, but renderCell does the display
+				// Actually DataGrid v6+ valueGetter signature is (value, row).
+				// Let's stick to renderCell but ensure alignment.
+				return `${params.row.current_uses} / ${params.row.max_uses || "∞"}`;
+			},
 			renderCell: (params: GridRenderCellParams) => {
 				const maxUses = params.row.max_uses;
 				const currentUses = params.row.current_uses;
@@ -261,7 +330,9 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		{
 			field: "is_active",
 			headerName: "Estado",
-			width: 120,
+			flex: 0.6,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
 				<Chip
 					label={params.value ? "Activo" : "Inactivo"}
@@ -273,17 +344,21 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		{
 			field: "expires_at",
 			headerName: "Expira",
-			width: 150,
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
 			valueFormatter: (value) =>
 				value ? new Date(value).toLocaleDateString("es-AR") : "Nunca",
 		},
 		{
 			field: "actions",
 			headerName: "Acciones",
-			width: 150,
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
 			sortable: false,
 			renderCell: (params: GridRenderCellParams) => (
-				<Stack direction="row" spacing={1}>
+				<Stack direction="row" spacing={1} justifyContent="center" width="100%">
 					<Tooltip title="Editar">
 						<IconButton
 							size="small"
@@ -320,29 +395,6 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 
 	return (
 		<Box>
-			<Box
-				sx={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					mb: 3,
-				}}
-			>
-				<Typography variant="h5" fontWeight="bold">
-					Códigos Promocionales
-				</Typography>
-				<Button
-					variant="contained"
-					startIcon={<AddIcon />}
-					onClick={() => {
-						resetForm();
-						setCreateModalOpen(true);
-					}}
-				>
-					Crear Código
-				</Button>
-			</Box>
-
 			{error && (
 				<Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
 					{error}
@@ -359,20 +411,24 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 				</Alert>
 			)}
 
-			<DataGrid
+			<AdminTable
+				title="Códigos Promocionales"
 				rows={promoCodes}
 				columns={columns}
 				loading={loading}
-				autoHeight
-				pageSizeOptions={[10, 25, 50]}
-				initialState={{
-					pagination: { paginationModel: { pageSize: 10 } },
-				}}
-				sx={{
-					"& .MuiDataGrid-cell": {
-						borderBottom: `1px solid ${alpha("#000", 0.1)}`,
-					},
-				}}
+				maxWidth={1200}
+				actionButton={
+					<Button
+						variant="contained"
+						startIcon={<AddIcon />}
+						onClick={() => {
+							resetForm();
+							setCreateModalOpen(true);
+						}}
+					>
+						Crear Código
+					</Button>
+				}
 			/>
 
 			{/* Create Modal */}
@@ -394,6 +450,17 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 									code: e.target.value.toUpperCase().slice(0, 4),
 								})
 							}
+							InputProps={{
+								endAdornment: (
+									<InputAdornment position="end">
+										<Tooltip title="Generar código aleatorio">
+											<IconButton onClick={handleGenerateCode} edge="end">
+												<ShuffleIcon />
+											</IconButton>
+										</Tooltip>
+									</InputAdornment>
+								),
+							}}
 							inputProps={{
 								maxLength: 4,
 								style: { textTransform: "uppercase" },
@@ -426,20 +493,47 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 							/>
 						</Box>
 
-						<TextField
-							label="Duración (meses)"
-							type="number"
-							value={formData.duration_months}
-							onChange={(e) =>
-								setFormData({
-									...formData,
-									duration_months: parseInt(e.target.value) || 1,
-								})
-							}
-							inputProps={{ min: 1 }}
-							fullWidth
-							required
-						/>
+						<Box>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={formData.is_unlimited}
+										onChange={(e) => {
+											const checked = e.target.checked;
+											setFormData({
+												...formData,
+												is_unlimited: checked,
+												duration_months: checked ? 999 : 3,
+											});
+										}}
+										color="primary"
+									/>
+								}
+								label={
+									<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+										<InfiniteIcon color="primary" fontSize="small" />
+										Gratis de por vida (Duración infinita)
+									</Box>
+								}
+							/>
+						</Box>
+
+						{!formData.is_unlimited && (
+							<TextField
+								label="Duración (meses)"
+								type="number"
+								value={formData.duration_months}
+								onChange={(e) =>
+									setFormData({
+										...formData,
+										duration_months: parseInt(e.target.value) || 1,
+									})
+								}
+								inputProps={{ min: 1 }}
+								fullWidth
+								required
+							/>
+						)}
 
 						<TextField
 							label="Máximo de usos (opcional)"
@@ -533,20 +627,47 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 							/>
 						</Box>
 
-						<TextField
-							label="Duración (meses)"
-							type="number"
-							value={formData.duration_months}
-							onChange={(e) =>
-								setFormData({
-									...formData,
-									duration_months: parseInt(e.target.value) || 1,
-								})
-							}
-							inputProps={{ min: 1 }}
-							fullWidth
-							required
-						/>
+						<Box>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={formData.is_unlimited}
+										onChange={(e) => {
+											const checked = e.target.checked;
+											setFormData({
+												...formData,
+												is_unlimited: checked,
+												duration_months: checked ? 999 : 3,
+											});
+										}}
+										color="primary"
+									/>
+								}
+								label={
+									<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+										<InfiniteIcon color="primary" fontSize="small" />
+										Gratis de por vida (Duración infinita)
+									</Box>
+								}
+							/>
+						</Box>
+
+						{!formData.is_unlimited && (
+							<TextField
+								label="Duración (meses)"
+								type="number"
+								value={formData.duration_months}
+								onChange={(e) =>
+									setFormData({
+										...formData,
+										duration_months: parseInt(e.target.value) || 1,
+									})
+								}
+								inputProps={{ min: 1 }}
+								fullWidth
+								required
+							/>
+						)}
 
 						<TextField
 							label="Máximo de usos (opcional)"
@@ -572,6 +693,24 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 							InputLabelProps={{ shrink: true }}
 							fullWidth
 						/>
+
+						<FormControl fullWidth>
+							<InputLabel>Plan Aplicable (opcional)</InputLabel>
+							<Select
+								value={formData.applicable_plan || ""}
+								label="Plan Aplicable (opcional)"
+								onChange={(e) =>
+									setFormData({
+										...formData,
+										applicable_plan: e.target.value || null,
+									})
+								}
+							>
+								<MenuItem value="">Todos los planes</MenuItem>
+								<MenuItem value="pro">Pro</MenuItem>
+								<MenuItem value="ultra">Ultra</MenuItem>
+							</Select>
+						</FormControl>
 
 						<FormControlLabel
 							control={

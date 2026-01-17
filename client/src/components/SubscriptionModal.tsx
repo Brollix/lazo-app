@@ -49,6 +49,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	const [validatedPromo, setValidatedPromo] = useState<any>(null);
 	const [validating, setValidating] = useState(false);
 	const [promoError, setPromoError] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
 
 	const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -56,13 +57,22 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		if (open) {
 			// Fetch plans from our backend
 			fetch(`${apiUrl}/api/plans`)
-				.then((res) => res.json())
+				.then((res) => {
+					if (!res.ok) {
+						throw new Error("Error al cargar planes");
+					}
+					return res.json();
+				})
 				.then((data) => {
 					console.log("Plans from backend:", data);
 					setPlans(data.plans || []);
+					setError(null);
 				})
 				.catch((err) => {
 					console.error("Error fetching plans from backend:", err);
+					setError(
+						"Error al cargar los planes. Por favor, intenta nuevamente."
+					);
 				});
 		}
 	}, [open, apiUrl]);
@@ -81,6 +91,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ code: promoCode, userId }),
 			});
+
+			if (!res.ok) {
+				const errorData = await res.json().catch(() => ({}));
+				throw new Error(errorData.error || "Error al validar el código");
+			}
+
 			const data = await res.json();
 			if (data.valid) {
 				setValidatedPromo(data.promo_code);
@@ -90,7 +106,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				setValidatedPromo(null);
 			}
 		} catch (err: any) {
-			setPromoError("Error al validar código");
+			const errorMessage =
+				err.message ||
+				"Error al validar código. Por favor, intenta nuevamente.";
+			setPromoError(errorMessage);
 			setValidatedPromo(null);
 		} finally {
 			setValidating(false);
@@ -107,6 +126,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		if (planId === "free") {
 			try {
 				setLoading(true);
+				setError(null);
 				const response = await fetch(`${apiUrl}/api/select-free-plan`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -114,18 +134,67 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				});
 
 				if (!response.ok) {
-					console.error("Error setting free plan");
+					const errorData = await response.json().catch(() => ({}));
+					throw new Error(
+						errorData.error || "Error al seleccionar plan gratuito"
+					);
 				}
 				onClose();
-			} catch (error) {
+				window.location.reload();
+			} catch (error: any) {
 				console.error("Error selecting free plan:", error);
+				setError(
+					error.message ||
+						"Error al seleccionar plan. Por favor, intenta nuevamente."
+				);
 			} finally {
 				setLoading(false);
 			}
 			return;
 		}
 		setLoading(true);
+		setError(null);
 		try {
+			const plan = plans.find((p) => p.plan_type === planId);
+			if (!plan) {
+				throw new Error("Plan no encontrado");
+			}
+
+			const discountedPrice = calculateDiscountedPrice(plan.price_ars);
+
+			// Direct activation for 100% discounts
+			if (
+				validatedPromo &&
+				validatedPromo.discount_percentage === 100 &&
+				discountedPrice === 0
+			) {
+				const response = await fetch(`${apiUrl}/api/activate-promo-direct`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						code: validatedPromo.code,
+						userId,
+						planType: planId,
+					}),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json().catch(() => ({}));
+					throw new Error(
+						errorData.message || "Error al activar plan con código promocional"
+					);
+				}
+
+				const data = await response.json();
+				if (data.success) {
+					onClose();
+					window.location.reload(); // Refresh to show active plan
+					return;
+				} else {
+					throw new Error(data.message || "Error al activar plan gratuito");
+				}
+			}
+
 			const redirectUrl = window.location.origin;
 			const response = await fetch(`${apiUrl}/api/create-subscription`, {
 				method: "POST",
@@ -138,14 +207,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					promoCode: validatedPromo?.code || null,
 				}),
 			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || "Error al crear suscripción");
+			}
+
 			const data = await response.json();
 			console.log("Subscription created:", data);
 
 			// If promo code is valid, apply it
 			if (validatedPromo && data.id) {
-				const plan = plans.find((p) => p.plan_type === planId);
-				if (plan) {
-					await fetch(`${apiUrl}/api/apply-promo-code`, {
+				try {
+					const promoResponse = await fetch(`${apiUrl}/api/apply-promo-code`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({
@@ -156,6 +230,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 							originalPrice: plan.price_ars,
 						}),
 					});
+
+					if (!promoResponse.ok) {
+						console.warn(
+							"Error applying promo code, but subscription was created"
+						);
+					}
+				} catch (promoError) {
+					console.warn("Error applying promo code:", promoError);
+					// Don't fail the whole flow if promo application fails
 				}
 			}
 
@@ -165,10 +248,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				window.open(data.init_point, "_blank");
 				onClose();
 			} else {
-				console.error("No init_point returned", data);
+				throw new Error(
+					"No se recibió URL de pago. Por favor, intenta nuevamente."
+				);
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error creating subscription:", error);
+			setError(
+				error.message ||
+					"Error al crear suscripción. Por favor, intenta nuevamente."
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -268,7 +357,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 						</Box>
 						{hasDiscount && (
 							<Chip
-								label={`${validatedPromo.discount_percentage}% OFF por ${validatedPromo.duration_months} meses`}
+								label={`${validatedPromo.discount_percentage}% OFF por ${validatedPromo.duration_months >= 999 ? "Siempre" : `${validatedPromo.duration_months} meses`}`}
 								color="success"
 								size="small"
 								icon={<PromoIcon />}
@@ -472,6 +561,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 								{validatedPromo.duration_months}{" "}
 								{validatedPromo.duration_months === 1 ? "mes" : "meses"}
 							</Typography>
+						</Alert>
+					)}
+					{error && (
+						<Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
+							<Typography variant="body2" fontWeight="bold">
+								Error
+							</Typography>
+							<Typography variant="body2">{error}</Typography>
 						</Alert>
 					)}
 				</Box>

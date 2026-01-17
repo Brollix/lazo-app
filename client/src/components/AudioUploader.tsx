@@ -250,16 +250,64 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 						return;
 					}
 
-					const errorText = JSON.stringify(errorData);
+					// Check for file size error (413 Payload Too Large)
+					if (response.status === 413) {
+						throw new Error(
+							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+						);
+					}
+
+					// Check for specific error messages
+					const errorMessage = errorData.error || errorData.message;
+
+					// File size error from server
+					if (
+						errorMessage?.includes("demasiado grande") ||
+						errorMessage?.includes("100MB")
+					) {
+						throw new Error(errorMessage);
+					}
+
+					// Credits exhausted
+					if (
+						errorMessage?.includes("créditos") ||
+						errorMessage?.includes("Créditos")
+					) {
+						throw new Error(errorMessage);
+					}
+
+					// Generic error with server message
 					throw new Error(
-						`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+						errorMessage ||
+							`Error del servidor: ${response.status} ${response.statusText}`
 					);
 				} catch (parseError) {
-					// If JSON parsing fails, get text
-					const errorText = await response.text();
-					throw new Error(
-						`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
-					);
+					// If JSON parsing fails, check status code
+					if (response.status === 413) {
+						throw new Error(
+							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+						);
+					}
+
+					// Try to get text response
+					try {
+						const errorText = await response.text();
+						if (
+							errorText?.includes("demasiado grande") ||
+							errorText?.includes("100MB")
+						) {
+							throw new Error(
+								"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+							);
+						}
+						throw new Error(
+							`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+						);
+					} catch {
+						throw new Error(
+							`Error del servidor: ${response.status} ${response.statusText}`
+						);
+					}
 				}
 			}
 
@@ -341,12 +389,29 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			console.error("Error en la subida", error);
 			let message = error.message || "Algo salió mal al procesar la sesión";
 
+			// Network errors
 			if (
 				message.includes("Failed to fetch") ||
-				message.includes("net::ERR_FAILED")
+				message.includes("net::ERR_FAILED") ||
+				message.includes("NetworkError")
 			) {
 				message =
-					"Error de conexión. Esto puede deberse a que el archivo es demasiado grande (límite del servidor excedido) o a un problema de red.";
+					"Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.";
+			}
+
+			// Timeout errors
+			if (message.includes("timeout") || message.includes("timed out")) {
+				message =
+					"La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.";
+			}
+
+			// If message already mentions file size, keep it as is
+			// Otherwise, check if it might be a file size issue
+			if (!message.includes("demasiado grande") && !message.includes("100MB")) {
+				if (message.includes("413") || message.includes("Payload Too Large")) {
+					message =
+						"El archivo es demasiado grande. El tamaño máximo permitido es 100MB.";
+				}
 			}
 
 			setErrorMessage(message);
@@ -372,7 +437,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	return (
 		<Box sx={{ maxWidth: 800, margin: "0 auto", p: { xs: 2, sm: 3 } }}>
 			<AnimatePresence mode="wait">
-				{!result ? (
+				{!result ?
 					<motion.div
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
@@ -446,9 +511,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									px: 2,
 									borderStyle: "dashed",
 									borderColor: isDragActive ? "primary.main" : "divider",
-									bgcolor: isDragActive
-										? alpha(theme.palette.primary.main, 0.1)
-										: "transparent",
+									bgcolor:
+										isDragActive ?
+											alpha(theme.palette.primary.main, 0.1)
+										:	"transparent",
 								}}
 							>
 								<input {...getInputProps()} />
@@ -460,7 +526,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										opacity: 0.7,
 									}}
 								/>
-								{isDragActive ? (
+								{isDragActive ?
 									<Typography
 										variant="subtitle1"
 										color="primary"
@@ -468,8 +534,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 									>
 										Sueltalo aquí...
 									</Typography>
-								) : (
-									<Box>
+								:	<Box>
 										<Typography
 											variant="subtitle1"
 											sx={{ color: "text.primary", fontWeight: "600" }}
@@ -480,7 +545,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 											MP3, WAV, M4A (Máx 100MB)
 										</Typography>
 									</Box>
-								)}
+								}
 							</StyledDropzone>
 
 							{file && audioDuration && status === "idle" && (
@@ -571,8 +636,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 							)}
 						</GlassCard>
 					</motion.div>
-				) : (
-					<motion.div
+				:	<motion.div
 						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{ opacity: 1, scale: 1 }}
 						key="results-area"
@@ -777,7 +841,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 							</Box>
 						</GlassCard>
 					</motion.div>
-				)}
+				}
 			</AnimatePresence>
 
 			{monthlyLimitData && (

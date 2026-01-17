@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
 	Box,
 	Typography,
@@ -69,6 +69,10 @@ import {
 } from "../styles.theme";
 import { AlertModal } from "./AlertModal";
 import { PromoCodesManager } from "./PromoCodesManager";
+import { ThemeContext } from "../App";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import { AdminTable } from "./AdminTable";
 
 interface AdminDashboardProps {
 	onLogout: () => void;
@@ -135,6 +139,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 	userId,
 	onBack,
 }) => {
+	const { mode, toggleTheme } = useContext(ThemeContext);
 	const [stats, setStats] = useState<Stats | null>(null);
 	const [users, setUsers] = useState<User[]>([]);
 	const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
@@ -492,24 +497,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 	const userColumns: GridColDef[] = [
 		{
-			field: "email_name",
-			headerName: "Usuario",
-			width: 250,
+			field: "email",
+			headerName: "Email",
+			flex: 1.5,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
-				<Box>
-					<Typography variant="body2" fontWeight="bold">
-						{params.row.email}
-					</Typography>
-					<Typography variant="caption" color="text.secondary">
-						{params.row.full_name || "Sin nombre"}
-					</Typography>
-				</Box>
+				<Typography variant="body2" fontWeight="medium">
+					{params.value}
+				</Typography>
 			),
 		},
 		{
 			field: "plan_type",
 			headerName: "Plan",
-			width: 120,
+			flex: 0.6,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
 				<Chip
 					label={params.value.toUpperCase()}
@@ -522,9 +526,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 		{
 			field: "credits_remaining",
 			headerName: "Créditos",
-			width: 130,
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
 			renderCell: (params: GridRenderCellParams) => (
-				<Stack direction="row" spacing={1} alignItems="center">
+				<Stack
+					direction="row"
+					spacing={1}
+					alignItems="center"
+					justifyContent="center"
+					width="100%"
+				>
 					<Typography variant="body2">
 						{params.value === -1 ? "∞" : params.value}
 						{params.row.plan_type === "ultra" &&
@@ -548,44 +560,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 		{
 			field: "usage_last_month",
 			headerName: "Uso (30d)",
-			width: 100,
+			flex: 0.7,
 			align: "center",
+			headerAlign: "center",
 		},
 		{
 			field: "last_activity",
 			headerName: "Última Actividad",
-			width: 160,
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
 			valueFormatter: (value) => (value ? formatDate(value) : "-"),
-		},
-		{
-			field: "subscription_id",
-			headerName: "MP ID",
-			width: 150,
-			renderCell: (params: GridRenderCellParams) =>
-				params.value ?
-					<Box sx={{ display: "flex", alignItems: "center" }}>
-						<Typography
-							variant="caption"
-							sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
-						>
-							{params.value}
-						</Typography>
-						<IconButton
-							size="small"
-							onClick={() => navigator.clipboard.writeText(params.value)}
-						>
-							<CopyIcon fontSize="inherit" />
-						</IconButton>
-					</Box>
-				:	"-",
 		},
 		{
 			field: "actions",
 			headerName: "Acciones",
-			width: 150,
+			flex: 8,
+			align: "center",
+			headerAlign: "center",
 			sortable: false,
 			renderCell: (params: GridRenderCellParams) => (
-				<Stack direction="row" spacing={1}>
+				<Stack direction="row" spacing={1} justifyContent="center" width="100%">
 					<Tooltip title="Ver Detalles">
 						<IconButton
 							size="small"
@@ -613,6 +608,115 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 						</IconButton>
 					</Tooltip>
 				</Stack>
+			),
+		},
+	];
+
+	const announcementColumns: GridColDef[] = [
+		{
+			field: "created_at",
+			headerName: "Fecha",
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
+			valueFormatter: (value) => formatDate(value),
+		},
+		{
+			field: "message",
+			headerName: "Mensaje",
+			flex: 3,
+			align: "center",
+			headerAlign: "center",
+		},
+		{
+			field: "active",
+			headerName: "Activo",
+			flex: 0.5,
+			align: "center",
+			headerAlign: "center",
+			renderCell: (params: GridRenderCellParams) => (
+				<Switch
+					checked={params.value}
+					onChange={(e) =>
+						handleToggleAnnouncement(params.row.id, e.target.checked)
+					}
+				/>
+			),
+		},
+		{
+			field: "actions",
+			headerName: "Acciones",
+			flex: 0.5,
+			align: "center",
+			headerAlign: "center",
+			sortable: false,
+			renderCell: (params: GridRenderCellParams) => (
+				<IconButton
+					color="error"
+					size="small"
+					onClick={() => handleDeleteAnnouncement(params.row.id)}
+				>
+					<DeleteIcon fontSize="small" />
+				</IconButton>
+			),
+		},
+	];
+
+	const planColumns: GridColDef[] = [
+		{
+			field: "name",
+			headerName: "Plan",
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
+		},
+		{
+			field: "price_ars",
+			headerName: "Precio",
+			flex: 0.8,
+			align: "center",
+			headerAlign: "center",
+			valueFormatter: (value) => (value ? formatCurrency(value) : "-"),
+		},
+		{
+			field: "credits_monthly",
+			headerName: "Créditos Mensuales",
+			flex: 1,
+			align: "center",
+			headerAlign: "center",
+		},
+		{
+			field: "is_active",
+			headerName: "Activo",
+			flex: 0.6,
+			align: "center",
+			headerAlign: "center",
+			renderCell: (params: GridRenderCellParams) => (
+				<Chip
+					label={params.value ? "Activo" : "Inactivo"}
+					color={params.value ? "success" : "default"}
+					size="small"
+				/>
+			),
+		},
+		{
+			field: "actions",
+			headerName: "Acciones",
+			flex: 0.6,
+			align: "center",
+			headerAlign: "center",
+			sortable: false,
+			renderCell: (params: GridRenderCellParams) => (
+				<IconButton
+					color="primary"
+					size="small"
+					onClick={() => {
+						setSelectedPlan(params.row);
+						setEditPlanModalOpen(true);
+					}}
+				>
+					<EditIcon fontSize="small" />
+				</IconButton>
 			),
 		},
 	];
@@ -680,6 +784,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 							Volver a Dashboard
 						</Button>
 					)}
+					<Tooltip title={mode === "light" ? "Modo Oscuro" : "Modo Claro"}>
+						<IconButton
+							onClick={toggleTheme}
+							sx={{
+								borderRadius: br.lg,
+								border: "1px solid",
+								borderColor: (theme) => alpha(theme.palette.divider, 0.1),
+								bgcolor: (theme) => alpha(theme.palette.background.paper, 0.4),
+								"&:hover": {
+									bgcolor: (theme) =>
+										alpha(theme.palette.background.paper, 0.6),
+								},
+							}}
+						>
+							{mode === "light" ?
+								<DarkModeIcon />
+							:	<LightModeIcon />}
+						</IconButton>
+					</Tooltip>
 					<Button
 						variant="outlined"
 						color="error"
@@ -1151,63 +1274,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 			{/* Users Tab */}
 			{activeTab === 1 && (
-				<Box sx={{ display: "flex", justifyContent: "center" }}>
-					<Box sx={{ width: "100%", maxWidth: 1400 }}>
-						<Paper
-							elevation={0}
-							sx={{
-								p: spacing.lg,
-								borderRadius: br.xl,
-								background: (theme) =>
-									getBackgrounds(theme.palette.mode).glass.panel,
-								backdropFilter: "blur(20px)",
-								border: "1px solid",
-								borderColor: (theme) =>
-									getColors(theme.palette.mode).glassBorder,
-							}}
-						>
-							<Stack
-								direction="row"
-								justifyContent="space-between"
-								alignItems="center"
-								sx={{ mb: spacing.lg }}
-							>
-								<Typography variant="h6" fontWeight="bold">
-									Gestión de Usuarios ({users.length})
-								</Typography>
-								<Button
-									startIcon={<DownloadIcon />}
-									variant="outlined"
-									size="small"
-									onClick={exportToCSV}
-									sx={{ borderRadius: br.lg }}
-								>
-									Exportar CSV
-								</Button>
-							</Stack>
-							<Box
-								sx={{
-									height: 600,
-									width: "100%",
-									"& .MuiDataGrid-root": { border: "none" },
-								}}
-							>
-								<DataGrid
-									rows={users}
-									columns={userColumns}
-									loading={loading}
-									slots={{ toolbar: GridToolbar }}
-									slotProps={{ toolbar: { showQuickFilter: true } }}
-									pageSizeOptions={[10, 25, 50]}
-									initialState={{
-										pagination: { paginationModel: { pageSize: 10 } },
-									}}
-									density="compact"
-								/>
-							</Box>
-						</Paper>
-					</Box>
-				</Box>
+				<AdminTable
+					rows={users}
+					columns={userColumns}
+					loading={loading}
+					title={`Gestión de Usuarios (${users.length})`}
+					onExport={exportToCSV}
+				/>
 			)}
 
 			{activeTab === 2 && (
@@ -1345,159 +1418,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 			)}
 
 			{activeTab === 3 && (
-				<Box sx={{ display: "flex", justifyContent: "center" }}>
-					<Box sx={{ width: "100%", maxWidth: 1200 }}>
-						<Stack
-							direction="row"
-							justifyContent="space-between"
-							alignItems="center"
-							sx={{ mb: spacing.lg }}
+				<AdminTable
+					rows={announcements}
+					columns={announcementColumns}
+					loading={false}
+					title="Gestión de Anuncios"
+					maxWidth={1200}
+					actionButton={
+						<Button
+							startIcon={<AddIcon />}
+							variant="contained"
+							onClick={() => setNotifyModalOpen(true)}
 						>
-							<Typography variant="h5" fontWeight="bold">
-								Gestión de Anuncios
-							</Typography>
-							<Button
-								startIcon={<AddIcon />}
-								variant="contained"
-								onClick={() => setNotifyModalOpen(true)}
-							>
-								Nuevo Anuncio
-							</Button>
-						</Stack>
-
-						<TableContainer component={Paper} sx={{ borderRadius: br.lg }}>
-							<Table size="small">
-								<TableHead>
-									<TableRow>
-										<TableCell>Fecha</TableCell>
-										<TableCell>Mensaje</TableCell>
-										<TableCell align="center">Activo</TableCell>
-										<TableCell align="right">Acciones</TableCell>
-									</TableRow>
-								</TableHead>
-								<TableBody>
-									{announcements.map((a) => (
-										<TableRow key={a.id}>
-											<TableCell>{formatDate(a.created_at)}</TableCell>
-											<TableCell sx={{ maxWidth: 400 }}>{a.message}</TableCell>
-											<TableCell align="center">
-												<Switch
-													checked={a.active}
-													onChange={(e) =>
-														handleToggleAnnouncement(a.id, e.target.checked)
-													}
-												/>
-											</TableCell>
-											<TableCell align="right">
-												<IconButton
-													color="error"
-													size="small"
-													onClick={() => handleDeleteAnnouncement(a.id)}
-												>
-													<DeleteIcon fontSize="small" />
-												</IconButton>
-											</TableCell>
-										</TableRow>
-									))}
-									{announcements.length === 0 && (
-										<TableRow>
-											<TableCell colSpan={4} align="center">
-												No hay anuncios registrados
-											</TableCell>
-										</TableRow>
-									)}
-								</TableBody>
-							</Table>
-						</TableContainer>
-					</Box>
-				</Box>
+							Nuevo Anuncio
+						</Button>
+					}
+				/>
 			)}
 
 			{activeTab === 4 && (
-				<Box sx={{ display: "flex", justifyContent: "center" }}>
-					<Box sx={{ width: "100%", maxWidth: 1200 }}>
-						<Stack
-							direction="row"
-							justifyContent="space-between"
-							alignItems="center"
-							sx={{ mb: spacing.lg }}
-						>
-							<Typography variant="h5" fontWeight="bold">
-								Gestión de Planes
-							</Typography>
-						</Stack>
-
-						{loadingPlans ?
-							<Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-								<CircularProgress />
-							</Box>
-						:	<TableContainer
-								component={Paper}
-								sx={{ borderRadius: br.lg, maxWidth: 1200 }}
-							>
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>Plan</TableCell>
-											<TableCell>Precio USD</TableCell>
-											<TableCell>Precio ARS</TableCell>
-											<TableCell>Créditos Iniciales</TableCell>
-											<TableCell>Créditos Mensuales</TableCell>
-											<TableCell align="center">Activo</TableCell>
-											<TableCell align="right">Acciones</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{plans.map((plan) => (
-											<TableRow key={plan.id}>
-												<TableCell>
-													<Box>
-														<Typography variant="body2" fontWeight="bold">
-															{plan.name}
-														</Typography>
-														<Typography
-															variant="caption"
-															color="text.secondary"
-														>
-															{plan.plan_type}
-														</Typography>
-													</Box>
-												</TableCell>
-												<TableCell>${plan.price_usd}</TableCell>
-												<TableCell>
-													{plan.price_ars ?
-														formatCurrency(plan.price_ars)
-													:	"-"}
-												</TableCell>
-												<TableCell>{plan.credits_initial}</TableCell>
-												<TableCell>{plan.credits_monthly}</TableCell>
-												<TableCell align="center">
-													<Chip
-														label={plan.is_active ? "Activo" : "Inactivo"}
-														color={plan.is_active ? "success" : "default"}
-														size="small"
-													/>
-												</TableCell>
-												<TableCell align="right">
-													<IconButton
-														color="primary"
-														size="small"
-														onClick={() => {
-															setSelectedPlan(plan);
-															setEditPlanModalOpen(true);
-														}}
-													>
-														<EditIcon fontSize="small" />
-													</IconButton>
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							</TableContainer>
-						}
-					</Box>
-				</Box>
+				<AdminTable
+					rows={plans}
+					columns={planColumns}
+					loading={loadingPlans}
+					title="Gestión de Planes"
+					maxWidth={1200}
+				/>
 			)}
 
 			{/* Notify Modal */}

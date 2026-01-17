@@ -433,6 +433,40 @@ router.get("/announcements", isAdmin, async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /admin/announcement
+ * Create a new announcement
+ */
+router.post("/announcement", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { message } = req.body;
+		const currentAdminId = req.body.userId;
+
+		if (!message) {
+			return res.status(400).json({
+				error: "Missing message",
+				message: "El mensaje es requerido",
+			});
+		}
+
+		const { data, error } = await supabase
+			.from("announcements")
+			.insert({
+				message,
+				active: true,
+				created_by: currentAdminId,
+			})
+			.select()
+			.single();
+
+		if (error) throw error;
+		res.json({ success: true, announcement: data });
+	} catch (error: any) {
+		console.error("[Admin] Error creating announcement:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
  * PATCH /admin/announcements/:id
  * Toggle announcement active status
  */
@@ -999,5 +1033,103 @@ router.get(
 		}
 	}
 );
+
+/**
+ * POST /admin/update-plan
+ * Update a user's subscription plan
+ */
+router.post("/update-plan", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { targetUserId, newPlan } = req.body;
+
+		if (!targetUserId || !newPlan) {
+			return res.status(400).json({
+				error: "Missing required fields",
+				message: "targetUserId y newPlan son requeridos",
+			});
+		}
+
+		if (!["free", "pro", "ultra"].includes(newPlan)) {
+			return res.status(400).json({
+				error: "Invalid plan",
+				message: "Plan inválido. Debe ser: free, pro, o ultra",
+			});
+		}
+
+		// Update the user's plan
+		const { data, error } = await supabase
+			.from("profiles")
+			.update({ plan_type: newPlan })
+			.eq("id", targetUserId)
+			.select()
+			.single();
+
+		if (error) throw error;
+
+		console.log(`[Admin] Updated user ${targetUserId} plan to ${newPlan}`);
+		res.json({ success: true, profile: data });
+	} catch (error: any) {
+		console.error("[Admin] Error updating plan:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * POST /admin/update-credits
+ * Add credits to a user's account
+ */
+router.post("/update-credits", isAdmin, async (req: Request, res: Response) => {
+	try {
+		const { targetUserId, creditsToAdd, isPremium } = req.body;
+
+		if (!targetUserId || creditsToAdd === undefined) {
+			return res.status(400).json({
+				error: "Missing required fields",
+				message: "targetUserId y creditsToAdd son requeridos",
+			});
+		}
+
+		// Get current user profile
+		const { data: profile, error: profileError } = await supabase
+			.from("profiles")
+			.select("credits_remaining, premium_credits_remaining")
+			.eq("id", targetUserId)
+			.single();
+
+		if (profileError) throw profileError;
+
+		// Calculate new credit values
+		const updateData: any = {};
+		if (isPremium) {
+			updateData.premium_credits_remaining =
+				(profile.premium_credits_remaining || 0) + creditsToAdd;
+		} else {
+			// Handle unlimited credits (Pro plan has -1)
+			if (profile.credits_remaining === -1) {
+				updateData.credits_remaining = -1; // Keep unlimited
+			} else {
+				updateData.credits_remaining = profile.credits_remaining + creditsToAdd;
+			}
+		}
+
+		// Update the user's credits
+		const { data, error } = await supabase
+			.from("profiles")
+			.update(updateData)
+			.eq("id", targetUserId)
+			.select()
+			.single();
+
+		if (error) throw error;
+
+		console.log(
+			`[Admin] Added ${creditsToAdd} ${isPremium ? "premium" : "regular"} credits to user ${targetUserId}`
+		);
+		res.json({ success: true, profile: data });
+	} catch (error: any) {
+		console.error("[Admin] Error updating credits:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
 
 export default router;

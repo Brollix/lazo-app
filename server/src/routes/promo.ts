@@ -9,7 +9,7 @@ const router = Router();
  */
 router.post("/validate-promo-code", async (req: Request, res: Response) => {
 	try {
-		const { code, userId } = req.body;
+		const { code, userId, planType } = req.body;
 
 		if (!code) {
 			return res.status(400).json({
@@ -22,6 +22,7 @@ router.post("/validate-promo-code", async (req: Request, res: Response) => {
 		const { data, error } = await supabase.rpc("validate_promo_code", {
 			p_code: code.toUpperCase(),
 			p_user_id: userId || null,
+			p_plan_type: planType || null,
 		});
 
 		if (error) throw error;
@@ -130,6 +131,74 @@ router.post("/decrement-promo-months", async (req: Request, res: Response) => {
 		res.json(data);
 	} catch (error: any) {
 		console.error("[Promo] Error decrementing promo months:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+/**
+ * POST /api/activate-promo-direct
+ * Activate a plan directly for 100% discount codes
+ */
+router.post("/activate-promo-direct", async (req: Request, res: Response) => {
+	try {
+		const { code, userId, planType } = req.body;
+
+		if (!code || !userId || !planType) {
+			return res.status(400).json({
+				error: "Missing required fields",
+				message: "Faltan campos requeridos",
+			});
+		}
+
+		// 1. Validate the code one more time and check for 100% discount
+		const { data: promoData, error: validateError } = await supabase.rpc(
+			"validate_promo_code",
+			{
+				p_code: code.toUpperCase(),
+				p_user_id: userId,
+				p_plan_type: planType,
+			}
+		);
+
+		if (validateError) throw validateError;
+		if (!promoData.valid) {
+			return res.status(400).json(promoData);
+		}
+
+		if (promoData.promo_code.discount_percentage !== 100) {
+			return res.status(400).json({
+				error: "Not a 100% discount",
+				message: "Este código no es del 100% de descuento",
+			});
+		}
+
+		// 2. Apply the promo code locally (no MercadoPago subscription ID)
+		const { data: applyData, error: applyError } = await supabase.rpc(
+			"apply_promo_code",
+			{
+				p_user_id: userId,
+				p_code: code.toUpperCase(),
+				p_subscription_id: "promo_100_direct", // Marker for direct activation
+				p_plan_type: planType,
+				p_original_price: 0, // Not relevant for 100%
+			}
+		);
+
+		if (applyError) throw applyError;
+
+		// 3. Update user profile with the new plan
+		const { error: profileError } = await supabase
+			.from("profiles")
+			.update({
+				plan_type: planType,
+				subscription_status: "active",
+			})
+			.eq("id", userId);
+
+		if (profileError) throw profileError;
+
+		res.json({ success: true, message: "Plan activado directamente" });
+	} catch (error: any) {
+		console.error("[Promo] Error in direct activation:", error);
 		res.status(500).json({ error: error.message });
 	}
 });

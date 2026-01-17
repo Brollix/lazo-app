@@ -114,6 +114,7 @@ import {
 	incrementMonthlyTranscriptions,
 	supabase,
 } from "./services/dbService";
+import { multerErrorHandler, globalErrorHandler } from "./utils/errorHandlers";
 
 // Configure Multer to store files in memory with size limit (100MB for audio files)
 const upload = multer({
@@ -1072,6 +1073,10 @@ import promoRoutes from "./routes/promo";
 
 app.use("/api/admin", adminRoutes);
 app.use("/api", promoRoutes);
+
+// Error handling middleware - must be after all routes
+app.use(multerErrorHandler);
+app.use(globalErrorHandler);
 
 app.listen(port, () => {
 	console.log(`Lazo Server listening at http://localhost:${port}`);
