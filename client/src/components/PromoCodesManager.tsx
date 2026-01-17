@@ -15,7 +15,6 @@ import {
 	Slider,
 	Switch,
 	FormControlLabel,
-	CircularProgress,
 	Tooltip,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";

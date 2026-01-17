@@ -49,9 +49,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 	const [validatedPromo, setValidatedPromo] = useState<any>(null);
 	const [validating, setValidating] = useState(false);
 	const [promoError, setPromoError] = useState<string | null>(null);
-	const [selectedPlanForPromo, setSelectedPlanForPromo] = useState<Plan | null>(
-		null
-	);
 
 	const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -289,29 +286,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 								{plan.description}
 							</Typography>
 						: !isFree ?
-							<>
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									fontWeight={500}
-								>
-									USD ${plan.price_usd} × Dólar Tarjeta
-									<br />
-									(Cotización: ARS ${dolarRate.toLocaleString("es-AR")})
-								</Typography>
-								<Typography
-									variant="caption"
-									sx={{
-										color: "text.secondary",
-										opacity: 0.8,
-										fontSize: "0.7rem",
-										display: "block",
-										mt: 0.5,
-									}}
-								>
-									Suscripción mensual recurrente • Cancela cuando quieras
-								</Typography>
-							</>
+							<Typography
+								variant="caption"
+								sx={{
+									color: "text.secondary",
+									opacity: 0.8,
+									fontSize: "0.7rem",
+									display: "block",
+									mt: 0.5,
+								}}
+							>
+								Suscripción mensual recurrente • Cancela cuando quieras
+							</Typography>
 						:	<Typography
 								variant="body2"
 								color="text.secondary"
