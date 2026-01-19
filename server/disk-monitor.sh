@@ -4,7 +4,7 @@
 
 set -e
 
-LOG_FILE="/var/log/disk-monitor.log"
+LOG_FILE="$HOME/disk-monitor.log"
 THRESHOLD_PERCENT=80
 CRITICAL_THRESHOLD=85
 
