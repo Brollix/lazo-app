@@ -1,0 +1,47 @@
+// ULTRA PLAN - FINAL 3 CODE ADDITIONS FOR index.ts
+// Copy-paste these exact blocks at the specified line numbers
+
+// ============================================================================
+// ADDITION 1: Line ~180 (after line 179: closing brace of free plan check)
+// ============================================================================
+// INSERT AFTER: the closing brace of the free plan monthly check
+// BEFORE: // CREDIT VERIFICATION BASED ON PLAN TYPE
+
+		// Check Ultra plan's 120 sessions/month hard limit
+		const ultraCheck = await checkUltraSessionLimit(userId);
+		if (!ultraCheck.allowed) {
+			return res.status(403).json({
+				message: "ultra_monthly_limit_exceeded",
+				used: ultraCheck.used,
+				limit: ultraCheck.limit,
+				monthYear: ultraCheck.monthYear,
+			});
+		}
+
+
+// ============================================================================
+// ADDITION 2: Line ~216 (after line 215: closing brace of Ultra premium check)
+// ============================================================================
+// INSERT AFTER: the closing brace of Ultra premium credit check
+// BEFORE: // Additional validation: High Precision only for Ultra users
+
+		// Ultra plan with standard mode: check standard credits
+		if (profile.plan_type === "ultra" && !useHighPrecision) {
+			if (profile.credits_remaining <= 0) {
+				return res.status(403).json({
+					message:
+						"Créditos estándar agotados. Espera la renovación mensual.",
+					upgradeRequired: false,
+				});
+			}
+		}
+
+
+// ============================================================================
+// ADDITION 3: Line ~382 (after incrementMonthlyTranscriptions call)
+// ============================================================================
+// INSERT AFTER: await incrementMonthlyTranscriptions(userId);
+// BEFORE: // --- CONSTRUCT TIMESTAMPED TRANSCRIPT ---
+
+			// Track Ultra monthly session count (counts toward 120 limit)
+			await incrementUltraSessionCount(userId);

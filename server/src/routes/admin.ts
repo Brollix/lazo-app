@@ -44,7 +44,7 @@ async function checkAdminRole(userId: string): Promise<string | null> {
 export const isAdmin = async (
 	req: Request,
 	res: Response,
-	next: NextFunction
+	next: NextFunction,
 ) => {
 	const userId = req.body.userId || req.query.userId;
 
@@ -79,7 +79,7 @@ export const isAdmin = async (
 export const isSuperAdmin = async (
 	req: Request,
 	res: Response,
-	next: NextFunction
+	next: NextFunction,
 ) => {
 	const userId = req.body.userId || req.query.userId;
 
@@ -94,7 +94,7 @@ export const isSuperAdmin = async (
 
 	if (role !== "super_admin") {
 		console.warn(
-			`[Admin] Unauthorized super admin access attempt by user: ${userId}`
+			`[Admin] Unauthorized super admin access attempt by user: ${userId}`,
 		);
 		return res.status(403).json({
 			error: "Forbidden",
@@ -209,13 +209,33 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 			d.setDate(d.getDate() - i);
 			const dateStr = d.toISOString().split("T")[0];
 			const count = dailySessions.filter((s) =>
-				s.created_at.startsWith(dateStr)
+				s.created_at.startsWith(dateStr),
 			).length;
 			dailyStats.push({ date: dateStr, count });
 		}
 
 		// 8. Sessions Today
 		const sessionsToday = dailyStats[dailyStats.length - 1]?.count || 0;
+
+		// 9. Fiscal Health (Last 30 days gross revenue)
+		const thirtyDaysAgo = new Date();
+		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+		const { data: payments, error: paymentsError } = await supabase
+			.from("payment_history")
+			.select("amount")
+			.eq("status", "approved")
+			.gte("payment_date", thirtyDaysAgo.toISOString());
+
+		if (paymentsError) {
+			console.error(
+				"[Admin] Error fetching payments for fiscal health:",
+				paymentsError,
+			);
+		}
+
+		const grossRevenue30d =
+			payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
 		res.json({
 			totalUsers: totalUsers || 0,
@@ -225,6 +245,10 @@ router.get("/stats", isAdmin, async (req: Request, res: Response) => {
 			aiBurnRate: parseFloat(burnRate.toFixed(2)),
 			sessionsToday: sessionsToday || 0,
 			dailyStats,
+			fiscalHealth: {
+				grossRevenue30d,
+				monthlyLimit: 850000,
+			},
 			breakdown: {
 				proUsers: proCount,
 				ultraUsers: ultraCount,
@@ -411,7 +435,7 @@ router.get(
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -490,7 +514,7 @@ router.patch(
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -514,7 +538,7 @@ router.delete(
 		} catch (error: any) {
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -668,7 +692,7 @@ router.get("/admins", isSuperAdmin, async (req: Request, res: Response) => {
 					email,
 					full_name
 				)
-			`
+			`,
 			)
 			.order("created_at", { ascending: false });
 
@@ -797,7 +821,7 @@ router.patch(
 			console.error("[Admin] Error updating admin:", error);
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -838,7 +862,7 @@ router.delete(
 			console.error("[Admin] Error removing admin:", error);
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -969,7 +993,7 @@ router.patch(
 			console.error("[Admin] Error updating promo code:", error);
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -997,7 +1021,7 @@ router.delete(
 			console.error("[Admin] Error deleting promo code:", error);
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -1020,7 +1044,7 @@ router.get(
           email,
           full_name
         )
-      `
+      `,
 				)
 				.eq("promo_code_id", id)
 				.order("applied_at", { ascending: false });
@@ -1031,7 +1055,7 @@ router.get(
 			console.error("[Admin] Error fetching promo code usage:", error);
 			res.status(500).json({ error: error.message });
 		}
-	}
+	},
 );
 
 /**
@@ -1123,7 +1147,7 @@ router.post("/update-credits", isAdmin, async (req: Request, res: Response) => {
 		if (error) throw error;
 
 		console.log(
-			`[Admin] Added ${creditsToAdd} ${isPremium ? "premium" : "regular"} credits to user ${targetUserId}`
+			`[Admin] Added ${creditsToAdd} ${isPremium ? "premium" : "regular"} credits to user ${targetUserId}`,
 		);
 		res.json({ success: true, profile: data });
 	} catch (error: any) {

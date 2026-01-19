@@ -19,6 +19,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import DescriptionIcon from "@mui/icons-material/Description";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import Psychology from "@mui/icons-material/Psychology";
 import { GlassCard, StyledDropzone } from "./UploaderStyles";
 import { getGradients, typographyExtended } from "../styles.theme";
 import { UpgradeToProModal } from "./UpgradeToProModal";
@@ -45,6 +46,22 @@ export interface AnalysisResult {
 	risk_assessment: RiskAssessment;
 	entities: { name: string; type: string }[];
 	key_moments?: { timestamp: number; label: string }[];
+	ultra_psychological_analysis?: {
+		defense_mechanisms: {
+			mechanism: string;
+			evidence: string;
+			interpretation: string;
+		}[];
+		transference_notes: {
+			patient_to_therapist: string;
+			countertransference_risks: string;
+		};
+		diagnostic_hypotheses: {
+			diagnosis: string;
+			supporting_evidence: string;
+			follow_up: string;
+		}[];
+	};
 }
 
 export interface Biometry {
@@ -59,6 +76,8 @@ export interface ProcessSessionResponse {
 	biometry?: Biometry;
 	localDuration?: number;
 	noteFormat?: string;
+	hasHistoricalContext?: boolean;
+	patientIdentifier?: string | null;
 }
 
 interface AudioUploaderProps {
@@ -69,6 +88,7 @@ interface AudioUploaderProps {
 	patientAge?: number;
 	patientGender?: string;
 	userId?: string;
+	userPlan?: string | null;
 }
 
 // Helper functions for sentiment display
@@ -116,6 +136,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	patientAge,
 	patientGender,
 	userId,
+	userPlan,
 	onAnalysisComplete,
 	onAudioSelected,
 	onClose,
@@ -133,12 +154,53 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [inputLang, setInputLang] = useState<string>("es-US");
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
 	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
+	const [patientIdentifier, setPatientIdentifier] = useState<string>("");
 	const [audioDuration, setAudioDuration] = useState<number | null>(null);
 	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 	const [monthlyLimitData, setMonthlyLimitData] = useState<{
 		used: number;
 		monthYear: string;
 	} | null>(null);
+
+	const [isExporting, setIsExporting] = useState(false);
+	const handleExportMedicalReport = async () => {
+		if (!result || !userId) return;
+
+		setIsExporting(true);
+		try {
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/generate-medical-report`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					sessionId:
+						(result as any).sessionId || result.transcript.substring(0, 10), // Fallback if sessionId not directly in result
+					userId: userId,
+				}),
+			});
+
+			if (!response.ok) throw new Error("Error al generar el informe");
+
+			const data = await response.json();
+
+			// Download as file
+			const element = document.createElement("a");
+			const file = new Blob([data.report], { type: "text/markdown" });
+			element.href = URL.createObjectURL(file);
+			const dateStr = new Date(data.sessionDate).toISOString().split("T")[0];
+			element.download = `Informe_Profesional_${patientName || "Paciente"}_${dateStr}.md`;
+			document.body.appendChild(element);
+			element.click();
+			document.body.removeChild(element);
+		} catch (error) {
+			console.error("Export error:", error);
+			alert(
+				"Hubo un error al generar el informe profesional. Por favor reintenta."
+			);
+		} finally {
+			setIsExporting(false);
+		}
+	};
 
 	const onDrop = useCallback(async (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
@@ -220,6 +282,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		}
 		if (userId) {
 			formData.append("userId", userId);
+		}
+		if (patientIdentifier) {
+			formData.append("patientIdentifier", patientIdentifier);
 		}
 
 		try {
@@ -502,6 +567,22 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										<option value="BIRP">Formato BIRP</option>
 									</TextField>
 								</Stack>
+
+								{/* Ultra Plan Feature: Patient Identifier for Memory */}
+								{userPlan === "ultra" && (
+									<Box sx={{ mt: 1 }}>
+										<TextField
+											label="Identificador de Paciente (Opcional)"
+											placeholder="P. ej: Juan P., Paciente B"
+											value={patientIdentifier}
+											onChange={(e) => setPatientIdentifier(e.target.value)}
+											fullWidth
+											variant="outlined"
+											size="small"
+											helperText="Usa un identificador único para habilitar la memoria a largo plazo de Claude para este paciente."
+										/>
+									</Box>
+								)}
 							</Stack>
 
 							<StyledDropzone
@@ -726,6 +807,41 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 												{result.analysis?.topics?.length || 0} detectados
 											</Typography>
 										</Paper>
+										{result.hasHistoricalContext && (
+											<Paper
+												elevation={0}
+												sx={{
+													p: 1.5,
+													flex: 1,
+													textAlign: "center",
+													bgcolor: (theme) =>
+														alpha(theme.palette.primary.main, 0.05),
+													border: "1px solid",
+													borderColor: "primary.light",
+													borderRadius: 2,
+												}}
+											>
+												<Typography
+													variant="caption"
+													color="primary.main"
+													sx={{
+														display: "block",
+														mb: 0.5,
+														textTransform: "uppercase",
+														fontSize: 10,
+														fontWeight: "bold",
+													}}
+												>
+													Historial
+												</Typography>
+												<Chip
+													label="MEMORIA ACTIVA"
+													color="primary"
+													size="small"
+													sx={{ fontWeight: "bold", height: 24, fontSize: 10 }}
+												/>
+											</Paper>
+										)}
 									</Stack>
 
 									{/* Summary Preview */}
@@ -795,16 +911,211 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 												borderColor: "error.main",
 											}}
 										>
-											<Typography
-												variant="subtitle2"
-												color="#ffffff"
-												fontWeight="bold"
-												mb={0.5}
-											>
-												Atención: Factores de Riesgo
-											</Typography>
 											<Typography variant="body2" color="#ffffff">
 												{result.analysis.risk_assessment.summary}
+											</Typography>
+										</Box>
+									)}
+
+									{/* Ultra Plan Feature: Clinical Supervision Analysis */}
+									{userPlan === "ultra" &&
+										result.analysis.ultra_psychological_analysis && (
+											<Box
+												sx={{
+													p: 2.5,
+													borderRadius: 3,
+													bgcolor: (theme) =>
+														alpha(theme.palette.primary.main, 0.05),
+													border: "1px solid",
+													borderColor: "primary.light",
+												}}
+											>
+												<Stack
+													direction="row"
+													alignItems="center"
+													spacing={1}
+													mb={2}
+												>
+													<Psychology color="primary" sx={{ fontSize: 24 }} />
+													<Typography
+														variant="subtitle1"
+														fontWeight="bold"
+														color="primary"
+													>
+														Supervisión Clínica (Plan Ultra)
+													</Typography>
+												</Stack>
+
+												<Stack spacing={2}>
+													{/* Defense Mechanisms */}
+													<Box>
+														<Typography
+															variant="caption"
+															fontWeight="bold"
+															color="text.secondary"
+															sx={{ textTransform: "uppercase" }}
+														>
+															Mecanismos de Defensa
+														</Typography>
+														<Stack spacing={1} mt={1}>
+															{result.analysis.ultra_psychological_analysis.defense_mechanisms.map(
+																(dm, i) => (
+																	<Box
+																		key={i}
+																		sx={{
+																			p: 1,
+																			bgcolor: "background.paper",
+																			borderRadius: 1.5,
+																			borderLeft: "4px solid",
+																			borderLeftColor: "primary.main",
+																		}}
+																	>
+																		<Typography
+																			variant="body2"
+																			fontWeight="bold"
+																		>
+																			{dm.mechanism}
+																		</Typography>
+																		<Typography
+																			variant="caption"
+																			sx={{
+																				fontStyle: "italic",
+																				display: "block",
+																			}}
+																		>
+																			"{dm.evidence}"
+																		</Typography>
+																		<Typography
+																			variant="caption"
+																			color="text.secondary"
+																		>
+																			{dm.interpretation}
+																		</Typography>
+																	</Box>
+																)
+															)}
+														</Stack>
+													</Box>
+
+													{/* Transference */}
+													<Box>
+														<Typography
+															variant="caption"
+															fontWeight="bold"
+															color="text.secondary"
+															sx={{ textTransform: "uppercase" }}
+														>
+															Transferencia y Contratransferencia
+														</Typography>
+														<Typography
+															variant="body2"
+															mt={0.5}
+															sx={{
+																p: 1,
+																bgcolor: "background.paper",
+																borderRadius: 1.5,
+															}}
+														>
+															<strong>Transferencia:</strong>{" "}
+															{
+																result.analysis.ultra_psychological_analysis
+																	.transference_notes.patient_to_therapist
+															}
+														</Typography>
+														<Typography
+															variant="body2"
+															mt={0.5}
+															sx={{
+																p: 1,
+																bgcolor: "background.paper",
+																borderRadius: 1.5,
+															}}
+														>
+															<strong>Riesgos C-T:</strong>{" "}
+															{
+																result.analysis.ultra_psychological_analysis
+																	.transference_notes.countertransference_risks
+															}
+														</Typography>
+													</Box>
+
+													{/* Diagnostic Hypotheses */}
+													<Box>
+														<Typography
+															variant="caption"
+															fontWeight="bold"
+															color="text.secondary"
+															sx={{ textTransform: "uppercase" }}
+														>
+															Hipótesis Diagnósticas
+														</Typography>
+														<Stack spacing={1} mt={1}>
+															{result.analysis.ultra_psychological_analysis.diagnostic_hypotheses.map(
+																(dh, i) => (
+																	<Box
+																		key={i}
+																		sx={{
+																			p: 1,
+																			bgcolor: "background.paper",
+																			borderRadius: 1.5,
+																		}}
+																	>
+																		<Typography
+																			variant="body2"
+																			fontWeight="bold"
+																		>
+																			{dh.diagnosis}
+																		</Typography>
+																		<Typography
+																			variant="caption"
+																			color="text.secondary"
+																		>
+																			{dh.supporting_evidence}
+																		</Typography>
+																	</Box>
+																)
+															)}
+														</Stack>
+													</Box>
+												</Stack>
+											</Box>
+										)}
+
+									{/* Export Options for Ultra */}
+									{userPlan === "ultra" && (
+										<Box sx={{ mt: 2 }}>
+											<Button
+												variant="outlined"
+												color="primary"
+												fullWidth
+												disabled={isExporting}
+												startIcon={
+													isExporting ?
+														<CircularProgress size={20} />
+													:	<AssignmentTurnedInIcon />
+												}
+												onClick={handleExportMedicalReport}
+												sx={{
+													borderRadius: 2,
+													py: 1.5,
+													borderDash: "1px dashed",
+													fontWeight: "bold",
+													background: (theme) =>
+														alpha(theme.palette.primary.main, 0.05),
+												}}
+											>
+												{isExporting ?
+													"Generando..."
+												:	"Exportar Informe Profesional para Prepaga/Seguro"}
+											</Button>
+											<Typography
+												variant="caption"
+												color="text.secondary"
+												align="center"
+												sx={{ display: "block", mt: 1 }}
+											>
+												Incluye sanitización automática de PII y lenguaje
+												profesional.
 											</Typography>
 										</Box>
 									)}

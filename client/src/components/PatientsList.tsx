@@ -37,8 +37,6 @@ import { getBackgrounds } from "../styles.theme";
 import { supabase } from "../supabaseClient";
 import { EncryptionService } from "../services/encryptionService";
 
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
-
 export interface Patient {
 	id: string;
 	name: string;
@@ -52,6 +50,7 @@ interface PatientsListProps {
 	onLogout: () => void;
 	onNavigateToAdmin?: () => void;
 	userId?: string;
+	isAdmin?: boolean;
 }
 
 export const PatientsList: React.FC<PatientsListProps> = ({
@@ -59,6 +58,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	onLogout,
 	onNavigateToAdmin,
 	userId,
+	isAdmin,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -106,7 +106,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 			// Verify encryption is set up before attempting to decrypt
 			if (!EncryptionService.isSetup()) {
 				console.error(
-					"Encryption password not available - cannot decrypt patients"
+					"Encryption password not available - cannot decrypt patients",
 				);
 				setPatients([]);
 				return;
@@ -125,7 +125,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 						// Try to decrypt with password-based system
 						const decryptedData = EncryptionService.decryptData(
 							row.encrypted_data,
-							user.id
+							user.id,
 						);
 						return {
 							id: row.id,
@@ -333,7 +333,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 					>
 						<SettingsIcon />
 					</IconButton>
-					{userId === ADMIN_UUID && onNavigateToAdmin && (
+					{isAdmin && onNavigateToAdmin && (
 						<IconButton
 							onClick={onNavigateToAdmin}
 							color="primary"
@@ -395,12 +395,11 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 						overflow: "hidden",
 					}}
 				>
-					{loading ? (
+					{loading ?
 						<Box sx={{ p: 4, textAlign: "center" }}>
 							<CircularProgress />
 						</Box>
-					) : (
-						<List sx={{ p: 0 }}>
+					:	<List sx={{ p: 0 }}>
 							{patients.map((patient, index) => (
 								<React.Fragment key={patient.id}>
 									<ListItem disablePadding>
@@ -446,7 +445,7 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 								</React.Fragment>
 							))}
 						</List>
-					)}
+					}
 				</Paper>
 			</Container>
 

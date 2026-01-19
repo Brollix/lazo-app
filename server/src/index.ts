@@ -89,6 +89,7 @@ import {
 	performAiAction,
 	transcribeAudio,
 	processWithLlama3,
+	sanitizeForMedicalReport,
 } from "./services/aiService";
 import {
 	createRecurringSubscription,
@@ -112,6 +113,11 @@ import {
 	renewMonthlyCredits,
 	checkMonthlyTranscriptionLimit,
 	incrementMonthlyTranscriptions,
+	checkUltraSessionLimit,
+	incrementUltraSessionCount,
+	getPatientSummary,
+	getLastSessionSummaries,
+	upsertPatientSummary,
 	supabase,
 } from "./services/dbService";
 import { multerErrorHandler, globalErrorHandler } from "./utils/errorHandlers";
@@ -148,9 +154,10 @@ app.post(
 			const useHighPrecision =
 				req.body.useHighPrecision === "true" ||
 				req.body.useHighPrecision === true;
+			const patientIdentifier = req.body.patientIdentifier || null; // Ultra Plan: patient ID for long-term memory
 
 			console.log(
-				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}, High Precision: ${useHighPrecision}`
+				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}, High Precision: ${useHighPrecision}, Patient ID: ${patientIdentifier || "N/A"}`
 			);
 
 			const userId = req.body.userId || "anonymous"; // Should come from Auth header
@@ -172,21 +179,41 @@ app.post(
 				});
 			}
 
+			// Check Ultra plan's 120 sessions/month hard limit
+			const ultraCheck = await checkUltraSessionLimit(userId);
+			if (!ultraCheck.allowed) {
+				return res.status(403).json({
+					message: "ultra_monthly_limit_exceeded",
+					used: ultraCheck.used,
+					limit: ultraCheck.limit,
+					monthYear: ultraCheck.monthYear,
+				});
+			}
+
 			// CREDIT VERIFICATION BASED ON PLAN TYPE
 			// Free plan: check regular credits
 			if (profile.plan_type === "free") {
 				if (profile.credits_remaining <= 0) {
 					return res.status(403).json({
 						message:
-							"Créditos agotados. Actualiza a Pro para transcripciones ilimitadas.",
+							"Créditos agotados. Actualiza a Pro para 100 sesiones/mes.",
 						upgradeRequired: true,
 						suggestedPlan: "pro",
 					});
 				}
 			}
 
-			// Pro plan: unlimited, no credit check needed
-			// (credits_remaining = -1 for Pro)
+			// Pro plan: check 100 sessions/month limit
+			if (profile.plan_type === "pro") {
+				if (profile.credits_remaining <= 0) {
+					return res.status(403).json({
+						message:
+							"Límite mensual alcanzado (100 sesiones). Espera la renovación o actualiza a Ultra.",
+						upgradeRequired: true,
+						suggestedPlan: "ultra",
+					});
+				}
+			}
 
 			// Ultra plan with high precision: check premium credits
 			if (profile.plan_type === "ultra" && useHighPrecision) {
@@ -199,11 +226,24 @@ app.post(
 				}
 			}
 
+			// Ultra plan with standard mode: check standard credits
+			if (profile.plan_type === "ultra" && !useHighPrecision) {
+				if (profile.credits_remaining <= 0) {
+					return res.status(403).json({
+						message:
+							"Créditos estándar agotados. Espera la renovación mensual.",
+						upgradeRequired: false,
+					});
+				}
+			}
+
 			// Additional validation: High Precision only for Ultra users
 			if (useHighPrecision && profile.plan_type !== "ultra") {
 				return res.status(403).json({
 					message:
 						"La opción de Alta Precisión solo está disponible para usuarios del plan Ultra.",
+					featureLocked: true,
+					requiredPlan: "ultra",
 				});
 			}
 
@@ -236,12 +276,39 @@ app.post(
 						`[${sessionId}] Transcribing with ${profile.plan_type} settings...`
 					);
 
-					const transcriptionResult = await transcribeAudio(
-						req.file.buffer,
-						profile.plan_type as any,
-						useHighPrecision,
-						req.file.mimetype
-					);
+					let transcriptionResult;
+					let transcriptionFallback = false;
+					let actualTranscriptionProvider =
+						useHighPrecision ? "deepgram" : "groq";
+
+					try {
+						transcriptionResult = await transcribeAudio(
+							req.file.buffer,
+							profile.plan_type as any,
+							useHighPrecision,
+							req.file.mimetype
+						);
+					} catch (error: any) {
+						console.error(`[${sessionId}] Transcription error:`, error);
+
+						// If premium transcription failed, fallback to standard
+						if (useHighPrecision) {
+							console.log(
+								`[${sessionId}] Deepgram failed, falling back to Groq`
+							);
+							transcriptionFallback = true;
+							actualTranscriptionProvider = "groq";
+
+							transcriptionResult = await transcribeAudio(
+								req.file.buffer,
+								profile.plan_type as any,
+								false, // Use standard mode
+								req.file.mimetype
+							);
+						} else {
+							throw error; // Re-throw if standard mode fails
+						}
+					}
 
 					// Helper: extract text and basic diarization logic
 					let transcriptText = "";
@@ -359,10 +426,13 @@ app.post(
 					}
 
 					// Decrement credits based on plan and precision mode
-					await decrementCredits(userId, useHighPrecision);
+					// DO NOT decrement credits here - will be done after successful processing
 
 					// Track monthly transcription for free users
 					await incrementMonthlyTranscriptions(userId);
+
+					// Track Ultra monthly session count (counts toward 120 limit)
+					await incrementUltraSessionCount(userId);
 
 					// --- CONSTRUCT TIMESTAMPED TRANSCRIPT ---
 					let timestampedTranscript = "";
@@ -468,21 +538,88 @@ app.post(
 
 					console.log(`[${sessionId}] Transcript ready. Processing with AI...`);
 
+					// ULTRA PLAN: Fetch historical context if patient identifier is provided
+					let historicalContext: string | null = null;
+					if (
+						profile.plan_type === "ultra" &&
+						patientIdentifier &&
+						patientIdentifier.trim()
+					) {
+						try {
+							console.log(
+								`[${sessionId}] Ultra user - fetching historical context for patient: ${patientIdentifier}`
+							);
+							const historicalData = await getLastSessionSummaries(
+								userId,
+								patientIdentifier.trim(),
+								3
+							);
+
+							if (historicalData && historicalData.summary_text) {
+								historicalContext = `RESUMEN ACUMULADO (${historicalData.session_count} sesiones previas, última: ${new Date(historicalData.last_session_date).toLocaleDateString()}):\n${historicalData.summary_text}`;
+								console.log(
+									`[${sessionId}] Historical context loaded: ${historicalData.session_count} sessions`
+								);
+							} else {
+								console.log(
+									`[${sessionId}] No historical context found for patient ${patientIdentifier} (first session)`
+								);
+							}
+						} catch (err) {
+							console.error(
+								`[${sessionId}] Error fetching historical context:`,
+								err
+							);
+							// Continue without context - don't fail the session
+						}
+					}
+
 					// AI ROUTING LOGIC:
 					// Free/Pro/Ultra (standard) → Groq Llama 3.1 70B
-					// Ultra (premium) → AWS Claude 3.5 Sonnet
+					// Ultra (premium) → AWS Claude 3.5 Sonnet (with enhanced analysis + historical context)
 					let analysis;
-					if (profile.plan_type === "ultra" && useHighPrecision) {
-						// PREMIUM PATH: Claude 3.5 for maximum quality
-						console.log(`[${sessionId}] Using Claude 3.5 (Ultra Premium)`);
-						analysis = await processTranscriptWithClaude(
-							transcriptText,
-							outputLanguage,
-							noteFormat,
-							patientName,
-							patientAge,
-							patientGender
-						);
+					let analysisFallback = false;
+					let actualAnalysisProvider =
+						useHighPrecision && !transcriptionFallback ? "bedrock" : "groq";
+
+					if (
+						profile.plan_type === "ultra" &&
+						useHighPrecision &&
+						!transcriptionFallback
+					) {
+						// PREMIUM PATH: Claude 3.5 for maximum quality + Ultra features
+						try {
+							console.log(
+								`[${sessionId}] Using Claude 3.5 (Ultra Premium) with ${historicalContext ? "historical context" : "no context"}`
+							);
+							analysis = await processTranscriptWithClaude(
+								transcriptText,
+								outputLanguage,
+								noteFormat,
+								patientName,
+								patientAge,
+								patientGender,
+								true, // isUltraPlan
+								historicalContext
+							);
+						} catch (error: any) {
+							console.error(
+								`[${sessionId}] Bedrock failed, falling back to Llama 3.3:`,
+								error
+							);
+							analysisFallback = true;
+							actualAnalysisProvider = "groq";
+
+							// Fallback to standard processing
+							analysis = await processWithLlama3(
+								transcriptText,
+								outputLanguage,
+								noteFormat,
+								patientName,
+								patientAge,
+								patientGender
+							);
+						}
 					} else {
 						// STANDARD PATH: Llama 3.1 for cost-effective quality
 						console.log(
@@ -498,6 +635,15 @@ app.post(
 						);
 					}
 
+					// Decrement credits ONLY after successful processing
+					// If fallback occurred, use standard credits instead of premium
+					const usePremiumCredit =
+						useHighPrecision && !transcriptionFallback && !analysisFallback;
+					await decrementCredits(userId, usePremiumCredit);
+					console.log(
+						`[${sessionId}] Credits decremented. Type: ${usePremiumCredit ? "premium" : "standard"}`
+					);
+
 					// Store Success Result in Database
 					await updateProcessingSession(dbSessionId, {
 						status: "completed",
@@ -506,8 +652,54 @@ app.post(
 							analysis: analysis,
 							biometry: biometry,
 							noteFormat: noteFormat,
+							hasHistoricalContext: historicalContext !== null,
+							patientIdentifier: patientIdentifier,
+							processing_info: {
+								mode_requested: useHighPrecision ? "premium" : "standard",
+								transcription_provider: actualTranscriptionProvider,
+								analysis_provider: actualAnalysisProvider,
+								fallback_used: transcriptionFallback || analysisFallback,
+								fallback_reason:
+									transcriptionFallback ? "Transcription service unavailable"
+									: analysisFallback ? "Analysis service unavailable"
+									: null,
+							},
 						},
 					});
+
+					// ULTRA PLAN: Update patient summary with this session's data
+					if (
+						profile.plan_type === "ultra" &&
+						patientIdentifier &&
+						patientIdentifier.trim() &&
+						analysis
+					) {
+						try {
+							console.log(
+								`[${sessionId}] Updating patient summary for ${patientIdentifier}`
+							);
+							// Use the clinical note and summary as basis for cumulative memory
+							const summaryText =
+								analysis.clinical_note || analysis.summary || "";
+
+							if (summaryText) {
+								await upsertPatientSummary(
+									userId,
+									patientIdentifier.trim(),
+									summaryText
+								);
+								console.log(
+									`[${sessionId}] Patient summary updated successfully`
+								);
+							}
+						} catch (err) {
+							console.error(
+								`[${sessionId}] Error updating patient summary:`,
+								err
+							);
+							// Don't fail the session if summary update fails
+						}
+					}
 					console.log(`[${sessionId}] Processing completed successfully.`);
 				} catch (err: any) {
 					console.error(`[${sessionId}] Error in background processing:`, err);
@@ -571,7 +763,71 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 		res.json(result);
 	} catch (error: any) {
 		console.error("Error en /api/ai-action:", error);
-		res.status(500).json({ error: "Error al procesar la acción de IA" });
+	}
+});
+
+/**
+ * ULTRA PLAN: Professional Export Module
+ * Anonymizes clinical notes and transforms them into professional medical reports
+ */
+app.post("/api/generate-medical-report", async (req: any, res: any) => {
+	try {
+		const { sessionId, userId } = req.body;
+
+		if (!sessionId || !userId) {
+			return res.status(400).json({
+				error: "Parámetros faltantes: sessionId y userId",
+			});
+		}
+
+		// Verify user plan (Restriction check)
+		const profile = await getUserProfile(userId);
+		if (profile.plan_type !== "ultra") {
+			return res.status(403).json({
+				error: "Esta función es exclusiva del Plan Ultra",
+				upgradeRequired: true,
+				requiredPlan: "ultra",
+			});
+		}
+
+		// Fetch session
+		const session = await getProcessingSession(sessionId);
+		if (!session || session.user_id !== userId) {
+			return res.status(404).json({
+				error: "Sesión no encontrada o acceso denegado",
+			});
+		}
+
+		if (!session.result || !session.result.analysis) {
+			return res.status(400).json({
+				error: "La sesión no tiene un análisis válido para exportar",
+			});
+		}
+
+		// Extract clinical note
+		const soapNote = session.result.analysis.clinical_note || "";
+
+		console.log(
+			`[Report] Generating professional report for session ${sessionId}`
+		);
+
+		// Transform into professional report using Claude (automatic PII sanitization)
+		const clinicalReport = await sanitizeForMedicalReport(
+			soapNote,
+			new Date(session.created_at).toLocaleDateString("es-AR"),
+			profile.nombre_completo || undefined
+		);
+
+		res.json({
+			report: clinicalReport,
+			sessionDate: session.created_at,
+			generatedAt: new Date().toISOString(),
+		});
+	} catch (error: any) {
+		console.error("Error generating professional report:", error);
+		res.status(500).json({
+			error: "Error interno al generar el informe médico",
+		});
 	}
 });
 
@@ -641,9 +897,17 @@ app.post("/api/create-subscription", async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error("Error creating subscription:", error);
+		// Log detailed MercadoPago error if available
+		if (error.cause) {
+			console.error("Error cause:", JSON.stringify(error.cause, null, 2));
+		}
+		if (error.response) {
+			console.error("Error response:", JSON.stringify(error.response, null, 2));
+		}
 		res.status(500).json({
 			error: "Error creating subscription",
 			details: error.message || String(error),
+			mpError: error.cause || error.response || null,
 		});
 	}
 });

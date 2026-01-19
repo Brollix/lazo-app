@@ -43,7 +43,6 @@ import { EncryptionService } from "../services/encryptionService";
 import { getBackgrounds, getExtendedShadows } from "../styles.theme";
 import { Settings } from "./Settings";
 import { AlertModal } from "./AlertModal";
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
 
 import { ClinicalSession } from "./Dashboard";
 
@@ -55,6 +54,7 @@ interface SessionsListProps {
 	onLogout: () => void;
 	onNavigateToAdmin?: () => void;
 	userId?: string;
+	isAdmin?: boolean;
 }
 
 export const SessionsList: React.FC<SessionsListProps> = ({
@@ -65,6 +65,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	onLogout,
 	onNavigateToAdmin,
 	userId,
+	isAdmin,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
@@ -74,10 +75,10 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [newSessionDialogOpen, setNewSessionDialogOpen] = useState(false);
 	const [newSessionDate, setNewSessionDate] = useState(
-		new Date().toISOString().split("T")[0]
+		new Date().toISOString().split("T")[0],
 	);
 	const [newSessionTime, setNewSessionTime] = useState(
-		new Date().toTimeString().split(" ")[0].substring(0, 5)
+		new Date().toTimeString().split(" ")[0].substring(0, 5),
 	);
 
 	// Action Menu State
@@ -98,7 +99,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 
 	const handleMenuOpen = (
 		event: React.MouseEvent<HTMLButtonElement>,
-		session: ClinicalSession
+		session: ClinicalSession,
 	) => {
 		event.stopPropagation();
 		setAnchorEl(event.currentTarget);
@@ -137,7 +138,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 			if (error) throw error;
 
 			setSessions((prev) =>
-				prev.filter((s) => s.id !== selectedActionSession.id)
+				prev.filter((s) => s.id !== selectedActionSession.id),
 			);
 
 			// Refresh to get new numbers
@@ -182,7 +183,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 					try {
 						const decoded = EncryptionService.decryptData(
 							s.encrypted_data,
-							userId!
+							userId!,
 						);
 						if (decoded.session_time) sessionTime = decoded.session_time;
 					} catch (e) {
@@ -259,7 +260,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 					>
 						<SettingsIcon />
 					</IconButton>
-					{userId === ADMIN_UUID && onNavigateToAdmin && (
+					{isAdmin && onNavigateToAdmin && (
 						<IconButton
 							onClick={onNavigateToAdmin}
 							color="primary"
@@ -320,13 +321,13 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 						<Typography variant="body2" color="text.secondary">
 							{patient.age} años • {patient.gender || "Sin género"} • Última
 							consulta:{" "}
-							{sessions[0]?.session_date
-								? `${sessions[0].session_date}${
-										sessions[0].session_time
-											? ` (${sessions[0].session_time})`
-											: ""
-								  }`
-								: patient.lastVisit}
+							{sessions[0]?.session_date ?
+								`${sessions[0].session_date}${
+									sessions[0].session_time ?
+										` (${sessions[0].session_time})`
+									:	""
+								}`
+							:	patient.lastVisit}
 						</Typography>
 					</Box>
 				</Paper>
@@ -362,11 +363,11 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 						boxShadow: (theme) => theme.shadows[2],
 					}}
 				>
-					{loading ? (
+					{loading ?
 						<Box sx={{ p: 4, textAlign: "center" }}>
 							<CircularProgress />
 						</Box>
-					) : sessions.length === 0 ? (
+					: sessions.length === 0 ?
 						<Box sx={{ p: 6, textAlign: "center", opacity: 0.6 }}>
 							<EventNoteIcon sx={{ fontSize: 48, mb: 2, opacity: 0.1 }} />
 							<Typography variant="body1">
@@ -376,8 +377,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 								Haz clic en "Nueva Sesión" para comenzar un análisis.
 							</Typography>
 						</Box>
-					) : (
-						<List sx={{ p: 0 }}>
+					:	<List sx={{ p: 0 }}>
 							{sessions.map((session, index) => (
 								<React.Fragment key={session.id}>
 									<ListItem disablePadding>
@@ -408,9 +408,9 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 													</Typography>
 												}
 												secondary={`${session.session_date}${
-													session.session_time
-														? ` • ${session.session_time}`
-														: ""
+													session.session_time ?
+														` • ${session.session_time}`
+													:	""
 												}`}
 											/>
 											<IconButton
@@ -432,7 +432,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 								</React.Fragment>
 							))}
 						</List>
-					)}
+					}
 				</Paper>
 			</Container>
 

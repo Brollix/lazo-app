@@ -71,8 +71,6 @@ export interface ClinicalSession {
 	encrypted_data: string;
 }
 
-const ADMIN_UUID = "91501b61-418d-4767-9c8f-e85b3ab58432";
-
 const formatDuration = (seconds?: number) => {
 	if (!seconds) return "";
 	const mins = Math.floor(seconds / 60);
@@ -89,6 +87,7 @@ export const Dashboard: React.FC<{
 	initialTime?: string;
 	onBack?: () => void;
 	userId?: string;
+	isAdmin?: boolean;
 	onNavigateToAdmin?: () => void;
 }> = ({
 	onLogout,
@@ -98,6 +97,7 @@ export const Dashboard: React.FC<{
 	initialTime,
 	onBack,
 	userId,
+	isAdmin,
 	onNavigateToAdmin,
 }) => {
 	const theme = useTheme();
@@ -110,7 +110,7 @@ export const Dashboard: React.FC<{
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
 	const [sessionData, setSessionData] = useState<ProcessSessionResponse | null>(
-		null
+		null,
 	);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [isActionLoading, setIsActionLoading] = useState(false);
@@ -222,7 +222,7 @@ export const Dashboard: React.FC<{
 	const addMessage = (
 		sender: "user" | "bot",
 		content: React.ReactNode,
-		actions?: React.ReactNode
+		actions?: React.ReactNode,
 	) => {
 		const id = Date.now().toString() + Math.random();
 		setMessages((prev) => [
@@ -342,7 +342,7 @@ export const Dashboard: React.FC<{
 				>
 					Análisis Psicológico
 				</Button>
-			</Stack>
+			</Stack>,
 		);
 
 		// Check for Risks
@@ -380,7 +380,7 @@ export const Dashboard: React.FC<{
 							/>
 						))}
 					</Box>
-				</Box>
+				</Box>,
 			);
 		}
 
@@ -406,7 +406,7 @@ export const Dashboard: React.FC<{
 			| "tareas"
 			| "psicologico"
 			| "intervencion"
-			| "animo"
+			| "animo",
 	) => {
 		const currentSessionData = sessionDataRef.current;
 		if (!currentSessionData) return;
@@ -416,10 +416,10 @@ export const Dashboard: React.FC<{
 			addMessage(
 				"bot",
 				`### Nota Clínica Generada\n\nHe redactado la nota basada en el formato solicitado (**${
-					currentSessionData.analysis.clinical_note.includes("## S")
-						? "SOAP"
-						: "Clínico"
-				}**). Ya puedes verla y editarla en el panel de la izquierda.`
+					currentSessionData.analysis.clinical_note.includes("## S") ?
+						"SOAP"
+					:	"Clínico"
+				}**). Ya puedes verla y editarla en el panel de la izquierda.`,
 			);
 			return;
 		}
@@ -490,7 +490,7 @@ export const Dashboard: React.FC<{
 							(prev) =>
 								prev +
 								(prev ? "\n\n" : "") +
-								`### ${actionTitles[action]}\n${data.result}`
+								`### ${actionTitles[action]}\n${data.result}`,
 						)
 					}
 					sx={{
@@ -500,14 +500,14 @@ export const Dashboard: React.FC<{
 					}}
 				>
 					Meter en la nota
-				</Button>
+				</Button>,
 			);
 		} catch (error) {
 			console.error("AI Action error:", error);
 			setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
 			addMessage(
 				"bot",
-				"Lo siento, hubo un error al procesar tu solicitud. Por favor intenta de nuevo."
+				"Lo siento, hubo un error al procesar tu solicitud. Por favor intenta de nuevo.",
 			);
 		} finally {
 			setIsActionLoading(false);
@@ -572,20 +572,21 @@ export const Dashboard: React.FC<{
 					initialTime ||
 					new Date().toTimeString().split(" ")[0].substring(0, 5),
 				// Save full analysis data for restoration
-				full_analysis_data: sessionData
-					? {
+				full_analysis_data:
+					sessionData ?
+						{
 							...sessionData,
 							analysis: {
 								...sessionData.analysis,
 								clinical_note: soapContent, // Ensure note matches what was saved
 							},
-					  }
-					: null,
+						}
+					:	null,
 			};
 
 			const encryptedData = EncryptionService.encryptData(
 				sessionRecord,
-				userId
+				userId,
 			);
 
 			if (initialSession?.id) {
@@ -611,7 +612,7 @@ export const Dashboard: React.FC<{
 				// 1. Get next session number via RPC
 				const { data: nextNum, error: rpcError } = await supabase.rpc(
 					"get_next_session_number",
-					{ p_patient_id: patient.id }
+					{ p_patient_id: patient.id },
 				);
 
 				if (rpcError) throw rpcError;
@@ -652,7 +653,7 @@ export const Dashboard: React.FC<{
 			};
 			const encryptedPatientData = EncryptionService.encryptData(
 				updatedPatientData,
-				userId
+				userId,
 			);
 
 			await supabase
@@ -720,7 +721,7 @@ export const Dashboard: React.FC<{
 					console.error(
 						"Failed to decrypt or parse session:",
 						decryptErr,
-						jsonErr
+						jsonErr,
 					);
 					return;
 				}
@@ -783,7 +784,7 @@ export const Dashboard: React.FC<{
 					savedMessages.map((m: any) => ({
 						...m,
 						timestamp: new Date(m.timestamp),
-					}))
+					})),
 				);
 			}
 		} else {
@@ -887,7 +888,7 @@ export const Dashboard: React.FC<{
 					>
 						<SettingsIcon />
 					</IconButton>
-					{userId === ADMIN_UUID && onNavigateToAdmin && (
+					{isAdmin && onNavigateToAdmin && (
 						<IconButton
 							onClick={onNavigateToAdmin}
 							size="small"
@@ -1036,13 +1037,13 @@ export const Dashboard: React.FC<{
 							flexShrink: 0,
 						}}
 					>
-						{audioFile ? (
+						{audioFile ?
 							<AudioPlayer
 								url={audioFile}
 								biometry={sessionData?.biometry}
 								markers={sessionData?.analysis.key_moments}
 							/>
-						) : sessionData ? (
+						: sessionData ?
 							<Box
 								sx={{
 									p: 2,
@@ -1076,8 +1077,7 @@ export const Dashboard: React.FC<{
 									}}
 								/>
 							</Box>
-						) : (
-							<Button
+						:	<Button
 								fullWidth
 								variant="outlined"
 								startIcon={<CloudUpload />}
@@ -1091,15 +1091,15 @@ export const Dashboard: React.FC<{
 										borderStyle: "dashed",
 										borderWidth: 2,
 										bgcolor:
-											theme.palette.mode === "light"
-												? "primary.light"
-												: backgrounds.hover.primaryLight,
+											theme.palette.mode === "light" ?
+												"primary.light"
+											:	backgrounds.hover.primaryLight,
 									},
 								}}
 							>
 								Subir Audio de Sesión
 							</Button>
-						)}
+						}
 					</Box>
 
 					{/* Middle: AI Assistant Header & Quick Actions */}
@@ -1134,15 +1134,6 @@ export const Dashboard: React.FC<{
 								>
 									Asistente IA
 								</Typography>
-							</Stack>
-							<Stack direction="row" spacing={1}>
-								<IconButton
-									size="small"
-									onClick={() => setSettingsOpen(true)}
-									color="inherit"
-								>
-									<SettingsIcon fontSize="small" />
-								</IconButton>
 							</Stack>
 						</Box>
 
@@ -1229,7 +1220,7 @@ export const Dashboard: React.FC<{
 							gap: 2,
 						}}
 					>
-						{messages.length === 0 ? (
+						{messages.length === 0 ?
 							<Box
 								sx={{
 									flex: 1,
@@ -1251,17 +1242,16 @@ export const Dashboard: React.FC<{
 									}}
 								/>
 								<Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-									{patient
-										? `Asistente de sesión con ${patient.name}`
-										: "Asistente Lazo"}
+									{patient ?
+										`Asistente de sesión con ${patient.name}`
+									:	"Asistente Lazo"}
 								</Typography>
 								<Typography variant="body2" color="text.secondary">
 									Sube el audio de la sesión para comenzar el análisis
 									automático y generar tu nota SOAP.
 								</Typography>
 							</Box>
-						) : (
-							messages.map((msg) => (
+						:	messages.map((msg) => (
 								<Box
 									key={msg.id}
 									sx={{
@@ -1288,20 +1278,20 @@ export const Dashboard: React.FC<{
 										sx={{
 											p: 2,
 											bgcolor:
-												msg.sender === "user"
-													? "primary.main"
-													: "background.default",
+												msg.sender === "user" ?
+													"primary.main"
+												:	"background.default",
 											color:
-												msg.sender === "user"
-													? "primary.contrastText"
-													: "text.primary",
+												msg.sender === "user" ?
+													"primary.contrastText"
+												:	"text.primary",
 											borderRadius:
-												msg.sender === "user"
-													? themeComponents.chatMessage.borderRadius.user
-													: themeComponents.chatMessage.borderRadius.bot,
+												msg.sender === "user" ?
+													themeComponents.chatMessage.borderRadius.user
+												:	themeComponents.chatMessage.borderRadius.bot,
 										}}
 									>
-										{typeof msg.content === "string" ? (
+										{typeof msg.content === "string" ?
 											<Box
 												sx={{
 													"& p": {
@@ -1318,14 +1308,12 @@ export const Dashboard: React.FC<{
 											>
 												<ReactMarkdown>{msg.content}</ReactMarkdown>
 											</Box>
-										) : (
-											msg.content
-										)}
+										:	msg.content}
 										{msg.actions && <Box sx={{ mt: 1 }}>{msg.actions}</Box>}
 									</Paper>
 								</Box>
 							))
-						)}
+						}
 						<div ref={messagesEndRef} />
 					</Box>
 
@@ -1406,19 +1394,18 @@ export const Dashboard: React.FC<{
 							</Stack>
 						</Box>
 						<Box sx={{ flex: 1, overflowY: "auto" }}>
-							{sessionsLoading ? (
+							{sessionsLoading ?
 								<Box sx={{ p: 4, textAlign: "center" }}>
 									<CircularProgress size={24} />
 								</Box>
-							) : sessions.length === 0 ? (
+							: sessions.length === 0 ?
 								<Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
 									<MenuBook sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
 									<Typography variant="body2">
 										No hay sesiones registradas aún.
 									</Typography>
 								</Box>
-							) : (
-								<List sx={{ p: 0 }}>
+							:	<List sx={{ p: 0 }}>
 									{sessions.map((s) => (
 										<ListItem
 											key={s.id}
@@ -1445,7 +1432,7 @@ export const Dashboard: React.FC<{
 										</ListItem>
 									))}
 								</List>
-							)}
+							}
 						</Box>
 					</Paper>
 				)}
@@ -1475,6 +1462,7 @@ export const Dashboard: React.FC<{
 						patientAge={patient?.age}
 						patientGender={patient?.gender}
 						userId={userId}
+						userPlan={userAppPlan}
 					/>
 				</DialogContent>
 			</Dialog>

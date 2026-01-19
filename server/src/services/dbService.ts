@@ -31,12 +31,6 @@ export const decrementCredits = async (
 ) => {
 	const profile = await getUserProfile(userId);
 
-	// Pro plan: unlimited credits, no decrement
-	if (profile.plan_type === "pro") {
-		console.log("[DB] Pro plan: unlimited credits, skipping decrement");
-		return;
-	}
-
 	// Ultra plan with premium: decrement premium_credits
 	if (profile.plan_type === "ultra" && isPremium) {
 		if (profile.premium_credits_remaining > 0) {
@@ -55,7 +49,7 @@ export const decrementCredits = async (
 		return;
 	}
 
-	// Free or Ultra (standard): decrement regular credits
+	// Free, Pro, or Ultra (standard): decrement regular credits
 	if (profile.credits_remaining > 0) {
 		const { error } = await supabase.rpc("decrement_credits", {
 			user_id: userId,
@@ -94,12 +88,16 @@ export const updateUserPlan = async (
 			updates.premium_credits_remaining = 0;
 			break;
 		case "pro":
-			updates.credits_remaining = -1; // -1 indicates unlimited
+			updates.credits_remaining = 100; // Pro: 100 sessions/month
 			updates.premium_credits_remaining = 0;
+			updates.monthly_transcriptions_used = 0;
+			updates.transcription_month_year = new Date().toISOString().slice(0, 7);
 			break;
 		case "ultra":
-			updates.credits_remaining = 0; // Ultra uses premium credits
-			updates.premium_credits_remaining = 20;
+			updates.credits_remaining = 100; // Ultra: 100 standard sessions/month
+			updates.premium_credits_remaining = 20; // Ultra: 20 premium sessions/month
+			updates.monthly_transcriptions_used = 0;
+			updates.transcription_month_year = new Date().toISOString().slice(0, 7);
 			break;
 	}
 
@@ -125,8 +123,8 @@ export const updateUserPlan = async (
 /**
  * Renews monthly credits for a user if a month has passed since last renewal
  * Free plan: 3 credits/month
- * Pro plan: unlimited (no renewal needed)
- * Ultra plan: 20 premium credits/month
+ * Pro plan: 100 credits/month
+ * Ultra plan: 100 standard credits/month + 20 premium credits/month
  */
 export const renewMonthlyCredits = async (userId: string) => {
 	const profile = await getUserProfile(userId);
@@ -157,8 +155,13 @@ export const renewMonthlyCredits = async (userId: string) => {
 
 		if (profile.plan_type === "free") {
 			updates.credits_remaining = 3;
+		} else if (profile.plan_type === "pro") {
+			updates.credits_remaining = 100; // Pro: 100 sessions/month
+			updates.monthly_transcriptions_used = 0; // Reset usage counter
 		} else if (profile.plan_type === "ultra") {
-			updates.premium_credits_remaining = 20;
+			updates.credits_remaining = 100; // Ultra: 100 standard sessions
+			updates.premium_credits_remaining = 20; // Ultra: 20 premium sessions
+			updates.monthly_transcriptions_used = 0; // Reset usage counter
 		}
 		// Pro plan: no renewal needed (unlimited)
 
@@ -428,4 +431,261 @@ export const incrementMonthlyTranscriptions = async (userId: string) => {
 			updated_at: new Date().toISOString(),
 		})
 		.eq("id", userId);
+};
+
+// Ultra Plan Session Limit Management
+
+/**
+ * Check Ultra plan's 120 sessions per month hard limit
+ * This limit applies to both standard and premium sessions combined
+ */
+export const checkUltraSessionLimit = async (
+	userId: string
+): Promise<{
+	allowed: boolean;
+	used: number;
+	limit: number;
+	monthYear: string;
+}> => {
+	const profile = await getUserProfile(userId);
+
+	// Only enforce for Ultra plan
+	if (profile.plan_type !== "ultra") {
+		return { allowed: true, used: 0, limit: -1, monthYear: "" };
+	}
+
+	const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+	const ULTRA_PLAN_MONTHLY_LIMIT = 120;
+
+	// Reset counter if new month
+	if (profile.session_month_year !== currentMonth) {
+		await supabase
+			.from("profiles")
+			.update({
+				monthly_sessions_used: 0,
+				session_month_year: currentMonth,
+				credits_remaining: 100, // Renew standard credits
+				premium_credits_remaining: 20, // Renew premium credits
+				last_credit_renewal: new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+			})
+			.eq("id", userId);
+
+		console.log(
+			`[DB] New month detected for Ultra user ${userId}, credits renewed`
+		);
+
+		return {
+			allowed: true,
+			used: 0,
+			limit: ULTRA_PLAN_MONTHLY_LIMIT,
+			monthYear: currentMonth,
+		};
+	}
+
+	const used = profile.monthly_sessions_used || 0;
+	return {
+		allowed: used < ULTRA_PLAN_MONTHLY_LIMIT,
+		used,
+		limit: ULTRA_PLAN_MONTHLY_LIMIT,
+		monthYear: currentMonth,
+	};
+};
+
+/**
+ * Increment Ultra plan's monthly session counter
+ * This tracks all sessions (standard + premium) against the 120/month hard limit
+ */
+export const incrementUltraSessionCount = async (userId: string) => {
+	const profile = await getUserProfile(userId);
+
+	// Only track for Ultra plan
+	if (profile.plan_type !== "ultra") {
+		return;
+	}
+
+	const currentMonth = new Date().toISOString().slice(0, 7);
+
+	await supabase
+		.from("profiles")
+		.update({
+			monthly_sessions_used: (profile.monthly_sessions_used || 0) + 1,
+			session_month_year: currentMonth,
+			updated_at: new Date().toISOString(),
+		})
+		.eq("id", userId);
+
+	console.log(
+		`[DB] Ultra session count incremented for ${userId}: ${
+			(profile.monthly_sessions_used || 0) + 1
+		}/120`
+	);
+};
+
+// Patient Summaries Management (Ultra Plan - Long-term Memory Feature)
+
+/**
+ * Get patient summary by userId and patientIdentifier
+ * Returns existing cumulative clinical profile for historical context
+ */
+export const getPatientSummary = async (
+	userId: string,
+	patientIdentifier: string
+) => {
+	const { data, error } = await supabase
+		.from("patient_summaries")
+		.select("*")
+		.eq("user_id", userId)
+		.eq("patient_identifier", patientIdentifier)
+		.single();
+
+	if (error) {
+		if (error.code === "PGRST116") {
+			// No rows returned - patient doesn't have a summary yet
+			return null;
+		}
+		console.error("Error fetching patient summary:", error);
+		throw error;
+	}
+
+	return data;
+};
+
+/**
+ * Get the last N session summaries for a patient (for historical context injection)
+ * Used to inject context into Claude for enhanced analysis
+ */
+export const getLastSessionSummaries = async (
+	userId: string,
+	patientIdentifier: string,
+	limit: number = 3
+) => {
+	// Get the patient's summary which contains cumulative context
+	const summary = await getPatientSummary(userId, patientIdentifier);
+
+	if (!summary) {
+		return null;
+	}
+
+	// Return the summary text (which already contains cumulative context from past sessions)
+	// For now, we return the full summary. In the future, we could track individual session summaries
+	return {
+		summary_text: summary.summary_text,
+		session_count: summary.session_count,
+		last_session_date: summary.last_session_date,
+	};
+};
+
+/**
+ * Create or update a patient summary (upsert operation)
+ * Updates cumulative clinical profile with new session information
+ * Enforces max 2000 tokens (approximately 8000 characters)
+ */
+export const upsertPatientSummary = async (
+	userId: string,
+	patientIdentifier: string,
+	summaryText: string,
+	sessionCount?: number
+) => {
+	// Enforce token limit (rough approximation: 4 chars = 1 token)
+	const MAX_CHARS = 8000; // ~2000 tokens
+	const truncatedSummary =
+		summaryText.length > MAX_CHARS ?
+			summaryText.substring(0, MAX_CHARS) + "..."
+		:	summaryText;
+
+	// Check if summary exists
+	const existing = await getPatientSummary(userId, patientIdentifier);
+
+	if (existing) {
+		// Update existing summary
+		const { data, error } = await supabase
+			.from("patient_summaries")
+			.update({
+				summary_text: truncatedSummary,
+				session_count: sessionCount || existing.session_count + 1,
+				last_session_date: new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+			})
+			.eq("user_id", userId)
+			.eq("patient_identifier", patientIdentifier)
+			.select()
+			.single();
+
+		if (error) {
+			console.error("Error updating patient summary:", error);
+			throw error;
+		}
+
+		console.log(
+			`[DB] Updated patient summary for ${patientIdentifier} (session ${data.session_count})`
+		);
+		return data;
+	} else {
+		// Create new summary
+		const { data, error } = await supabase
+			.from("patient_summaries")
+			.insert({
+				user_id: userId,
+				patient_identifier: patientIdentifier,
+				summary_text: truncatedSummary,
+				session_count: sessionCount || 1,
+				last_session_date: new Date().toISOString(),
+			})
+			.select()
+			.single();
+
+		if (error) {
+			console.error("Error creating patient summary:", error);
+			throw error;
+		}
+
+		console.log(
+			`[DB] Created patient summary for ${patientIdentifier} (session 1)`
+		);
+		return data;
+	}
+};
+
+/**
+ * Delete a patient summary (for GDPR compliance / user request)
+ */
+export const deletePatientSummary = async (
+	userId: string,
+	patientIdentifier: string
+) => {
+	const { error } = await supabase
+		.from("patient_summaries")
+		.delete()
+		.eq("user_id", userId)
+		.eq("patient_identifier", patientIdentifier);
+
+	if (error) {
+		console.error("Error deleting patient summary:", error);
+		throw error;
+	}
+
+	console.log(`[DB] Deleted patient summary for ${patientIdentifier}`);
+};
+
+/**
+ * List all patient summaries for a user (for UI display)
+ */
+export const listPatientSummaries = async (
+	userId: string,
+	limit: number = 50
+) => {
+	const { data, error } = await supabase
+		.from("patient_summaries")
+		.select("*")
+		.eq("user_id", userId)
+		.order("last_session_date", { ascending: false })
+		.limit(limit);
+
+	if (error) {
+		console.error("Error listing patient summaries:", error);
+		throw error;
+	}
+
+	return data;
 };

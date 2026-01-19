@@ -73,6 +73,7 @@ import { ThemeContext } from "../App";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { AdminTable } from "./AdminTable";
+import { FiscalHealthWidget } from "./FiscalHealthWidget";
 
 interface AdminDashboardProps {
 	onLogout: () => void;
@@ -91,6 +92,10 @@ interface Stats {
 	breakdown: {
 		proUsers: number;
 		ultraUsers: number;
+	};
+	fiscalHealth: {
+		grossRevenue30d: number;
+		monthlyLimit: number;
 	};
 }
 
@@ -245,7 +250,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 	const fetchAnnouncements = async () => {
 		try {
 			const res = await fetch(
-				`${API_URL}/api/admin/announcements?userId=${userId}`
+				`${API_URL}/api/admin/announcements?userId=${userId}`,
 			);
 			if (res.ok) {
 				const data = await res.json();
@@ -275,7 +280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 		setLoadingSessions(true);
 		try {
 			const res = await fetch(
-				`${API_URL}/api/admin/user-sessions/${targetUserId}?userId=${userId}`
+				`${API_URL}/api/admin/user-sessions/${targetUserId}?userId=${userId}`,
 			);
 			if (res.ok) {
 				const data = await res.json();
@@ -321,7 +326,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 		link.setAttribute("href", url);
 		link.setAttribute(
 			"download",
-			`lazo_users_${new Date().toISOString().split("T")[0]}.csv`
+			`lazo_users_${new Date().toISOString().split("T")[0]}.csv`,
 		);
 		link.style.visibility = "hidden";
 		document.body.appendChild(link);
@@ -428,7 +433,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 				`${API_URL}/api/admin/announcements/${id}?userId=${userId}`,
 				{
 					method: "DELETE",
-				}
+				},
 			);
 			if (res.ok) fetchAnnouncements();
 		} catch (e) {
@@ -772,7 +777,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 						Gestión de negocio y monitoreo técnico
 					</Typography>
 				</Box>
-				<Stack direction="row" spacing={spacing.md}>
+				<Stack direction="row" spacing={spacing.md} alignItems="center">
+					{stats?.fiscalHealth && (
+						<FiscalHealthWidget
+							grossRevenue30d={stats.fiscalHealth.grossRevenue30d || 0}
+							monthlyLimit={stats.fiscalHealth.monthlyLimit || 850000}
+						/>
+					)}
 					{onBack && (
 						<Button
 							variant="outlined"
@@ -914,19 +925,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 														borderColor: (theme) =>
 															alpha(
 																(theme.palette as any)[kpi.color].main,
-																0.2
+																0.2,
 															),
 														"&:hover": {
 															transform: "translateY(-4px)",
 															boxShadow: (theme) =>
 																`0 12px 20px ${alpha(
 																	(theme.palette as any)[kpi.color].main,
-																	0.15
+																	0.15,
 																)}`,
 															borderColor: (theme) =>
 																alpha(
 																	(theme.palette as any)[kpi.color].main,
-																	0.4
+																	0.4,
 																),
 														},
 														"&:active": {
@@ -979,7 +990,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																	bgcolor: (theme) =>
 																		alpha(
 																			(theme.palette as any)[kpi.color].main,
-																			0.1
+																			0.1,
 																		),
 																	color: `${kpi.color}.main`,
 																}}
@@ -995,7 +1006,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 																		bgcolor: (theme) =>
 																			alpha(
 																				(theme.palette as any)[kpi.color].main,
-																				0.1
+																				0.1,
 																			),
 																		borderRadius: br.lg,
 																		overflow: "hidden",
@@ -1062,7 +1073,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 											stats.dailyStats.map((day, idx) => {
 												const maxCount = Math.max(
 													...stats.dailyStats.map((d) => d.count),
-													1
+													1,
 												);
 												const heightPct = (day.count / maxCount) * 100;
 												const isLatest = idx === stats.dailyStats.length - 1;
@@ -1365,7 +1376,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 															) ?
 																theme.palette.success.main
 															:	theme.palette.error.main,
-															0.1
+															0.1,
 														),
 													color:
 														(
@@ -1881,7 +1892,8 @@ const RevenueDetail = ({ stats, spacing, br }: any) => {
 							<Typography variant="h5" fontWeight="bold">
 								{formatCurrency(
 									stats.mrr /
-										(stats.breakdown.proUsers + stats.breakdown.ultraUsers || 1)
+										(stats.breakdown.proUsers + stats.breakdown.ultraUsers ||
+											1),
 								)}
 							</Typography>
 						</Box>
@@ -1898,7 +1910,7 @@ const RevenueDetail = ({ stats, spacing, br }: any) => {
 									(stats.mrr /
 										(stats.breakdown.proUsers + stats.breakdown.ultraUsers ||
 											1)) *
-										12
+										12,
 								)}
 							</Typography>
 						</Box>

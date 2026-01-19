@@ -24,7 +24,7 @@ async function checkIsAdmin(userId: string): Promise<boolean> {
 		if (error) {
 			console.log(
 				"Admin check error (expected for non-admin users):",
-				error.message
+				error.message,
 			);
 			return false;
 		}
@@ -56,16 +56,17 @@ function App() {
 	const [selectedSession, setSelectedSession] =
 		useState<ClinicalSession | null>(null);
 	const [selectedDate, setSelectedDate] = useState<string | undefined>(
-		undefined
+		undefined,
 	);
 	const [selectedTime, setSelectedTime] = useState<string | undefined>(
-		undefined
+		undefined,
 	);
 	const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
 		const savedMode = localStorage.getItem("themeMode");
 		return savedMode === "dark" || savedMode === "light" ? savedMode : "light";
 	});
 	const [userId, setUserId] = useState<string | undefined>(undefined);
+	const [isAdminUser, setIsAdminUser] = useState<boolean>(false);
 
 	const theme = useMemo(() => createAppTheme(themeMode), [themeMode]);
 
@@ -88,7 +89,7 @@ function App() {
 				"App: onAuthStateChange event:",
 				event,
 				"session user:",
-				session?.user?.id
+				session?.user?.id,
 			);
 
 			if (!isMounted) return;
@@ -108,11 +109,12 @@ function App() {
 						await import("./services/encryptionService");
 					if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
 						console.log(
-							"App: Session restored but password not available, redirecting to login"
+							"App: Session restored but password not available, redirecting to login",
 						);
 						// Clear session to force re-login
 						await supabase.auth.signOut();
 						setUserId(undefined);
+						setIsAdminUser(false);
 						setCurrentView("login");
 						setSelectedPatient(null);
 						return;
@@ -120,6 +122,7 @@ function App() {
 
 					// Check if user is admin
 					const isAdmin = await checkIsAdmin(session.user.id);
+					setIsAdminUser(isAdmin);
 					if (isAdmin) {
 						console.log("App: Admin user detected, redirecting to admin panel");
 						setCurrentView("admin");
@@ -130,6 +133,7 @@ function App() {
 				} else {
 					console.log("App: No session, showing login");
 					setUserId(undefined);
+					setIsAdminUser(false);
 					setCurrentView("login");
 					setSelectedPatient(null);
 				}
@@ -152,6 +156,8 @@ function App() {
 		EncryptionService.clearPassword();
 
 		await supabase.auth.signOut();
+		setIsAdminUser(false);
+		setUserId(undefined);
 		setCurrentView("login");
 		setSelectedPatient(null);
 	};
@@ -223,6 +229,7 @@ function App() {
 								onLogout={handleLogout}
 								onNavigateToAdmin={() => setCurrentView("admin")}
 								userId={userId}
+								isAdmin={isAdminUser}
 							/>
 						)}
 						{currentView === "sessions" && selectedPatient && (
@@ -234,6 +241,7 @@ function App() {
 								onLogout={handleLogout}
 								onNavigateToAdmin={() => setCurrentView("admin")}
 								userId={userId}
+								isAdmin={isAdminUser}
 							/>
 						)}
 						{currentView === "dashboard" && (
@@ -245,6 +253,7 @@ function App() {
 								initialTime={selectedTime}
 								onBack={handleBackToSessions}
 								userId={userId}
+								isAdmin={isAdminUser}
 								onNavigateToAdmin={() => setCurrentView("admin")}
 							/>
 						)}

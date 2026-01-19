@@ -19,6 +19,8 @@ if (fs.existsSync(envLocalPath)) {
 	dotenv.config(); // Fallback to default behavior
 }
 
+import { supabase } from "./dbService";
+
 // Determine MercadoPago mode (test or production)
 const mpMode = (process.env.MP_MODE || "production").toLowerCase();
 const isTestMode = mpMode === "test";
@@ -26,10 +28,10 @@ const isTestMode = mpMode === "test";
 // Get the appropriate access token based on mode
 const getAccessToken = () => {
 	if (isTestMode) {
-		const testToken = process.env.MP_ACCESS_TOKEN_TEST;
+		const testToken = process.env.MP_TEST_ACCESS_TOKEN;
 		if (!testToken) {
 			console.warn(
-				"[MercadoPago] ⚠️  MODO TEST activado pero MP_ACCESS_TOKEN_TEST no está configurado"
+				"[MercadoPago] ⚠️  MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado"
 			);
 		}
 		return testToken || "";
@@ -88,12 +90,6 @@ export const createRecurringSubscription = async (
 	}
 
 	// Get plan price from database
-	const { createClient } = await import("@supabase/supabase-js");
-	const supabase = createClient(
-		process.env.SUPABASE_URL!,
-		process.env.SUPABASE_SERVICE_KEY!
-	);
-
 	const { data: planData, error: planError } = await supabase
 		.from("subscription_plans")
 		.select("price_ars")

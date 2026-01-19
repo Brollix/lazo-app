@@ -76,10 +76,14 @@ echo "🧹 Removing ALL build artifacts to free disk space..."
 cd $CLIENT_DIR
 # Use sudo to remove files if they have permission issues (as a fallback)
 sudo rm -rf dist/ node_modules/ .vite/ package-lock.json 2>/dev/null || rm -rf dist/ node_modules/ .vite/ package-lock.json
+# Clean npm cache
+npm cache clean --force 2>/dev/null || true
 
-# 9. Final Docker cleanup
+# 9. Final Docker cleanup - Remove ALL unused images
 echo "🗑️  Final Docker cleanup..."
-docker system prune -f
+docker system prune -a -f --volumes
+# Specifically remove old node:20-alpine images (keep only latest)
+docker images node:20-alpine --format "{{.ID}}" | tail -n +2 | xargs -r docker rmi -f 2>/dev/null || true
 
 echo "✅ Client deployed successfully to https://soylazo.com"
 echo "💾 Disk space freed!"
