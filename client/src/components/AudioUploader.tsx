@@ -23,6 +23,8 @@ import Psychology from "@mui/icons-material/Psychology";
 import { GlassCard, StyledDropzone } from "./UploaderStyles";
 import { getGradients, typographyExtended } from "../styles.theme";
 import { UpgradeToProModal } from "./UpgradeToProModal";
+import { supabase } from "../supabaseClient";
+import { useEncryption } from "../hooks/useEncryption";
 
 // Define the response structure
 export interface Topic {
@@ -89,6 +91,7 @@ interface AudioUploaderProps {
 	patientGender?: string;
 	userId?: string;
 	userPlan?: string | null;
+	userSalt?: string | null; // Required for encryption
 }
 
 // Helper functions for sentiment display
@@ -110,7 +113,7 @@ const getSentimentLabel = (sentiment?: string): string => {
 };
 
 const getSentimentColor = (
-	sentiment?: string
+	sentiment?: string,
 ): "success" | "error" | "warning" | "info" | "default" => {
 	if (!sentiment) return "default";
 	const colors: Record<
@@ -137,10 +140,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	patientGender,
 	userId,
 	userPlan,
+	userSalt,
 	onAnalysisComplete,
 	onAudioSelected,
 	onClose,
 }) => {
+	const encryption = useEncryption();
 	const theme = useTheme();
 	const gradients = getGradients(theme.palette.mode as "light" | "dark");
 
@@ -157,12 +162,182 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [patientIdentifier, setPatientIdentifier] = useState<string>("");
 	const [audioDuration, setAudioDuration] = useState<number | null>(null);
 	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+	const [processingSessionId, setProcessingSessionId] = useState<string | null>(
+		null,
+	);
 	const [monthlyLimitData, setMonthlyLimitData] = useState<{
 		used: number;
 		monthYear: string;
 	} | null>(null);
 
 	const [isExporting, setIsExporting] = useState(false);
+
+	// Supabase Realtime subscription for receiving processing results
+	React.useEffect(() => {
+		if (!processingSessionId || !userId || !userSalt) return;
+
+		console.log(`[Realtime] Subscribing to session ${processingSessionId}`);
+
+		const subscription = supabase
+			.channel(`processing_session_${processingSessionId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "UPDATE",
+					schema: "public",
+					table: "processing_sessions",
+					filter: `id=eq.${processingSessionId}`,
+				},
+				async (payload) => {
+					console.log("[Realtime] Received update:", payload);
+
+					const session = payload.new as any;
+
+					// Check if temp_result is available and not consumed
+					if (session.temp_result && !session.temp_result_consumed) {
+						console.log("[Realtime] Temp result received, encrypting...");
+
+						try {
+							// 1. Encrypt result with user's password + salt
+							const encryptedResult = await encryption.encrypt(
+								session.temp_result,
+								userSalt,
+							);
+
+							console.log("[Realtime] Result encrypted, saving...");
+
+							// 2. Save encrypted result to server
+							const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+							const saveResponse = await fetch(
+								`${apiUrl}/api/save-encrypted-result`,
+								{
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({
+										sessionId: processingSessionId,
+										encryptedResult: encryptedResult,
+										userId: userId,
+									}),
+								},
+							);
+
+							if (!saveResponse.ok) {
+								throw new Error("Failed to save encrypted result");
+							}
+
+							console.log("[Realtime] Encrypted result saved");
+
+							// 3. Clear temp_result from server for security
+							await fetch(`${apiUrl}/api/clear-temp-result`, {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									sessionId: processingSessionId,
+									userId: userId,
+								}),
+							});
+
+							console.log("[Realtime] Temp result cleared from server");
+
+							// 4. Save patient summary if Ultra plan and patientIdentifier provided
+							if (
+								userPlan === "ultra" &&
+								session.temp_result.patientIdentifier
+							) {
+								try {
+									const summaryText =
+										session.temp_result.analysis?.clinical_note ||
+										session.temp_result.analysis?.summary ||
+										"";
+
+									if (summaryText) {
+										const encryptedSummary = await encryption.encrypt(
+											summaryText,
+											userSalt,
+										);
+
+										await fetch(`${apiUrl}/api/save-patient-summary`, {
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({
+												userId: userId,
+												patientIdentifier:
+													session.temp_result.patientIdentifier,
+												encryptedSummary: encryptedSummary,
+											}),
+										});
+
+										console.log("[Patient Summary] Saved successfully");
+									}
+								} catch (summaryError) {
+									console.error(
+										"[Patient Summary] Error saving:",
+										summaryError,
+									);
+									// Don't fail main flow if summary fails
+								}
+							}
+
+							// 5. Display result to user
+							const data: ProcessSessionResponse = {
+								message: "Procesamiento completado",
+								transcript: session.temp_result.transcript || "",
+								analysis: session.temp_result.analysis,
+								biometry: session.temp_result.biometry,
+								noteFormat: noteFormat,
+								hasHistoricalContext: session.temp_result.hasHistoricalContext,
+								patientIdentifier: session.temp_result.patientIdentifier,
+							};
+
+							setResult(data);
+							setStatus("completed");
+							onAnalysisComplete?.(data);
+							if (file) {
+								onAudioSelected?.(file);
+							}
+						} catch (error) {
+							console.error("[Realtime] Error processing result:", error);
+							setErrorMessage(
+								"Error al procesar el resultado cifrado. Por favor, intenta de nuevo.",
+							);
+							setStatus("error");
+						}
+					}
+
+					// Handle error status
+					if (session.status === "error") {
+						console.error(
+							"[Realtime] Processing error:",
+							session.error_message,
+						);
+						setErrorMessage(
+							session.error_message || "Error durante el procesamiento",
+						);
+						setStatus("error");
+					}
+				},
+			)
+			.subscribe((status) => {
+				console.log("[Realtime] Subscription status:", status);
+			});
+
+		// Cleanup on unmount
+		return () => {
+			console.log("[Realtime] Unsubscribing");
+			subscription.unsubscribe();
+		};
+	}, [
+		processingSessionId,
+		userId,
+		userSalt,
+		encryption,
+		noteFormat,
+		file,
+		onAnalysisComplete,
+		onAudioSelected,
+		userPlan,
+	]);
+
 	const handleExportMedicalReport = async () => {
 		if (!result || !userId) return;
 
@@ -195,7 +370,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		} catch (error) {
 			console.error("Export error:", error);
 			alert(
-				"Hubo un error al generar el informe profesional. Por favor reintenta."
+				"Hubo un error al generar el informe profesional. Por favor reintenta.",
 			);
 		} finally {
 			setIsExporting(false);
@@ -318,7 +493,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 					// Check for file size error (413 Payload Too Large)
 					if (response.status === 413) {
 						throw new Error(
-							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB.",
 						);
 					}
 
@@ -344,13 +519,13 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 					// Generic error with server message
 					throw new Error(
 						errorMessage ||
-							`Error del servidor: ${response.status} ${response.statusText}`
+							`Error del servidor: ${response.status} ${response.statusText}`,
 					);
 				} catch (parseError) {
 					// If JSON parsing fails, check status code
 					if (response.status === 413) {
 						throw new Error(
-							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+							"El archivo es demasiado grande. El tamaño máximo permitido es 100MB.",
 						);
 					}
 
@@ -362,15 +537,15 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 							errorText?.includes("100MB")
 						) {
 							throw new Error(
-								"El archivo es demasiado grande. El tamaño máximo permitido es 100MB."
+								"El archivo es demasiado grande. El tamaño máximo permitido es 100MB.",
 							);
 						}
 						throw new Error(
-							`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`
+							`Error del servidor: ${response.status} ${response.statusText}. ${errorText}`,
 						);
 					} catch {
 						throw new Error(
-							`Error del servidor: ${response.status} ${response.statusText}`
+							`Error del servidor: ${response.status} ${response.statusText}`,
 						);
 					}
 				}
@@ -382,65 +557,13 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 				const sessionId = initResponse.sessionId;
 				console.log("Procesamiento iniciado, sessionId:", sessionId);
 
-				const pollInterval = 3000;
-				const maxPollAttempts = 120;
-				let attempts = 0;
+				// Set processingSessionId to trigger Realtime subscription
+				// The useEffect will handle receiving the result via Realtime
+				setProcessingSessionId(sessionId);
 
-				const pollForResults = async (): Promise<void> => {
-					while (attempts < maxPollAttempts) {
-						await new Promise((resolve) => setTimeout(resolve, pollInterval));
-						attempts++;
-
-						try {
-							const statusUrl = `${baseUrl}/api/session/${sessionId}`;
-							const statusResponse = await fetch(statusUrl);
-
-							if (!statusResponse.ok) {
-								if (statusResponse.status === 404 && attempts < 5) {
-									continue;
-								}
-								throw new Error(
-									`Error al verificar estado: ${statusResponse.statusText}`
-								);
-							}
-
-							const sessionData = await statusResponse.json();
-
-							if (sessionData.status === "completed" && sessionData.data) {
-								const data: ProcessSessionResponse = {
-									message: "Procesamiento completado",
-									transcript: sessionData.data.transcript || "",
-									analysis: sessionData.data.analysis,
-									biometry: sessionData.data.biometry,
-									noteFormat: noteFormat,
-								};
-
-								setResult(data);
-								setStatus("completed");
-								onAnalysisComplete?.(data);
-								if (file) {
-									onAudioSelected?.(file);
-								}
-								return;
-							} else if (sessionData.status === "error") {
-								throw new Error(
-									sessionData.error || "Error durante el procesamiento"
-								);
-							}
-						} catch (pollError: any) {
-							if (attempts < 10 && pollError.message?.includes("fetch")) {
-								continue;
-							}
-							throw pollError;
-						}
-					}
-
-					throw new Error(
-						"Tiempo de espera agotado. El procesamiento está tomando más tiempo del esperado."
-					);
-				};
-
-				await pollForResults();
+				// Result will be received via Realtime subscription
+				// No need to poll - Supabase will notify us when temp_result is ready
+				console.log("[Upload] Waiting for Realtime notification...");
 			} else {
 				const data: ProcessSessionResponse = initResponse;
 				setResult(data);
@@ -707,7 +830,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 											boxShadow: (theme) =>
 												`0 4px 14px 0 ${alpha(
 													theme.palette.primary.main,
-													0.4
+													0.4,
 												)}`,
 										}}
 									>
@@ -992,7 +1115,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 																			{dm.interpretation}
 																		</Typography>
 																	</Box>
-																)
+																),
 															)}
 														</Stack>
 													</Box>
@@ -1073,7 +1196,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 																			{dh.supporting_evidence}
 																		</Typography>
 																	</Box>
-																)
+																),
 															)}
 														</Stack>
 													</Box>

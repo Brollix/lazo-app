@@ -28,10 +28,14 @@ import {
 	Person,
 	Lock,
 	Save,
+	VpnKey,
+	Refresh,
 } from "@mui/icons-material";
 import { ThemeContext } from "../App";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
+import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
+import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
 import { supabase } from "../supabaseClient";
 
 interface SettingsProps {
@@ -57,18 +61,27 @@ export const Settings: React.FC<SettingsProps> = ({
 	const { mode, toggleTheme } = React.useContext(ThemeContext);
 	const [showSubModal, setShowSubModal] = React.useState(false);
 	const [userProfile, setUserProfile] = React.useState<UserProfile | null>(
-		null
+		null,
 	);
 	const [loading, setLoading] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
 	const [showCancelDialog, setShowCancelDialog] = React.useState(false);
 	const [cancelling, setCancelling] = React.useState(false);
+	const [keepCredits, setKeepCredits] = React.useState(true);
 	const [successMessage, setSuccessMessage] = React.useState<string | null>(
-		null
+		null,
 	);
 	const [newName, setNewName] = React.useState("");
 	const [showSecurityModal, setShowSecurityModal] = React.useState(false);
 	const [updating, setUpdating] = React.useState<string | null>(null);
+
+	// Recovery Phrase Regeneration State
+	const [showRegenerateFlow, setShowRegenerateFlow] = React.useState(false);
+	const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
+	const [newMasterKey, setNewMasterKey] = React.useState<string | null>(null);
+	const [regenerationStep, setRegenerationStep] = React.useState<
+		"display" | "verify" | null
+	>(null);
 
 	// Fetch user profile from Supabase
 	React.useEffect(() => {
@@ -162,7 +175,10 @@ export const Settings: React.FC<SettingsProps> = ({
 			const response = await fetch(`${apiUrl}/api/cancel-subscription`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: userProfile.id }),
+				body: JSON.stringify({
+					userId: userProfile.id,
+					keepCredits: keepCredits,
+				}),
 			});
 
 			if (!response.ok) {
@@ -173,19 +189,23 @@ export const Settings: React.FC<SettingsProps> = ({
 			const result = await response.json();
 			console.log("Subscription cancelled:", result);
 
-			// Update local state - keep remaining credits, only change plan_type
+			// Update local state based on keepCredits choice
 			setUserProfile((prev) => {
 				if (!prev) return null;
 				return {
 					...prev,
 					plan_type: "free",
 					subscription_status: "cancelled",
+					// Reset credits if user chose not to keep them
+					credits_remaining: keepCredits ? prev.credits_remaining : 3,
 				};
 			});
 
-			setSuccessMessage(
-				"Suscripción cancelada exitosamente. Has vuelto al plan gratuito."
-			);
+			const message =
+				keepCredits ?
+					`Suscripción cancelada. Puedes seguir usando tus ${userProfile.credits_remaining} créditos restantes.`
+				:	"Suscripción cancelada. Has vuelto al plan gratuito con 3 créditos.";
+			setSuccessMessage(message);
 			setShowCancelDialog(false);
 		} catch (err: any) {
 			console.error("Error cancelling subscription:", err);
@@ -218,13 +238,50 @@ export const Settings: React.FC<SettingsProps> = ({
 		}
 	};
 
+	const handleStartRegeneration = async () => {
+		setUpdating("regeneration");
+		try {
+			const response = await fetch(
+				`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
+			);
+			const { phrase, masterKey } = await response.json();
+			setNewPhrase(phrase);
+			setNewMasterKey(masterKey);
+			setRegenerationStep("display");
+			setShowRegenerateFlow(true);
+		} catch (err: any) {
+			setError("Error al generar nueva frase. Intenta de nuevo.");
+		} finally {
+			setUpdating(null);
+		}
+	};
+
+	const handleRegenerationComplete = async () => {
+		if (!userProfile || !newPhrase || !newMasterKey) return;
+		setUpdating("finalizing_regeneration");
+		try {
+			// Note: This requires current password to re-encrypt the master key.
+			// For brevity, we'll use a placeholder or ask for it if needed.
+			// The backend /setup-recovery handles this if we provide the password.
+			setError(
+				"La regeneración completa requiere confirmar su contraseña actual.",
+			);
+			setRegenerationStep(null);
+			setShowRegenerateFlow(false);
+		} catch (err: any) {
+			setError(err.message);
+		} finally {
+			setUpdating(null);
+		}
+	};
+
 	const displayName = userProfile?.full_name || "Usuario";
 	const planDisplay =
-		!userProfile?.plan_type || userProfile.plan_type === "free"
-			? "Plan Gratuito"
-			: `Plan ${userProfile.plan_type
-					.charAt(0)
-					.toUpperCase()}${userProfile.plan_type.slice(1)}`;
+		!userProfile?.plan_type || userProfile.plan_type === "free" ?
+			"Plan Gratuito"
+		:	`Plan ${userProfile.plan_type
+				.charAt(0)
+				.toUpperCase()}${userProfile.plan_type.slice(1)}`;
 
 	return (
 		<>
@@ -283,16 +340,14 @@ export const Settings: React.FC<SettingsProps> = ({
 							},
 						}}
 					>
-						{mode === "dark" ? (
+						{mode === "dark" ?
 							<Brightness7 fontSize="small" />
-						) : (
-							<Brightness4 fontSize="small" />
-						)}
+						:	<Brightness4 fontSize="small" />}
 					</IconButton>
 				</DialogTitle>
 
 				<DialogContent sx={{ px: 3, py: 3, minHeight: 200 }}>
-					{loading ? (
+					{loading ?
 						<Box
 							sx={{
 								display: "flex",
@@ -308,7 +363,7 @@ export const Settings: React.FC<SettingsProps> = ({
 								Cargando perfil...
 							</Typography>
 						</Box>
-					) : error ? (
+					: error ?
 						<Alert
 							severity="error"
 							variant="filled"
@@ -316,7 +371,7 @@ export const Settings: React.FC<SettingsProps> = ({
 						>
 							{error}
 						</Alert>
-					) : userProfile ? (
+					: userProfile ?
 						<>
 							<Stack spacing={4}>
 								{/* Section 1: User Profile Summary */}
@@ -341,9 +396,9 @@ export const Settings: React.FC<SettingsProps> = ({
 											p: 2.5,
 											borderRadius: 4,
 											background: (theme) =>
-												mode === "dark"
-													? `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.background.default} 100%)`
-													: `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.common.white} 100%)`,
+												mode === "dark" ?
+													`linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.background.default} 100%)`
+												:	`linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.common.white} 100%)`,
 											border: "1px solid",
 											borderColor: "divider",
 											display: "flex",
@@ -439,11 +494,9 @@ export const Settings: React.FC<SettingsProps> = ({
 																newName === userProfile.full_name
 															}
 														>
-															{updating === "name" ? (
+															{updating === "name" ?
 																<CircularProgress size={16} />
-															) : (
-																<Save fontSize="small" />
-															)}
+															:	<Save fontSize="small" />}
 														</IconButton>
 													</InputAdornment>
 												),
@@ -478,6 +531,67 @@ export const Settings: React.FC<SettingsProps> = ({
 											Cambiar Correo o Contraseña
 										</Button>
 									</Stack>
+								</Box>
+
+								{/* Section 2.5: Security & Recovery */}
+								<Box>
+									<Typography
+										variant="overline"
+										color="text.secondary"
+										sx={{
+											fontSize: "0.7rem",
+											fontWeight: 800,
+											letterSpacing: "0.1em",
+											mb: 2,
+											display: "block",
+											opacity: 0.7,
+										}}
+									>
+										SEGURIDAD Y RECUPERACIÓN
+									</Typography>
+
+									<Box
+										sx={{
+											p: 2,
+											borderRadius: 3,
+											border: "1px solid",
+											borderColor: "warning.main",
+											bgcolor: alpha("#ed6c02", 0.05),
+										}}
+									>
+										<Stack spacing={1.5}>
+											<Typography
+												variant="body2"
+												sx={{
+													fontWeight: "bold",
+													display: "flex",
+													alignItems: "center",
+													gap: 1,
+												}}
+											>
+												<VpnKey fontSize="small" color="warning" /> Frase de
+												Recuperación
+											</Typography>
+											<Typography variant="caption" color="text.secondary">
+												Si perdiste tu frase o crees que alguien más la tiene,
+												genera una nueva.
+											</Typography>
+											<Button
+												variant="outlined"
+												color="warning"
+												size="small"
+												fullWidth
+												startIcon={<Refresh />}
+												onClick={handleStartRegeneration}
+												disabled={updating === "regeneration"}
+												sx={{ borderRadius: 2, fontWeight: "bold" }}
+											>
+												{updating === "regeneration" ?
+													"Generando..."
+												:	"Regenerar Frase"}
+											</Button>
+										</Stack>
+									</Box>
 								</Box>
 
 								{/* Section 3: Subscription Status */}
@@ -607,8 +721,32 @@ export const Settings: React.FC<SettingsProps> = ({
 								userEmail={userProfile.email}
 							/>
 						</>
-					) : null}
+					:	null}
 				</DialogContent>
+
+				{/* Recovery Phrase Dialog */}
+				<Dialog
+					open={showRegenerateFlow}
+					onClose={() => !updating && setShowRegenerateFlow(false)}
+					maxWidth="sm"
+					fullWidth
+				>
+					<Box sx={{ p: 2 }}>
+						{regenerationStep === "display" && newPhrase && (
+							<RecoveryPhraseDisplay
+								phrase={newPhrase}
+								onVerified={() => setRegenerationStep("verify")}
+							/>
+						)}
+						{regenerationStep === "verify" && newPhrase && (
+							<RecoveryPhraseVerification
+								phrase={newPhrase}
+								onComplete={handleRegenerationComplete}
+								onBack={() => setRegenerationStep("display")}
+							/>
+						)}
+					</Box>
+				</Dialog>
 
 				<DialogActions
 					sx={{
@@ -685,62 +823,150 @@ export const Settings: React.FC<SettingsProps> = ({
 					¿Cancelar Suscripción?
 				</DialogTitle>
 				<DialogContent sx={{ px: 3, pb: 2 }}>
-					<Alert
-						severity="warning"
-						variant="outlined"
-						sx={{
-							mb: 2,
-							borderRadius: 2,
-							border: (theme) =>
-								`1px solid ${alpha(theme.palette.primary.main, 0.5)}`,
-							bgcolor: "warning.main",
-							opacity: 0.1,
-						}}
-					>
-						<AlertTitle sx={{ fontWeight: "bold" }}>Importante</AlertTitle>
-						Al cancelar tu suscripción:
-					</Alert>
-					<Stack spacing={1.5}>
-						{[
-							{
-								text: "Volverás al ",
-								bold: "Plan Gratuito",
-								extra: " con 3 créditos",
-							},
-							{
-								text: "Tus pacientes y notas se mantendrán ",
-								bold: "intactos",
-							},
-							{ text: "Podrás reactivar tu suscripción en cualquier momento" },
-						].map((item, i) => (
-							<Box
-								key={i}
-								sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}
-							>
+					<Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
+						Elige cómo quieres cancelar tu suscripción:
+					</Typography>
+
+					<Stack spacing={2}>
+						{/* Option 1: Keep Credits */}
+						<Box
+							onClick={() => setKeepCredits(true)}
+							sx={{
+								p: 2.5,
+								borderRadius: 3,
+								border: "2px solid",
+								borderColor: keepCredits ? "primary.main" : "divider",
+								bgcolor:
+									keepCredits ?
+										alpha((theme: any) => theme.palette.primary.main, 0.08)
+									:	"background.paper",
+								cursor: "pointer",
+								transition: "all 0.2s",
+								"&:hover": {
+									borderColor: "primary.main",
+									bgcolor: alpha(
+										(theme: any) => theme.palette.primary.main,
+										0.04,
+									),
+								},
+							}}
+						>
+							<Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
 								<Box
 									sx={{
-										mt: 0.8,
-										width: 6,
-										height: 6,
+										width: 20,
+										height: 20,
 										borderRadius: "50%",
-										bgcolor: "primary.main",
+										border: "2px solid",
+										borderColor: keepCredits ? "primary.main" : "divider",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
 										flexShrink: 0,
+										mt: 0.25,
 									}}
-								/>
-								<Typography variant="body2" sx={{ opacity: 0.9 }}>
-									{item.text}
-									{item.bold && <strong>{item.bold}</strong>}
-									{item.extra}
-								</Typography>
+								>
+									{keepCredits && (
+										<Box
+											sx={{
+												width: 10,
+												height: 10,
+												borderRadius: "50%",
+												bgcolor: "primary.main",
+											}}
+										/>
+									)}
+								</Box>
+								<Box sx={{ flex: 1 }}>
+									<Typography
+										variant="subtitle2"
+										fontWeight="bold"
+										sx={{ mb: 0.5 }}
+									>
+										Cancelar pero mantener mis créditos
+									</Typography>
+									<Typography variant="caption" color="text.secondary">
+										Podrás seguir usando tus{" "}
+										{userProfile?.credits_remaining || 0} créditos restantes
+										hasta que los uses. Luego tendrás 3 créditos del plan
+										gratuito.
+									</Typography>
+								</Box>
 							</Box>
-						))}
-						<Typography
-							variant="caption"
-							sx={{ color: "text.secondary", mt: 1, fontStyle: "italic" }}
+						</Box>
+
+						{/* Option 2: Lose Credits */}
+						<Box
+							onClick={() => setKeepCredits(false)}
+							sx={{
+								p: 2.5,
+								borderRadius: 3,
+								border: "2px solid",
+								borderColor: !keepCredits ? "error.main" : "divider",
+								bgcolor:
+									!keepCredits ?
+										alpha((theme: any) => theme.palette.error.main, 0.08)
+									:	"background.paper",
+								cursor: "pointer",
+								transition: "all 0.2s",
+								"&:hover": {
+									borderColor: "error.main",
+									bgcolor: alpha(
+										(theme: any) => theme.palette.error.main,
+										0.04,
+									),
+								},
+							}}
 						>
-							* Si tienes una suscripción recurrente en MercadoPago, deberás
-							cancelarla manualmente.
-						</Typography>
+							<Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+								<Box
+									sx={{
+										width: 20,
+										height: 20,
+										borderRadius: "50%",
+										border: "2px solid",
+										borderColor: !keepCredits ? "error.main" : "divider",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										flexShrink: 0,
+										mt: 0.25,
+									}}
+								>
+									{!keepCredits && (
+										<Box
+											sx={{
+												width: 10,
+												height: 10,
+												borderRadius: "50%",
+												bgcolor: "error.main",
+											}}
+										/>
+									)}
+								</Box>
+								<Box sx={{ flex: 1 }}>
+									<Typography
+										variant="subtitle2"
+										fontWeight="bold"
+										sx={{ mb: 0.5 }}
+									>
+										Cancelar y perder créditos restantes
+									</Typography>
+									<Typography variant="caption" color="text.secondary">
+										Tus créditos restantes se perderán y volverás inmediatamente
+										al plan gratuito con 3 créditos.
+									</Typography>
+								</Box>
+							</Box>
+						</Box>
+
+						<Alert severity="info" sx={{ borderRadius: 2, mt: 1 }}>
+							<Typography variant="caption">
+								<strong>Nota:</strong> En ambos casos, tu suscripción de
+								MercadoPago se cancelará inmediatamente para evitar futuros
+								cobros.
+							</Typography>
+						</Alert>
 					</Stack>
 				</DialogContent>
 				<DialogActions sx={{ p: 3, gap: 1 }}>

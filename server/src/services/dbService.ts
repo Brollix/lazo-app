@@ -27,7 +27,7 @@ export const getUserProfile = async (userId: string) => {
 
 export const decrementCredits = async (
 	userId: string,
-	isPremium: boolean = false
+	isPremium: boolean = false,
 ) => {
 	const profile = await getUserProfile(userId);
 
@@ -71,7 +71,7 @@ export const decrementCredits = async (
 
 export const updateUserPlan = async (
 	userId: string,
-	plan: "free" | "pro" | "ultra"
+	plan: "free" | "pro" | "ultra",
 ) => {
 	console.log(`[DB] Updating plan for ${userId} to ${plan}`);
 
@@ -121,6 +121,36 @@ export const updateUserPlan = async (
 };
 
 /**
+ * Updates recovery information for a user
+ * Stores encrypted master key and recovery phrase hash
+ */
+export const updateRecoveryInfo = async (
+	userId: string,
+	masterKeyEncrypted: string,
+	recoveryPhraseHash: string,
+) => {
+	console.log(`[DB] Updating recovery info for user ${userId}`);
+
+	const { data, error } = await supabase
+		.from("profiles")
+		.update({
+			master_key_encrypted: masterKeyEncrypted,
+			recovery_phrase_hash: recoveryPhraseHash,
+			recovery_phrase_created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+		})
+		.eq("id", userId)
+		.select();
+
+	if (error) {
+		console.error("Error updating recovery info:", error);
+		throw error;
+	}
+
+	return data;
+};
+
+/**
  * Renews monthly credits for a user if a month has passed since last renewal
  * Free plan: 3 credits/month
  * Pro plan: 100 credits/month
@@ -148,7 +178,7 @@ export const renewMonthlyCredits = async (userId: string) => {
 
 	if (monthsPassed >= 1) {
 		console.log(
-			`[DB] ${monthsPassed} month(s) passed, renewing credits for ${profile.plan_type} plan`
+			`[DB] ${monthsPassed} month(s) passed, renewing credits for ${profile.plan_type} plan`,
 		);
 
 		let updates: any = { last_credit_renewal: now.toISOString() };
@@ -178,11 +208,17 @@ export const renewMonthlyCredits = async (userId: string) => {
 	}
 };
 
-export const cancelUserSubscription = async (userId: string) => {
-	console.log(`[DB] Cancelling subscription for user ${userId}`);
+export const cancelUserSubscription = async (
+	userId: string,
+	keepCredits: boolean = false,
+) => {
+	console.log(
+		`[DB] Cancelling subscription for user ${userId}, keepCredits: ${keepCredits}`,
+	);
 
 	const { data, error } = await supabase.rpc("cancel_user_subscription", {
 		p_user_id: userId,
+		p_keep_credits: keepCredits,
 	});
 
 	if (error) {
@@ -205,10 +241,10 @@ export const createOrUpdateSubscription = async (
 	amount: number,
 	billingDay?: number,
 	nextBillingDate?: Date,
-	shouldUpdatePlan: boolean = true
+	shouldUpdatePlan: boolean = true,
 ) => {
 	console.log(
-		`[DB] Creating/updating subscription for user ${userId}, shouldUpdatePlan: ${shouldUpdatePlan}`
+		`[DB] Creating/updating subscription for user ${userId}, shouldUpdatePlan: ${shouldUpdatePlan}`,
 	);
 
 	const { data, error } = await supabase.rpc("upsert_subscription", {
@@ -239,10 +275,10 @@ export const recordPaymentAndRenewCredits = async (
 	amount: number,
 	status: string,
 	statusDetail?: string,
-	creditsToAdd: number = 0
+	creditsToAdd: number = 0,
 ) => {
 	console.log(
-		`[DB] Recording payment ${mpPaymentId} for user ${userId}, status: ${status}. Function will renew credits according to plan if approved.`
+		`[DB] Recording payment ${mpPaymentId} for user ${userId}, status: ${status}. Function will renew credits according to plan if approved.`,
 	);
 
 	const { data, error } = await supabase.rpc(
@@ -255,7 +291,7 @@ export const recordPaymentAndRenewCredits = async (
 			p_status: status,
 			p_status_detail: statusDetail || null,
 			p_credits_to_add: creditsToAdd,
-		}
+		},
 	);
 
 	if (error) {
@@ -310,7 +346,7 @@ export const getPaymentHistory = async (userId: string, limit: number = 10) => {
 export const createProcessingSession = async (
 	userId: string,
 	status: "processing" | "completed" | "error" = "processing",
-	mode: "standard" | "high_precision" = "standard"
+	mode: "standard" | "high_precision" = "standard",
 ) => {
 	const { data, error } = await supabase
 		.from("processing_sessions")
@@ -330,9 +366,12 @@ export const updateProcessingSession = async (
 	sessionId: string,
 	updates: {
 		status?: "processing" | "completed" | "error";
-		result?: any;
+		encrypted_result?: string; // Base64 encrypted string
+		temp_result?: any; // TEMPORARY unencrypted result for Realtime
+		temp_result_consumed?: boolean;
+		temp_result_expires_at?: string;
 		error_message?: string;
-	}
+	},
 ) => {
 	const { data, error } = await supabase
 		.from("processing_sessions")
@@ -367,7 +406,7 @@ export const getProcessingSession = async (sessionId: string) => {
 // Monthly Transcription Limit Management (Free Plan)
 
 export const checkMonthlyTranscriptionLimit = async (
-	userId: string
+	userId: string,
 ): Promise<{
 	allowed: boolean;
 	used: number;
@@ -440,7 +479,7 @@ export const incrementMonthlyTranscriptions = async (userId: string) => {
  * This limit applies to both standard and premium sessions combined
  */
 export const checkUltraSessionLimit = async (
-	userId: string
+	userId: string,
 ): Promise<{
 	allowed: boolean;
 	used: number;
@@ -472,7 +511,7 @@ export const checkUltraSessionLimit = async (
 			.eq("id", userId);
 
 		console.log(
-			`[DB] New month detected for Ultra user ${userId}, credits renewed`
+			`[DB] New month detected for Ultra user ${userId}, credits renewed`,
 		);
 
 		return {
@@ -518,7 +557,7 @@ export const incrementUltraSessionCount = async (userId: string) => {
 	console.log(
 		`[DB] Ultra session count incremented for ${userId}: ${
 			(profile.monthly_sessions_used || 0) + 1
-		}/120`
+		}/120`,
 	);
 };
 
@@ -530,7 +569,7 @@ export const incrementUltraSessionCount = async (userId: string) => {
  */
 export const getPatientSummary = async (
 	userId: string,
-	patientIdentifier: string
+	patientIdentifier: string,
 ) => {
 	const { data, error } = await supabase
 		.from("patient_summaries")
@@ -558,7 +597,7 @@ export const getPatientSummary = async (
 export const getLastSessionSummaries = async (
 	userId: string,
 	patientIdentifier: string,
-	limit: number = 3
+	limit: number = 3,
 ) => {
 	// Get the patient's summary which contains cumulative context
 	const summary = await getPatientSummary(userId, patientIdentifier);
@@ -567,10 +606,10 @@ export const getLastSessionSummaries = async (
 		return null;
 	}
 
-	// Return the summary text (which already contains cumulative context from past sessions)
+	// Return the encrypted summary (client will decrypt)
 	// For now, we return the full summary. In the future, we could track individual session summaries
 	return {
-		summary_text: summary.summary_text,
+		encrypted_summary: summary.encrypted_summary,
 		session_count: summary.session_count,
 		last_session_date: summary.last_session_date,
 	};
@@ -579,20 +618,16 @@ export const getLastSessionSummaries = async (
 /**
  * Create or update a patient summary (upsert operation)
  * Updates cumulative clinical profile with new session information
- * Enforces max 2000 tokens (approximately 8000 characters)
+ * @param encryptedSummary - Base64 encrypted summary (already encrypted client-side)
  */
 export const upsertPatientSummary = async (
 	userId: string,
 	patientIdentifier: string,
-	summaryText: string,
-	sessionCount?: number
+	encryptedSummary: string, // Already encrypted client-side
+	sessionCount?: number,
 ) => {
-	// Enforce token limit (rough approximation: 4 chars = 1 token)
-	const MAX_CHARS = 8000; // ~2000 tokens
-	const truncatedSummary =
-		summaryText.length > MAX_CHARS ?
-			summaryText.substring(0, MAX_CHARS) + "..."
-		:	summaryText;
+	// Data is already encrypted client-side, no need to truncate
+	// Encryption adds ~33% overhead, so max encrypted size is ~10.6KB
 
 	// Check if summary exists
 	const existing = await getPatientSummary(userId, patientIdentifier);
@@ -602,7 +637,7 @@ export const upsertPatientSummary = async (
 		const { data, error } = await supabase
 			.from("patient_summaries")
 			.update({
-				summary_text: truncatedSummary,
+				encrypted_summary: encryptedSummary,
 				session_count: sessionCount || existing.session_count + 1,
 				last_session_date: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
@@ -618,7 +653,7 @@ export const upsertPatientSummary = async (
 		}
 
 		console.log(
-			`[DB] Updated patient summary for ${patientIdentifier} (session ${data.session_count})`
+			`[DB] Updated patient summary for ${patientIdentifier} (session ${data.session_count})`,
 		);
 		return data;
 	} else {
@@ -628,7 +663,7 @@ export const upsertPatientSummary = async (
 			.insert({
 				user_id: userId,
 				patient_identifier: patientIdentifier,
-				summary_text: truncatedSummary,
+				encrypted_summary: encryptedSummary,
 				session_count: sessionCount || 1,
 				last_session_date: new Date().toISOString(),
 			})
@@ -641,7 +676,7 @@ export const upsertPatientSummary = async (
 		}
 
 		console.log(
-			`[DB] Created patient summary for ${patientIdentifier} (session 1)`
+			`[DB] Created patient summary for ${patientIdentifier} (session 1)`,
 		);
 		return data;
 	}
@@ -652,7 +687,7 @@ export const upsertPatientSummary = async (
  */
 export const deletePatientSummary = async (
 	userId: string,
-	patientIdentifier: string
+	patientIdentifier: string,
 ) => {
 	const { error } = await supabase
 		.from("patient_summaries")
@@ -673,7 +708,7 @@ export const deletePatientSummary = async (
  */
 export const listPatientSummaries = async (
 	userId: string,
-	limit: number = 50
+	limit: number = 50,
 ) => {
 	const { data, error } = await supabase
 		.from("patient_summaries")

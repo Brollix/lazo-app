@@ -1,15 +1,10 @@
 import CryptoJS from "crypto-js";
 
 const PASSWORD_STORAGE_NAME = "lazo_encryption_password";
+const MASTER_KEY_STORAGE_NAME = "lazo_master_key";
 
 /**
- * EncryptionService using User Password Directly
- *
- * Security Model:
- * - Encryption key = SHA256(userId + password)
- * - Password is stored in sessionStorage (cleared on logout/close)
- * - Each user has a unique encryption key based on their ID + password
- * - No salt - uses password directly
+ * EncryptionService using Master Key and User Password
  */
 export const EncryptionService = {
 	/**
@@ -27,10 +22,25 @@ export const EncryptionService = {
 	},
 
 	/**
-	 * Clears the password (logout)
+	 * Sets the master key (stored in sessionStorage)
 	 */
-	clearPassword: (): void => {
+	setMasterKey: (masterKey: string): void => {
+		sessionStorage.setItem(MASTER_KEY_STORAGE_NAME, masterKey);
+	},
+
+	/**
+	 * Gets the master key from sessionStorage
+	 */
+	getMasterKey: (): string | null => {
+		return sessionStorage.getItem(MASTER_KEY_STORAGE_NAME);
+	},
+
+	/**
+	 * Clears all encryption data (logout)
+	 */
+	clear: (): void => {
 		sessionStorage.removeItem(PASSWORD_STORAGE_NAME);
+		sessionStorage.removeItem(MASTER_KEY_STORAGE_NAME);
 	},
 
 	/**
@@ -39,9 +49,7 @@ export const EncryptionService = {
 	generateKey: (userId: string): string => {
 		const password = EncryptionService.getPassword();
 		if (!password) {
-			throw new Error(
-				"Encryption password not set. Please log in again."
-			);
+			throw new Error("Encryption password not set. Please log in again.");
 		}
 		// Generate key: SHA256(userId + password)
 		return CryptoJS.SHA256(userId + password).toString();
@@ -53,9 +61,7 @@ export const EncryptionService = {
 	encryptData: (data: any, userId: string): string => {
 		const password = EncryptionService.getPassword();
 		if (!password) {
-			throw new Error(
-				"Encryption password not set. Please log in again."
-			);
+			throw new Error("Encryption password not set. Please log in again.");
 		}
 
 		if (!userId) {
@@ -64,17 +70,17 @@ export const EncryptionService = {
 
 		const key = EncryptionService.generateKey(userId);
 		const jsonString = JSON.stringify(data);
-		
+
 		if (!jsonString) {
 			throw new Error("Cannot encrypt empty data.");
 		}
-		
+
 		const encrypted = CryptoJS.AES.encrypt(jsonString, key).toString();
-		
+
 		if (!encrypted) {
 			throw new Error("Encryption failed - no data returned.");
 		}
-		
+
 		return encrypted;
 	},
 
@@ -84,9 +90,7 @@ export const EncryptionService = {
 	decryptData: (cipherText: string, userId: string): any => {
 		const password = EncryptionService.getPassword();
 		if (!password) {
-			throw new Error(
-				"Encryption password not set. Please log in again."
-			);
+			throw new Error("Encryption password not set. Please log in again.");
 		}
 
 		if (!userId) {
@@ -100,23 +104,27 @@ export const EncryptionService = {
 		const key = EncryptionService.generateKey(userId);
 		const bytes = CryptoJS.AES.decrypt(cipherText, key);
 		const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-		
+
 		if (!decryptedString || decryptedString.length === 0) {
 			// This could mean:
 			// 1. Wrong password
 			// 2. Data was encrypted with old system (salt-based)
 			// 3. Corrupted data
-			throw new Error("Failed to decrypt data. Data may have been encrypted with a different key or password may be incorrect.");
+			throw new Error(
+				"Failed to decrypt data. Data may have been encrypted with a different key or password may be incorrect.",
+			);
 		}
-		
+
 		try {
 			const parsed = JSON.parse(decryptedString);
-			if (!parsed || typeof parsed !== 'object') {
+			if (!parsed || typeof parsed !== "object") {
 				throw new Error("Decrypted data is not a valid object.");
 			}
 			return parsed;
 		} catch (parseError: any) {
-			throw new Error(`Failed to parse decrypted data: ${parseError.message}. Data may be corrupted or encrypted with a different system.`);
+			throw new Error(
+				`Failed to parse decrypted data: ${parseError.message}. Data may be corrupted or encrypted with a different system.`,
+			);
 		}
 	},
 
@@ -130,42 +138,42 @@ export const EncryptionService = {
 	// Legacy methods for backward compatibility
 	setSalt: (salt: string): void => {
 		console.warn(
-			"EncryptionService.setSalt is deprecated. Use setPassword instead."
+			"EncryptionService.setSalt is deprecated. Use setPassword instead.",
 		);
 		EncryptionService.setPassword(salt);
 	},
 
 	getSalt: (): string | null => {
 		console.warn(
-			"EncryptionService.getSalt is deprecated. Use getPassword instead."
+			"EncryptionService.getSalt is deprecated. Use getPassword instead.",
 		);
 		return EncryptionService.getPassword();
 	},
 
 	clearSalt: (): void => {
 		console.warn(
-			"EncryptionService.clearSalt is deprecated. Use clearPassword instead."
+			"EncryptionService.clearSalt is deprecated. Use clearPassword instead.",
 		);
 		EncryptionService.clearPassword();
 	},
 
 	setKey: (key: string) => {
 		console.warn(
-			"EncryptionService.setKey is deprecated. Use setPassword instead."
+			"EncryptionService.setKey is deprecated. Use setPassword instead.",
 		);
 		EncryptionService.setPassword(key);
 	},
 
 	getKey: (): string | null => {
 		console.warn(
-			"EncryptionService.getKey is deprecated. Use getPassword instead."
+			"EncryptionService.getKey is deprecated. Use getPassword instead.",
 		);
 		return EncryptionService.getPassword();
 	},
 
 	clearKey: () => {
 		console.warn(
-			"EncryptionService.clearKey is deprecated. Use clearPassword instead."
+			"EncryptionService.clearKey is deprecated. Use clearPassword instead.",
 		);
 		EncryptionService.clearPassword();
 	},

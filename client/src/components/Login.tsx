@@ -8,11 +8,17 @@ import {
 	Link,
 	Alert,
 	CircularProgress,
+	Dialog,
 } from "@mui/material";
 import { supabase } from "../supabaseClient";
+import { useEncryption } from "../hooks/useEncryption";
 import { EncryptionService } from "../services/encryptionService";
+import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
+import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
+import { PasswordRecoveryWithPhrase } from "./PasswordRecoveryWithPhrase";
 
 export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+	const encryption = useEncryption();
 	const [isSignUp, setIsSignUp] = useState(false);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -22,62 +28,46 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 
+	// Recovery Phrase Flow State
+	const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null);
+	const [tempMasterKey, setTempMasterKey] = useState<string | null>(null);
+	const [tempUserId, setTempUserId] = useState<string | null>(null);
+	const [step, setStep] = useState<"auth" | "display" | "verify">("auth");
+	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+
 	const handleAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log("handleAuth called, isSignUp:", isSignUp);
 		setLoading(true);
 		setError(null);
 
 		try {
 			if (isSignUp) {
-				// Security checks removed for testing purposes
-				// TODO: Re-enable validations for production
+				if (password !== confirmPassword) {
+					throw new Error("Las contraseñas no coinciden");
+				}
 
-				console.log("Creating account for:", email);
 				const { data, error } = await supabase.auth.signUp({
 					email,
 					password,
 					options: {
-						data: {
-							full_name: fullName.trim(),
-						},
+						data: { full_name: fullName.trim() },
 					},
 				});
 
 				if (error) throw error;
+				if (!data.user) throw new Error("Error al crear la cuenta");
 
-				console.log("Account created, updating profile with full name...");
-
-				// Save full name to profiles table
-				if (data.user) {
-					const { error: profileError } = await supabase
-						.from("profiles")
-						.update({ full_name: fullName.trim() })
-						.eq("id", data.user.id);
-
-					if (profileError) {
-						console.error("Error saving full name:", profileError);
-					} else {
-						console.log("Full name saved successfully");
-					}
-				}
-
-				// Sign out the user to force them to login manually
-				await supabase.auth.signOut();
-
-				setSuccess(
-					"¡Cuenta creada! Revisa tu correo para verificar tu cuenta y luego inicia sesión."
+				// Generate recovery phrase and master key
+				const response = await fetch(
+					`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
 				);
+				const { phrase, masterKey } = await response.json();
 
-				// Clear form and switch to login view
-				setPassword("");
-				setConfirmPassword("");
-				setFullName("");
-				setIsSignUp(false);
+				setRecoveryPhrase(phrase);
+				setTempMasterKey(masterKey);
+				setTempUserId(data.user.id);
+				setStep("display");
 			} else {
-				// Attempt login first
-				console.log("Attempting login for:", email);
-
 				const { data: authData, error } =
 					await supabase.auth.signInWithPassword({
 						email,
@@ -85,96 +75,115 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 					});
 
 				if (error) throw error;
+				if (!authData.user) throw new Error("Error al iniciar sesión");
 
-				console.log("Login successful, checking profile...");
+				// Get profile to check for master key / migration
+				const { data: profile } = await supabase
+					.from("profiles")
+					.select("*")
+					.eq("id", authData.user.id)
+					.single();
 
-				// After successful login, check if profile exists
-				if (authData.user) {
-					const { data: profile, error: profileError } = await supabase
-						.from("profiles")
-						.select("id, email, plan_type, credits_remaining")
-						.eq("id", authData.user.id)
-						.maybeSingle();
+				if (!profile) throw new Error("Perfil no encontrado");
 
-					console.log("Profile check result:", { profile, profileError });
+				let currentMasterKey = "";
 
-					// If profile doesn't exist, create it (this handles the case where the trigger didn't run)
-					if (!profile && !profileError) {
-						console.log("Profile not found, creating one...");
-						const { error: insertError } = await supabase
-							.from("profiles")
-							.insert({
-								id: authData.user.id,
-								email: authData.user.email,
-								plan_type: "free",
-								credits_remaining: 3,
-							});
-
-						if (insertError) {
-							console.error("Error creating profile:", insertError);
-							// Don't block login, just log the error
-						}
+				if (profile.master_key_encrypted && profile.encryption_salt) {
+					// MODERN USER: Decrypt master key using password
+					try {
+						const encryptedObj = JSON.parse(profile.master_key_encrypted);
+						// Decrypt using the hook's decrypt function
+						currentMasterKey = await encryption.decrypt(
+							encryptedObj.password,
+							profile.encryption_salt,
+						);
+					} catch (e) {
+						console.error("Master key decryption failed:", e);
+						throw new Error(
+							"Error al desencriptar la llave maestra. Verifica tu contraseña.",
+						);
 					}
+				} else {
+					// LEGACY USER: Needs migration (handled in Dashboard or later)
+					console.log("Legacy user detected. Migration needed.");
 				}
 
-				// Success feedback
-				console.log("Login successful, redirecting...");
-				setSuccess("¡Bienvenido! Iniciando sesión...");
-
-				// Store password for encryption (stored in sessionStorage)
 				EncryptionService.setPassword(password);
-				
-				// Verify password was stored correctly
-				if (!EncryptionService.isSetup()) {
-					console.error("Failed to store encryption password");
-					setError("Error al configurar la encriptación. Por favor, intenta de nuevo.");
-					setLoading(false);
-					return;
-				}
+				if (currentMasterKey) EncryptionService.setMasterKey(currentMasterKey);
 
-				console.log("Encryption password stored successfully");
-
-				// Wait a bit to show success message before redirecting
-				setTimeout(() => {
-					onLogin();
-				}, 500);
-
-				// Don't set loading to false in finally block for successful login
-				return;
+				onLogin();
 			}
 		} catch (err: any) {
-			console.error("Auth error:", err);
-			if (
-				err.message === "Invalid login credentials" ||
-				err.code === "invalid_credentials"
-			) {
-				// Check if the user exists to give better feedback
-				try {
-					const { data: exists, error: rpcError } = await supabase.rpc(
-						"check_user_exists",
-						{
-							email_to_check: email,
-						}
-					);
-
-					if (rpcError) throw rpcError;
-
-					if (exists) {
-						setError("Contraseña incorrecta. Por favor intentalo de nuevo.");
-					} else {
-						setError("La cuenta no existe. Por favor, crea una para comenzar.");
-					}
-				} catch (rpcErr) {
-					console.error("Error checking user existence:", rpcErr);
-					setError("La cuenta no existe o el correo es inválido.");
-				}
-			} else {
-				setError(err.message || "Ha ocurrido un error");
-			}
+			setError(err.message);
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	const handleRecoverySetupComplete = async () => {
+		setLoading(true);
+		try {
+			const salt = encryption.generateSalt();
+			const response = await fetch(
+				`${import.meta.env.VITE_API_URL || ""}/api/auth/setup-recovery`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						userId: tempUserId,
+						masterKey: tempMasterKey,
+						password,
+						recoveryPhrase,
+						salt,
+					}),
+				},
+			);
+
+			if (!response.ok)
+				throw new Error("Error al guardar la configuración de recuperación");
+
+			// Update salt in profile (since setup-recovery handles the rest)
+			await supabase
+				.from("profiles")
+				.update({ encryption_salt: salt })
+				.eq("id", tempUserId);
+
+			await supabase.auth.signOut();
+			setStep("auth");
+			setIsSignUp(false);
+			setSuccess("¡Cuenta configurada! Verifica tu correo e inicia sesión.");
+		} catch (err: any) {
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	if (step === "display" && recoveryPhrase) {
+		return (
+			<Box sx={{ p: 4 }}>
+				<RecoveryPhraseDisplay
+					phrase={recoveryPhrase}
+					onVerified={() => setStep("verify")}
+				/>
+			</Box>
+		);
+	}
+
+	if (step === "verify" && recoveryPhrase) {
+		return (
+			<Box sx={{ p: 4 }}>
+				<RecoveryPhraseVerification
+					phrase={recoveryPhrase}
+					onComplete={handleRecoverySetupComplete}
+					onBack={() => setStep("display")}
+				/>
+				{loading && (
+					<CircularProgress sx={{ display: "block", mx: "auto", mt: 2 }} />
+				)}
+			</Box>
+		);
+	}
 
 	return (
 		<Box
@@ -186,100 +195,37 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				justifyContent: "center",
 				background: (theme) =>
 					`linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)`,
-				px: { xs: 2, sm: 0 }, // Add horizontal padding on mobile
+				px: { xs: 2, sm: 0 },
 			}}
 		>
 			<Paper
 				elevation={3}
 				sx={{
-					p: { xs: 3, sm: 4, md: 6 }, // Responsive padding
+					p: { xs: 3, sm: 4, md: 6 },
 					width: "100%",
-					maxWidth: { xs: "100%", sm: 400 }, // Responsive width
+					maxWidth: { xs: "100%", sm: 400 },
 					borderRadius: 4,
 					textAlign: "center",
 				}}
 			>
-				{/* Brand Section */}
-				<Box sx={{ mb: { xs: 3, md: 4 } }}>
-					<Typography
-						variant="h2"
-						color="primary"
-						sx={{
-							mb: 1,
-							fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" }, // Responsive font size
-						}}
-					>
-						lazo
-					</Typography>
-					<Typography
-						variant="body1"
-						color="text.secondary"
-						sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
-					>
-						Tu soporte clínico inteligente.
-					</Typography>
-				</Box>
+				<Typography
+					variant="h2"
+					color="primary"
+					sx={{ mb: 1, fontWeight: "bold" }}
+				>
+					lazo
+				</Typography>
+				<Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+					Tu soporte clínico inteligente.
+				</Typography>
 
 				{error && (
-					<Alert
-						severity="error"
-						variant="filled"
-						sx={{
-							mb: 2,
-							textAlign: "center",
-							borderRadius: 1,
-							fontSize: { xs: "0.875rem", sm: "0.95rem" },
-							py: { xs: 1.5, sm: 2 },
-							"& .MuiAlert-icon": {
-								display: "none",
-							},
-							"& .MuiAlert-message": {
-								width: "100%",
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: 1.5,
-								padding: 0,
-							},
-						}}
-					>
-						<Box>{error}</Box>
-						{error.includes("crea una") && (
-							<Button
-								variant="contained"
-								size="small"
-								onClick={() => {
-									setIsSignUp(true);
-									setError(null);
-									setPassword("");
-									setConfirmPassword("");
-									setFullName("");
-								}}
-								sx={{
-									bgcolor: "background.paper",
-									color: "error.main",
-									fontWeight: (theme) => theme.typography.button.fontWeight,
-									px: 2.5,
-									py: 0.75,
-									fontSize: { xs: "0.8rem", sm: "0.875rem" },
-									"&:hover": {
-										bgcolor: "action.hover",
-									},
-								}}
-							>
-								CREAR CUENTA
-							</Button>
-						)}
+					<Alert severity="error" sx={{ mb: 2 }}>
+						{error}
 					</Alert>
 				)}
-
 				{success && (
-					<Alert
-						severity="success"
-						variant="filled"
-						sx={{ mb: 2, textAlign: "left" }}
-					>
+					<Alert severity="success" sx={{ mb: 2 }}>
 						{success}
 					</Alert>
 				)}
@@ -289,54 +235,38 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 						<TextField
 							fullWidth
 							label="Nombre"
-							variant="outlined"
 							margin="normal"
 							value={fullName}
 							onChange={(e) => setFullName(e.target.value)}
 							disabled={loading}
-							autoComplete="name"
 						/>
 					)}
 					<TextField
 						fullWidth
 						label="Correo"
-						type="text"
-						variant="outlined"
 						margin="normal"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						disabled={loading}
-						inputProps={{
-							autoComplete: "email",
-						}}
 					/>
 					<TextField
 						fullWidth
 						label="Contraseña"
 						type="password"
-						variant="outlined"
 						margin="normal"
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 						disabled={loading}
 					/>
-
 					{isSignUp && (
 						<TextField
 							fullWidth
 							label="Confirmar Contraseña"
 							type="password"
-							variant="outlined"
 							margin="normal"
 							value={confirmPassword}
 							onChange={(e) => setConfirmPassword(e.target.value)}
 							disabled={loading}
-							error={password !== confirmPassword && confirmPassword !== ""}
-							helperText={
-								password !== confirmPassword && confirmPassword !== ""
-									? "Las contraseñas no coinciden"
-									: ""
-							}
 						/>
 					)}
 
@@ -346,41 +276,55 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 						size="large"
 						type="submit"
 						disabled={loading}
-						sx={{
-							mt: { xs: 3, md: 4 },
-							py: { xs: 1.2, md: 1.5 },
-							fontSize: { xs: "1rem", md: "1.1rem" },
-						}}
+						sx={{ mt: 3, py: 1.5 }}
 					>
-						{loading ? (
+						{loading ?
 							<CircularProgress size={24} color="inherit" />
-						) : isSignUp ? (
+						: isSignUp ?
 							"Crear Cuenta"
-						) : (
-							"Ingresar"
-						)}
+						:	"Ingresar"}
 					</Button>
 				</form>
 
-				<Box sx={{ mt: 3 }}>
+				<Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 1 }}>
 					<Link
 						component="button"
 						variant="body2"
 						onClick={() => {
 							setIsSignUp(!isSignUp);
 							setError(null);
-							setPassword("");
-							setConfirmPassword("");
-							setFullName("");
 						}}
-						disabled={loading}
 					>
-						{isSignUp
-							? "¿Ya tienes una cuenta? Inicia sesión"
-							: "¿No tienes cuenta? Regístrate"}
+						{isSignUp ?
+							"¿Ya tienes una cuenta? Inicia sesión"
+						:	"¿No tienes cuenta? Regístrate"}
 					</Link>
+					{!isSignUp && (
+						<Link
+							component="button"
+							variant="body2"
+							onClick={() => setShowRecoveryDialog(true)}
+						>
+							¿Olvidaste tu contraseña?
+						</Link>
+					)}
 				</Box>
 			</Paper>
+
+			<Dialog
+				open={showRecoveryDialog}
+				onClose={() => setShowRecoveryDialog(false)}
+			>
+				<Box sx={{ p: 2 }}>
+					<PasswordRecoveryWithPhrase
+						onSuccess={(msg) => {
+							setShowRecoveryDialog(false);
+							setSuccess(msg);
+						}}
+						onCancel={() => setShowRecoveryDialog(false)}
+					/>
+				</Box>
+			</Dialog>
 		</Box>
 	);
 };

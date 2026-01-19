@@ -51,7 +51,8 @@ import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 import { Patient } from "./PatientsList";
 import { AudioPlayer } from "./AudioPlayer";
-import { EncryptionService } from "../services/encryptionService";
+import { OnboardingTutorial } from "./OnboardingTutorial";
+import { useEncryption } from "../hooks/useEncryption";
 import { supabase } from "../supabaseClient";
 import ReactMarkdown from "react-markdown";
 
@@ -100,6 +101,7 @@ export const Dashboard: React.FC<{
 	isAdmin,
 	onNavigateToAdmin,
 }) => {
+	const encryption = useEncryption();
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
 	const extendedShadows = getExtendedShadows(theme.palette.mode);
@@ -107,6 +109,7 @@ export const Dashboard: React.FC<{
 	const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
 	const [userAppPlan, setUserAppPlan] = useState<string | null>(null);
 	const [userEmail, setUserEmail] = useState<string>("");
+	const [userSalt, setUserSalt] = useState<string | null>(null);
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
 	const [sessionData, setSessionData] = useState<ProcessSessionResponse | null>(
@@ -118,6 +121,7 @@ export const Dashboard: React.FC<{
 	const [isFocusMode, setIsFocusMode] = useState(false);
 	const [draftDialogOpen, setDraftDialogOpen] = useState(false);
 	const [pendingDraft, setPendingDraft] = useState<any>(null);
+	const [showOnboarding, setShowOnboarding] = useState(false);
 	const [announcement, setAnnouncement] = useState<{
 		message: string;
 		created_at: string;
@@ -157,7 +161,7 @@ export const Dashboard: React.FC<{
 	useEffect(() => {
 		const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
 
-		// Fetch user plan
+		// Fetch user plan and encryption salt
 		if (userId) {
 			fetch(`${apiUrl}/api/user-plan/${userId}`)
 				.then((res) => res.json())
@@ -166,6 +170,28 @@ export const Dashboard: React.FC<{
 					setUserEmail(data.email || "");
 				})
 				.catch((err) => console.error("Error fetching user plan:", err));
+
+			// Fetch encryption salt from profile
+			supabase
+				.from("profiles")
+				.select("encryption_salt")
+				.eq("id", userId)
+				.single()
+				.then(({ data, error }) => {
+					if (error) {
+						console.error("Error fetching encryption salt:", error);
+					} else if (data?.encryption_salt) {
+						setUserSalt(data.encryption_salt);
+					}
+				});
+
+			// Check if user has seen onboarding
+			const hasSeenOnboarding = localStorage.getItem(
+				`lazo_onboarding_${userId}`,
+			);
+			if (!hasSeenOnboarding) {
+				setShowOnboarding(true);
+			}
 		}
 
 		// Fetch announcements
@@ -550,8 +576,8 @@ export const Dashboard: React.FC<{
 				return;
 			}
 
-			// Verify encryption is set up
-			if (!EncryptionService.isSetup()) {
+			// Verify encryption is set up and salt is available
+			if (!encryption.isSetup() || !userSalt) {
 				setAlertModal({
 					open: true,
 					message:
@@ -584,10 +610,7 @@ export const Dashboard: React.FC<{
 					:	null,
 			};
 
-			const encryptedData = EncryptionService.encryptData(
-				sessionRecord,
-				userId,
-			);
+			const encryptedData = await encryption.encrypt(sessionRecord, userSalt);
 
 			if (initialSession?.id) {
 				// --- UPDATE EXISTING SESSION ---
@@ -651,9 +674,9 @@ export const Dashboard: React.FC<{
 				gender: patient.gender,
 				lastVisit: sessionDate, // Use the session date as last visit
 			};
-			const encryptedPatientData = EncryptionService.encryptData(
+			const encryptedPatientData = await encryption.encrypt(
 				updatedPatientData,
-				userId,
+				userSalt,
 			);
 
 			await supabase
@@ -693,8 +716,8 @@ export const Dashboard: React.FC<{
 				return;
 			}
 
-			// Verify encryption is set up
-			if (!EncryptionService.isSetup()) {
+			// Verify encryption is set up and salt is available
+			if (!encryption.isSetup() || !userSalt) {
 				setAlertModal({
 					open: true,
 					message:
@@ -706,7 +729,7 @@ export const Dashboard: React.FC<{
 
 			let data;
 			try {
-				data = EncryptionService.decryptData(session.encrypted_data, userId);
+				data = await encryption.decrypt(session.encrypted_data, userSalt);
 			} catch (decryptErr) {
 				console.warn("Decrypt failed, trying JSON parse for old sessions");
 				try {
@@ -799,6 +822,13 @@ export const Dashboard: React.FC<{
 		}
 		setDraftDialogOpen(false);
 		setPendingDraft(null);
+	};
+
+	const handleCompleteOnboarding = () => {
+		if (userId) {
+			localStorage.setItem(`lazo_onboarding_${userId}`, "true");
+		}
+		setShowOnboarding(false);
 	};
 
 	return (
@@ -1474,6 +1504,12 @@ export const Dashboard: React.FC<{
 				title={alertModal.title}
 				message={alertModal.message}
 				severity={alertModal.severity}
+			/>
+
+			{/* Onboarding Tutorial */}
+			<OnboardingTutorial
+				open={showOnboarding}
+				onComplete={handleCompleteOnboarding}
 			/>
 		</Box>
 	);
