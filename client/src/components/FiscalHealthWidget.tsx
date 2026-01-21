@@ -32,19 +32,16 @@ export const FiscalHealthWidget: React.FC<FiscalHealthWidgetProps> = ({
 
 	// Determine state
 	let statusColor = theme.palette.success.main;
-	let statusBg = theme.palette.success.light;
 	let statusText = "Operación bajo el radar";
 	let statusIcon = <CheckCircleOutline sx={{ fontSize: 18 }} />;
 	let progressValue = (grossRevenue30d / monthlyLimit) * 100;
 
 	if (grossRevenue30d >= RED_THRESHOLD) {
 		statusColor = theme.palette.error.main;
-		statusBg = theme.palette.error.light;
 		statusText = "LÍMITE DE RIESGO: INSCRIBIRSE AHORA";
 		statusIcon = <ErrorOutline sx={{ fontSize: 18 }} />;
 	} else if (grossRevenue30d >= YELLOW_THRESHOLD) {
 		statusColor = theme.palette.warning.main;
-		statusBg = theme.palette.warning.light;
 		statusText = "Preparar inscripción en Monotributo";
 		statusIcon = <WarningAmber sx={{ fontSize: 18 }} />;
 	}
@@ -68,7 +65,7 @@ export const FiscalHealthWidget: React.FC<FiscalHealthWidgetProps> = ({
 					p: 1.5,
 					px: 2,
 					borderRadius: 3,
-					bgcolor: (backgrounds) =>
+					bgcolor:
 						theme.palette.mode === "dark" ?
 							"rgba(255, 255, 255, 0.03)"
 						:	"rgba(0, 0, 0, 0.02)",

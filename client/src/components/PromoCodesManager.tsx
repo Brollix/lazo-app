@@ -22,7 +22,7 @@ import {
 	FormControl,
 	InputLabel,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
 	Add as AddIcon,
 	Edit as EditIcon,
@@ -32,7 +32,7 @@ import {
 	Shuffle as ShuffleIcon,
 	AllInclusive as InfiniteIcon,
 } from "@mui/icons-material";
-import { alpha } from "@mui/material/styles";
+
 import { AdminTable } from "./AdminTable";
 
 interface PromoCode {

@@ -835,18 +835,15 @@ export const Settings: React.FC<SettingsProps> = ({
 								borderRadius: 3,
 								border: "2px solid",
 								borderColor: keepCredits ? "primary.main" : "divider",
-								bgcolor:
+								bgcolor: (theme) =>
 									keepCredits ?
-										alpha((theme: any) => theme.palette.primary.main, 0.08)
-									:	"background.paper",
+										alpha(theme.palette.primary.main, 0.08)
+									:	theme.palette.background.paper,
 								cursor: "pointer",
 								transition: "all 0.2s",
 								"&:hover": {
 									borderColor: "primary.main",
-									bgcolor: alpha(
-										(theme: any) => theme.palette.primary.main,
-										0.04,
-									),
+									bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
 								},
 							}}
 						>
@@ -902,18 +899,15 @@ export const Settings: React.FC<SettingsProps> = ({
 								borderRadius: 3,
 								border: "2px solid",
 								borderColor: !keepCredits ? "error.main" : "divider",
-								bgcolor:
+								bgcolor: (theme) =>
 									!keepCredits ?
-										alpha((theme: any) => theme.palette.error.main, 0.08)
-									:	"background.paper",
+										alpha(theme.palette.error.main, 0.08)
+									:	theme.palette.background.paper,
 								cursor: "pointer",
 								transition: "all 0.2s",
 								"&:hover": {
 									borderColor: "error.main",
-									bgcolor: alpha(
-										(theme: any) => theme.palette.error.main,
-										0.04,
-									),
+									bgcolor: (theme) => alpha(theme.palette.error.main, 0.04),
 								},
 							}}
 						>

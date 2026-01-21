@@ -166,7 +166,7 @@ export const useMasterKeyEncryption = (): MasterKeyEncryption => {
 			// Import master key
 			const cryptoKey = await crypto.subtle.importKey(
 				"raw",
-				masterKey,
+				masterKey.buffer as ArrayBuffer,
 				{ name: "AES-GCM" },
 				false,
 				["encrypt"],
@@ -208,7 +208,7 @@ export const useMasterKeyEncryption = (): MasterKeyEncryption => {
 			// Import master key
 			const cryptoKey = await crypto.subtle.importKey(
 				"raw",
-				masterKey,
+				masterKey.buffer as ArrayBuffer,
 				{ name: "AES-GCM" },
 				false,
 				["decrypt"],
@@ -257,7 +257,7 @@ export const useMasterKeyEncryption = (): MasterKeyEncryption => {
 			const encrypted = await crypto.subtle.encrypt(
 				{ name: "AES-GCM", iv },
 				newPasswordKey,
-				masterKeyRaw,
+				masterKeyRaw.buffer as ArrayBuffer,
 			);
 
 			const combined = new Uint8Array(iv.length + encrypted.byteLength);
