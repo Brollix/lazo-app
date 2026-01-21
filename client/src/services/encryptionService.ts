@@ -44,6 +44,13 @@ export const EncryptionService = {
 	},
 
 	/**
+	 * Clears the user's password from sessionStorage
+	 */
+	clearPassword: (): void => {
+		sessionStorage.removeItem(PASSWORD_STORAGE_NAME);
+	},
+
+	/**
 	 * Generates a dynamic encryption key from userId + password
 	 */
 	generateKey: (userId: string): string => {

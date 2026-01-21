@@ -17,7 +17,6 @@ import {
 	FormControlLabel,
 	Tooltip,
 	InputAdornment,
-	Checkbox,
 	MenuItem,
 	Select,
 	FormControl,
@@ -61,7 +60,7 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 	const [createModalOpen, setCreateModalOpen] = useState(false);
 	const [editModalOpen, setEditModalOpen] = useState(false);
 	const [selectedPromoCode, setSelectedPromoCode] = useState<PromoCode | null>(
-		null
+		null,
 	);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
@@ -101,7 +100,7 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 		setLoading(true);
 		try {
 			const res = await fetch(
-				`${API_URL}/api/admin/promo-codes?userId=${userId}`
+				`${API_URL}/api/admin/promo-codes?userId=${userId}`,
 			);
 			if (!res.ok) throw new Error("Error fetching promo codes");
 			const data = await res.json();
@@ -145,7 +144,7 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 					method: "PATCH",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ userId, ...formData }),
-				}
+				},
 			);
 
 			if (!res.ok) throw new Error("Error updating promo code");
@@ -171,7 +170,7 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 			if (!res.ok) throw new Error("Error toggling promo code status");
 
 			setSuccess(
-				`Código ${!isActive ? "activado" : "desactivado"} exitosamente`
+				`Código ${!isActive ? "activado" : "desactivado"} exitosamente`,
 			);
 			fetchPromoCodes();
 		} catch (err: any) {
@@ -188,7 +187,7 @@ export const PromoCodesManager: React.FC<PromoCodesManagerProps> = ({
 				`${API_URL}/api/admin/promo-codes/${id}?userId=${userId}`,
 				{
 					method: "DELETE",
-				}
+				},
 			);
 
 			if (!res.ok) throw new Error("Error deleting promo code");

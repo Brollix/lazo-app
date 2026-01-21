@@ -31,19 +31,13 @@ import {
 	ToggleButton,
 	Alert,
 } from "@mui/material";
-import {
-	DataGrid,
-	GridColDef,
-	GridToolbar,
-	GridRenderCellParams,
-} from "@mui/x-data-grid";
+import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
 	People as PeopleIcon,
 	AttachMoney as MoneyIcon,
 	Assessment as AssessmentIcon,
 	SwapHoriz as SwapIcon,
 	Logout as LogoutIcon,
-	ContentCopy as CopyIcon,
 	TrendingUp as TrendingUpIcon,
 	Speed as SpeedIcon,
 	NotificationsActive as NotifyIcon,
@@ -52,7 +46,6 @@ import {
 	History as HistoryIcon,
 	HealthAndSafety as HealthIcon,
 	CloudQueue as CloudIcon,
-	GetApp as DownloadIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
 	ArrowBack as ArrowBackIcon,

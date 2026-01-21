@@ -4,7 +4,7 @@ import {
 	Typography,
 	Button,
 	Paper,
-	Grid,
+	Grid2,
 	IconButton,
 	Tooltip,
 	Alert,

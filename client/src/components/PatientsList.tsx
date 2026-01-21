@@ -57,7 +57,6 @@ export const PatientsList: React.FC<PatientsListProps> = ({
 	onSelectPatient,
 	onLogout,
 	onNavigateToAdmin,
-	userId,
 	isAdmin,
 }) => {
 	const theme = useTheme();

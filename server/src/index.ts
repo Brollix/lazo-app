@@ -118,6 +118,7 @@ import {
 	getPatientSummary,
 	getLastSessionSummaries,
 	listPatientSummaries,
+	upsertPatientSummary,
 	updateRecoveryInfo,
 	supabase,
 } from "./services/dbService";
@@ -1614,12 +1615,9 @@ app.post("/api/auth/recover-with-phrase", async (req, res) => {
 		}
 
 		if (!user.recovery_phrase_hash || !user.master_key_encrypted) {
-			return res
-				.status(400)
-				.json({
-					error:
-						"La recuperación por frase no está configurada para esta cuenta",
-				});
+			return res.status(400).json({
+				error: "La recuperación por frase no está configurada para esta cuenta",
+			});
 		}
 
 		// 2. Verify phrase hash

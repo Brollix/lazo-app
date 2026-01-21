@@ -705,7 +705,7 @@ export const Dashboard: React.FC<{
 		}
 	};
 
-	const handleLoadSession = (session: ClinicalSession) => {
+	const handleLoadSession = async (session: ClinicalSession) => {
 		try {
 			if (!userId) {
 				setAlertModal({
