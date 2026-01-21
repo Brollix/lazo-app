@@ -57,7 +57,7 @@ git clean -fd
 # 7. Clean node_modules and other build artifacts
 echo "🧹 Removing node_modules and build artifacts..."
 cd /home/ubuntu/lazo-app/server
-rm -rf node_modules/ dist/ .tsbuildinfo package-lock.json
+rm -rf node_modules/ dist/ .tsbuildinfo
 
 # 8. Rebuild and Restart Services
 echo "🏗️  Building and starting services with fresh image..."
