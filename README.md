@@ -8,6 +8,14 @@ Mediante **Inteligencia Artificial de última generación**, Lazo escucha (si t�
 
 ---
 
+## 📸 Interfaz Intuitiva
+
+Lazo cuenta con una interfaz moderna y adaptable (Modo Claro / Oscuro) diseñada para reducir la fatiga visual.
+
+![Panel de Administración - Dark Mode](screenshots/admin/admin_dark_theme.png)
+
+---
+
 ## 🚀 ¿Por qué Lazo?
 
 La carga administrativa es la parte más tediosa de la terapia. Lazo elimina ese peso de tus hombros:
@@ -28,12 +36,16 @@ Graba tus sesiones de forma segura y deja que nuestra IA las convierta en texto 
 - **Análisis de Sentimiento**: Entiende la evolución emocional de tus pacientes sesión a sesión.
 - **Detección de Riesgos**: Alertas automáticas sobre indicadores clínicos importantes detectados en el discurso.
 
+![Flujo Clínico](screenshots/clinical/clinical_dashboard_flow.webp)
+
 ### 👥 Gestión Integral de Pacientes
 
 Tu consultorio digital en un solo lugar.
 
 - **Perfiles Completos**: Historial, datos de contacto y notas anteriores accesibles al instante.
 - **Organización de Sesiones**: Mantén un registro ordenado y consultable de cada encuentro.
+
+![Gestión de Pacientes](screenshots/patients/patient_management.webp)
 
 ### 🔒 Privacidad y Seguridad Primero
 

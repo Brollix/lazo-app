@@ -58,23 +58,24 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 	return (
 		<Dialog
 			open={open}
-			maxWidth="md"
+			maxWidth="sm"
 			fullWidth
 			PaperProps={{
 				sx: {
 					borderRadius: 3,
-					p: 2,
+					p: 1,
+					maxHeight: "90vh",
 				},
 			}}
 		>
-			<Box sx={{ position: "absolute", top: 16, right: 16 }}>
+			<Box sx={{ position: "absolute", top: 8, right: 8 }}>
 				<IconButton onClick={handleSkip} size="small">
 					<CloseIcon />
 				</IconButton>
 			</Box>
 
-			<DialogContent sx={{ pt: 4 }}>
-				<Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+			<DialogContent sx={{ pt: 2, pb: 2 }}>
+				<Stepper activeStep={activeStep} sx={{ mb: 2 }}>
 					{steps.map((label) => (
 						<Step key={label}>
 							<StepLabel>{label}</StepLabel>
@@ -84,97 +85,75 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
 				{/* Step 1: Security */}
 				{activeStep === 0 && (
-					<Box sx={{ textAlign: "center", py: 3 }}>
+					<Box sx={{ textAlign: "center", py: 1 }}>
 						<Box
 							sx={{
 								display: "inline-flex",
-								p: 3,
+								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "primary.main",
 								color: "white",
-								mb: 3,
-								animation: "pulse 2s infinite",
-								"@keyframes pulse": {
-									"0%, 100%": { transform: "scale(1)" },
-									"50%": { transform: "scale(1.05)" },
-								},
+								mb: 1.5,
 							}}
 						>
-							<LockIcon sx={{ fontSize: 60 }} />
+							<LockIcon sx={{ fontSize: 32 }} />
 						</Box>
 
-						<Typography variant="h4" gutterBottom fontWeight="bold">
+						<Typography variant="h6" gutterBottom fontWeight="bold">
 							🔒 Tus datos están protegidos
 						</Typography>
 
 						<Typography
-							variant="body1"
+							variant="body2"
 							color="text.secondary"
-							sx={{ mb: 3, maxWidth: 600, mx: "auto" }}
+							sx={{ mb: 2, maxWidth: 500, mx: "auto" }}
 						>
-							Lazo usa <strong>cifrado de grado médico</strong> para proteger
-							toda tu información clínica. Tus datos se cifran antes de salir de
-							tu dispositivo y solo tú puedes acceder a ellos.
+							Lazo usa <strong>cifrado de grado médico</strong>. Tus datos se
+							cifran antes de salir de tu dispositivo.
 						</Typography>
 
 						<Paper
 							elevation={0}
 							sx={{
 								bgcolor: "background.default",
-								p: 3,
+								p: 2,
 								borderRadius: 2,
-								maxWidth: 600,
+								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
 							}}
 						>
-							<Typography variant="h6" gutterBottom>
-								¿Qué es el SALT y por qué es importante?
+							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+								¿Qué es el SALT?
 							</Typography>
 
-							<Typography variant="body2" paragraph>
-								El <strong>SALT</strong> es un código único y aleatorio que se
-								genera cuando creas tu cuenta. Funciona como una "llave maestra"
-								que se combina con tu contraseña para crear el cifrado.
+							<Typography variant="body2" sx={{ mb: 1 }}>
+								Un código único que se combina con tu contraseña para crear el
+								cifrado.
 							</Typography>
 
-							<Typography variant="body2" paragraph>
-								<strong>¿Por qué usamos SALT?</strong>
-							</Typography>
-							<Stack spacing={1} sx={{ pl: 2 }}>
-								<Typography variant="body2">
-									• <strong>Seguridad extra:</strong> Aunque dos personas usen
-									la misma contraseña, sus datos estarán cifrados de forma
-									completamente diferente
+							<Stack spacing={0.5} sx={{ pl: 1 }}>
+								<Typography variant="caption">
+									• <strong>Seguridad extra:</strong> Cifrado único por usuario
 								</Typography>
-								<Typography variant="body2">
-									• <strong>Protección contra ataques:</strong> Hace imposible
-									descifrar tus datos sin tu contraseña específica
-								</Typography>
-								<Typography variant="body2">
-									• <strong>Cambio de contraseña:</strong> Si cambias tu
-									contraseña en el futuro, el SALT permite mantener tus datos
-									seguros sin tener que re-cifrar todo
+								<Typography variant="caption">
+									• <strong>Protección:</strong> Imposible descifrar sin tu
+									contraseña
 								</Typography>
 							</Stack>
 
 							<Box
 								sx={{
-									mt: 3,
-									p: 2,
+									mt: 1.5,
+									p: 1.5,
 									bgcolor: "warning.light",
 									borderRadius: 1,
 									border: "1px solid",
 									borderColor: "warning.main",
 								}}
 							>
-								<Typography variant="body2" fontWeight="bold" gutterBottom>
-									⚠️ Importante:
-								</Typography>
-								<Typography variant="body2">
-									Tu contraseña es la única forma de acceder a tus datos
-									cifrados. Si la olvidas,{" "}
-									<strong>no podremos recuperar tu información</strong>.
+								<Typography variant="caption" fontWeight="bold">
+									⚠️ Tu contraseña es la única forma de acceder a tus datos.
 									Guárdala en un lugar seguro.
 								</Typography>
 							</Box>
@@ -184,101 +163,72 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
 				{/* Step 2: Transcription */}
 				{activeStep === 1 && (
-					<Box sx={{ textAlign: "center", py: 3 }}>
+					<Box sx={{ textAlign: "center", py: 1 }}>
 						<Box
 							sx={{
 								display: "inline-flex",
-								p: 3,
+								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "success.main",
 								color: "white",
-								mb: 3,
-								animation: "wave 1.5s infinite",
-								"@keyframes wave": {
-									"0%, 100%": { transform: "scale(1) rotate(0deg)" },
-									"25%": { transform: "scale(1.1) rotate(-5deg)" },
-									"75%": { transform: "scale(1.1) rotate(5deg)" },
-								},
+								mb: 1.5,
 							}}
 						>
-							<MicIcon sx={{ fontSize: 60 }} />
+							<MicIcon sx={{ fontSize: 32 }} />
 						</Box>
 
-						<Typography variant="h4" gutterBottom fontWeight="bold">
+						<Typography variant="h6" gutterBottom fontWeight="bold">
 							🎙️ Graba tus sesiones clínicas
 						</Typography>
 
 						<Typography
-							variant="body1"
+							variant="body2"
 							color="text.secondary"
-							sx={{ mb: 3, maxWidth: 600, mx: "auto" }}
+							sx={{ mb: 2, maxWidth: 500, mx: "auto" }}
 						>
-							Sube archivos de audio de tus sesiones y Lazo los transcribirá
-							automáticamente usando <strong>Groq Whisper v3</strong>, la
-							tecnología de transcripción más avanzada.
+							Sube audio y Lazo lo transcribe con{" "}
+							<strong>Groq Whisper v3</strong>.
 						</Typography>
 
 						<Paper
 							elevation={0}
 							sx={{
 								bgcolor: "background.default",
-								p: 3,
+								p: 2,
 								borderRadius: 2,
-								maxWidth: 600,
+								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
 							}}
 						>
-							<Typography variant="h6" gutterBottom>
+							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
 								¿Cómo funciona?
 							</Typography>
 
-							<Stack spacing={2}>
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										1. Sube tu audio
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Haz clic en "Subir Audio" y selecciona el archivo de tu
-										sesión clínica (MP3, WAV, M4A, etc.)
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										2. Transcripción automática
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Groq procesa el audio y genera una transcripción precisa en
-										segundos, incluso identificando diferentes hablantes
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										3. Cifrado inmediato
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										La transcripción se cifra automáticamente antes de guardarse
-										en la base de datos
-									</Typography>
-								</Box>
+							<Stack spacing={1}>
+								<Typography variant="body2">
+									<strong>1.</strong> Sube tu audio (MP3, WAV, M4A)
+								</Typography>
+								<Typography variant="body2">
+									<strong>2.</strong> Transcripción automática en segundos
+								</Typography>
+								<Typography variant="body2">
+									<strong>3.</strong> Cifrado inmediato en la base de datos
+								</Typography>
 							</Stack>
 
 							<Box
 								sx={{
-									mt: 3,
-									p: 2,
+									mt: 1.5,
+									p: 1.5,
 									bgcolor: "info.light",
 									borderRadius: 1,
 									border: "1px solid",
 									borderColor: "info.main",
 								}}
 							>
-								<Typography variant="body2">
-									💡 <strong>Tip:</strong> Para mejores resultados, usa
-									grabaciones claras con poco ruido de fondo. El audio se
-									procesa de forma segura y nunca se almacena sin cifrar.
+								<Typography variant="caption">
+									💡 Usa grabaciones claras para mejores resultados.
 								</Typography>
 							</Box>
 						</Paper>
@@ -287,119 +237,78 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
 				{/* Step 3: AI Analysis */}
 				{activeStep === 2 && (
-					<Box sx={{ textAlign: "center", py: 3 }}>
+					<Box sx={{ textAlign: "center", py: 1 }}>
 						<Box
 							sx={{
 								display: "inline-flex",
-								p: 3,
+								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "secondary.main",
 								color: "white",
-								mb: 3,
-								animation: "sparkle 2s infinite",
-								"@keyframes sparkle": {
-									"0%, 100%": { transform: "scale(1)", opacity: 1 },
-									"50%": { transform: "scale(1.15)", opacity: 0.8 },
-								},
+								mb: 1.5,
 							}}
 						>
-							<PsychologyIcon sx={{ fontSize: 60 }} />
+							<PsychologyIcon sx={{ fontSize: 32 }} />
 						</Box>
 
-						<Typography variant="h4" gutterBottom fontWeight="bold">
+						<Typography variant="h6" gutterBottom fontWeight="bold">
 							🧠 Análisis clínico automático
 						</Typography>
 
 						<Typography
-							variant="body1"
+							variant="body2"
 							color="text.secondary"
-							sx={{ mb: 3, maxWidth: 600, mx: "auto" }}
+							sx={{ mb: 2, maxWidth: 500, mx: "auto" }}
 						>
-							Lazo usa <strong>AWS Bedrock</strong> con modelos de IA avanzados
-							para generar automáticamente notas clínicas estructuradas y
-							análisis profundos de cada sesión.
+							IA avanzada para notas clínicas y análisis de cada sesión.
 						</Typography>
 
 						<Paper
 							elevation={0}
 							sx={{
 								bgcolor: "background.default",
-								p: 3,
+								p: 2,
 								borderRadius: 2,
-								maxWidth: 600,
+								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
 							}}
 						>
-							<Typography variant="h6" gutterBottom>
+							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
 								¿Qué obtienes?
 							</Typography>
 
-							<Stack spacing={2}>
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										📋 Notas SOAP automáticas
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Genera notas clínicas en formato SOAP (Subjetivo, Objetivo,
-										Análisis, Plan) listas para usar
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										🎯 Resumen ejecutivo
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Obtén un resumen conciso de los puntos clave de la sesión
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										✅ Tareas y objetivos
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Identifica automáticamente tareas pendientes y objetivos
-										terapéuticos
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										🧠 Análisis psicológico
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Recibe insights sobre el estado emocional y patrones de
-										comportamiento del paciente
-									</Typography>
-								</Box>
-
-								<Box>
-									<Typography variant="body2" fontWeight="bold">
-										⚠️ Detección de riesgos
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Alertas automáticas si se detectan señales de riesgo que
-										requieren atención inmediata
-									</Typography>
-								</Box>
+							<Stack spacing={0.5}>
+								<Typography variant="body2">
+									📋 <strong>Notas SOAP</strong> automáticas
+								</Typography>
+								<Typography variant="body2">
+									🎯 <strong>Resumen</strong> de puntos clave
+								</Typography>
+								<Typography variant="body2">
+									✅ <strong>Tareas</strong> y objetivos identificados
+								</Typography>
+								<Typography variant="body2">
+									🧠 <strong>Análisis</strong> del estado emocional
+								</Typography>
+								<Typography variant="body2">
+									⚠️ <strong>Alertas</strong> de señales de riesgo
+								</Typography>
 							</Stack>
 
 							<Box
 								sx={{
-									mt: 3,
-									p: 2,
+									mt: 1.5,
+									p: 1.5,
 									bgcolor: "success.light",
 									borderRadius: 1,
 									border: "1px solid",
 									borderColor: "success.main",
 								}}
 							>
-								<Typography variant="body2">
-									✨ <strong>Privacidad garantizada:</strong> Los datos se
-									descifran solo en memoria para el análisis y se vuelven a
-									cifrar antes de guardarse. Nunca se almacenan sin protección.
+								<Typography variant="caption">
+									✨ <strong>Privacidad:</strong> Los datos se descifran solo en
+									memoria para el análisis.
 								</Typography>
 							</Box>
 						</Paper>
@@ -411,12 +320,13 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 					direction="row"
 					spacing={2}
 					justifyContent="space-between"
-					sx={{ mt: 4 }}
+					sx={{ mt: 2 }}
 				>
 					<Button
 						onClick={handleBack}
 						disabled={activeStep === 0}
 						startIcon={<ArrowBack />}
+						size="small"
 					>
 						Anterior
 					</Button>
@@ -429,7 +339,6 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								<CheckCircle />
 							:	<ArrowForward />
 						}
-						size="large"
 					>
 						{activeStep === steps.length - 1 ? "¡Comenzar!" : "Siguiente"}
 					</Button>

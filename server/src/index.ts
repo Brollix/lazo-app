@@ -1076,10 +1076,10 @@ const isTestMode = mpMode === "test";
 // Get the appropriate access token based on mode
 const getMercadoPagoAccessToken = () => {
 	if (isTestMode) {
-		const testToken = process.env.MP_ACCESS_TOKEN_TEST;
+		const testToken = process.env.MP_TEST_ACCESS_TOKEN;
 		if (!testToken) {
 			console.warn(
-				"[Webhook] ⚠️  MODO TEST activado pero MP_ACCESS_TOKEN_TEST no está configurado",
+				"[Webhook] ⚠️  MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado",
 			);
 		}
 		return testToken || "";

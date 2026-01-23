@@ -33,8 +33,9 @@ import {
 import { ThemeContext } from "../App";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
-import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
-import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
+// Disabled temporarily - regeneration flow not fully implemented
+// import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
+// import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
 import { supabase } from "../supabaseClient";
 
 interface SettingsProps {
@@ -74,13 +75,13 @@ export const Settings: React.FC<SettingsProps> = ({
 	const [showSecurityModal, setShowSecurityModal] = React.useState(false);
 	const [updating, setUpdating] = React.useState<string | null>(null);
 
-	// Recovery Phrase Regeneration State
-	const [showRegenerateFlow, setShowRegenerateFlow] = React.useState(false);
-	const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
-	const [newMasterKey, setNewMasterKey] = React.useState<string | null>(null);
-	const [regenerationStep, setRegenerationStep] = React.useState<
-		"display" | "verify" | null
-	>(null);
+	// Recovery Phrase Regeneration State (disabled temporarily)
+	// const [showRegenerateFlow, setShowRegenerateFlow] = React.useState(false);
+	// const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
+	// const [newMasterKey, setNewMasterKey] = React.useState<string | null>(null);
+	// const [regenerationStep, setRegenerationStep] = React.useState<
+	// 	"display" | "verify" | null
+	// >(null);
 
 	// Fetch user profile from Supabase
 	React.useEffect(() => {
@@ -237,42 +238,43 @@ export const Settings: React.FC<SettingsProps> = ({
 		}
 	};
 
-	const handleStartRegeneration = async () => {
-		setUpdating("regeneration");
-		try {
-			const response = await fetch(
-				`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
-			);
-			const { phrase, masterKey } = await response.json();
-			setNewPhrase(phrase);
-			setNewMasterKey(masterKey);
-			setRegenerationStep("display");
-			setShowRegenerateFlow(true);
-		} catch (err: any) {
-			setError("Error al generar nueva frase. Intenta de nuevo.");
-		} finally {
-			setUpdating(null);
-		}
-	};
+	// TODO: Re-enable when regeneration flow is fully implemented
+	// const _handleStartRegeneration = async () => {
+	// 	setUpdating("regeneration");
+	// 	try {
+	// 		const response = await fetch(
+	// 			`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
+	// 		);
+	// 		const { phrase, masterKey } = await response.json();
+	// 		setNewPhrase(phrase);
+	// 		setNewMasterKey(masterKey);
+	// 		setRegenerationStep("display");
+	// 		setShowRegenerateFlow(true);
+	// 	} catch (err: any) {
+	// 		setError("Error al generar nueva frase. Intenta de nuevo.");
+	// 	} finally {
+	// 		setUpdating(null);
+	// 	}
+	// };
 
-	const handleRegenerationComplete = async () => {
-		if (!userProfile || !newPhrase || !newMasterKey) return;
-		setUpdating("finalizing_regeneration");
-		try {
-			// Note: This requires current password to re-encrypt the master key.
-			// For brevity, we'll use a placeholder or ask for it if needed.
-			// The backend /setup-recovery handles this if we provide the password.
-			setError(
-				"La regeneración completa requiere confirmar su contraseña actual.",
-			);
-			setRegenerationStep(null);
-			setShowRegenerateFlow(false);
-		} catch (err: any) {
-			setError(err.message);
-		} finally {
-			setUpdating(null);
-		}
-	};
+	// const handleRegenerationComplete = async () => {
+	// 	if (!userProfile || !newPhrase || !newMasterKey) return;
+	// 	setUpdating("finalizing_regeneration");
+	// 	try {
+	// 		// Note: This requires current password to re-encrypt the master key.
+	// 		// For brevity, we'll use a placeholder or ask for it if needed.
+	// 		// The backend /setup-recovery handles this if we provide the password.
+	// 		setError(
+	// 			"La regeneración completa requiere confirmar su contraseña actual.",
+	// 		);
+	// 		setRegenerationStep(null);
+	// 		setShowRegenerateFlow(false);
+	// 	} catch (err: any) {
+	// 		setError(err.message);
+	// 	} finally {
+	// 		setUpdating(null);
+	// 	}
+	// };
 
 	const displayName = userProfile?.full_name || "Usuario";
 	const planDisplay =
@@ -291,12 +293,13 @@ export const Settings: React.FC<SettingsProps> = ({
 				fullWidth
 				PaperProps={{
 					sx: {
-						borderRadius: 4,
+						borderRadius: 3,
 						p: 0,
 						boxShadow: (theme) => theme.shadows[24],
 						border: "none",
 						m: { xs: 1, sm: 2 },
-						maxWidth: { xs: "calc(100% - 16px)", sm: 480 },
+						maxWidth: { xs: "calc(100% - 16px)", sm: 420 },
+						maxHeight: "90vh",
 						overflow: "hidden",
 						bgcolor: "background.paper",
 					},
@@ -307,9 +310,9 @@ export const Settings: React.FC<SettingsProps> = ({
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "space-between",
-						pb: 2,
-						px: 3,
-						pt: 3,
+						pb: 1.5,
+						px: 2,
+						pt: 2,
 						borderBottom: "1px solid",
 						borderColor: "divider",
 					}}
@@ -345,7 +348,9 @@ export const Settings: React.FC<SettingsProps> = ({
 					</IconButton>
 				</DialogTitle>
 
-				<DialogContent sx={{ px: 3, py: 3, minHeight: 200 }}>
+				<DialogContent
+					sx={{ px: 2, py: 2, minHeight: 150, overflow: "auto", flex: 1 }}
+				>
 					{loading ?
 						<Box
 							sx={{
@@ -372,17 +377,17 @@ export const Settings: React.FC<SettingsProps> = ({
 						</Alert>
 					: userProfile ?
 						<>
-							<Stack spacing={4}>
+							<Stack spacing={2}>
 								{/* Section 1: User Profile Summary */}
 								<Box>
 									<Typography
 										variant="overline"
 										color="text.secondary"
 										sx={{
-											fontSize: "0.7rem",
+											fontSize: "0.65rem",
 											fontWeight: 800,
 											letterSpacing: "0.1em",
-											mb: 2,
+											mb: 1,
 											display: "block",
 											opacity: 0.7,
 										}}
@@ -392,8 +397,8 @@ export const Settings: React.FC<SettingsProps> = ({
 
 									<Box
 										sx={{
-											p: 2.5,
-											borderRadius: 4,
+											p: 1.5,
+											borderRadius: 2,
 											background: (theme) =>
 												mode === "dark" ?
 													`linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.background.default} 100%)`
@@ -402,20 +407,16 @@ export const Settings: React.FC<SettingsProps> = ({
 											borderColor: "divider",
 											display: "flex",
 											alignItems: "center",
-											gap: 2,
-											flexWrap: { xs: "wrap", sm: "nowrap" },
+											gap: 1.5,
 										}}
 									>
 										<Avatar
 											sx={{
-												width: 56,
-												height: 56,
+												width: 40,
+												height: 40,
 												bgcolor: "primary.main",
 												fontWeight: "bold",
-												boxShadow: (theme) =>
-													`0 8px 16px ${theme.palette.primary.main}33`,
-												border: "2px solid",
-												borderColor: "background.paper",
+												fontSize: "0.9rem",
 											}}
 										>
 											{getInitials(userProfile.full_name, userProfile.email)}
@@ -458,10 +459,10 @@ export const Settings: React.FC<SettingsProps> = ({
 										variant="overline"
 										color="text.secondary"
 										sx={{
-											fontSize: "0.7rem",
+											fontSize: "0.65rem",
 											fontWeight: 800,
 											letterSpacing: "0.1em",
-											mb: 2,
+											mb: 1,
 											display: "block",
 											opacity: 0.7,
 										}}
@@ -538,27 +539,27 @@ export const Settings: React.FC<SettingsProps> = ({
 										variant="overline"
 										color="text.secondary"
 										sx={{
-											fontSize: "0.7rem",
+											fontSize: "0.65rem",
 											fontWeight: 800,
 											letterSpacing: "0.1em",
-											mb: 2,
+											mb: 1,
 											display: "block",
 											opacity: 0.7,
 										}}
 									>
-										SEGURIDAD Y RECUPERACIÓN
+										SEGURIDAD
 									</Typography>
 
 									<Box
 										sx={{
-											p: 2,
-											borderRadius: 3,
+											p: 1.5,
+											borderRadius: 2,
 											border: "1px solid",
 											borderColor: "warning.main",
 											bgcolor: alpha("#ed6c02", 0.05),
 										}}
 									>
-										<Stack spacing={1.5}>
+										<Stack spacing={1}>
 											<Typography
 												variant="body2"
 												sx={{
@@ -572,8 +573,8 @@ export const Settings: React.FC<SettingsProps> = ({
 												Recuperación
 											</Typography>
 											<Typography variant="caption" color="text.secondary">
-												Si perdiste tu frase o crees que alguien más la tiene,
-												genera una nueva.
+												Tu frase de recuperación fue configurada al crear tu
+												cuenta. Guárdala en un lugar seguro.
 											</Typography>
 											<Button
 												variant="outlined"
@@ -581,13 +582,10 @@ export const Settings: React.FC<SettingsProps> = ({
 												size="small"
 												fullWidth
 												startIcon={<Refresh />}
-												onClick={handleStartRegeneration}
-												disabled={updating === "regeneration"}
+												disabled={true}
 												sx={{ borderRadius: 2, fontWeight: "bold" }}
 											>
-												{updating === "regeneration" ?
-													"Generando..."
-												:	"Regenerar Frase"}
+												Regenerar Frase (Próximamente)
 											</Button>
 										</Stack>
 									</Box>
@@ -599,27 +597,27 @@ export const Settings: React.FC<SettingsProps> = ({
 										variant="overline"
 										color="text.secondary"
 										sx={{
-											fontSize: "0.7rem",
+											fontSize: "0.65rem",
 											fontWeight: 800,
 											letterSpacing: "0.1em",
-											mb: 2,
+											mb: 1,
 											display: "block",
 											opacity: 0.7,
 										}}
 									>
-										ESTADO DE SUSCRIPCIÓN
+										SUSCRIPCIÓN
 									</Typography>
 
 									<Box
 										sx={{
-											p: 2.5,
-											borderRadius: 4,
+											p: 1.5,
+											borderRadius: 2,
 											bgcolor: "action.hover",
 											border: "1px solid",
 											borderColor: "divider",
 										}}
 									>
-										<Stack direction="row" spacing={2} sx={{ mb: 2.5 }}>
+										<Stack direction="row" spacing={2} sx={{ mb: 1.5 }}>
 											<Box sx={{ flex: 1 }}>
 												<Box
 													sx={{
@@ -723,7 +721,7 @@ export const Settings: React.FC<SettingsProps> = ({
 					:	null}
 				</DialogContent>
 
-				{/* Recovery Phrase Dialog */}
+				{/* Recovery Phrase Dialog - Disabled temporarily
 				<Dialog
 					open={showRegenerateFlow}
 					onClose={() => !updating && setShowRegenerateFlow(false)}
@@ -746,6 +744,7 @@ export const Settings: React.FC<SettingsProps> = ({
 						)}
 					</Box>
 				</Dialog>
+				*/}
 
 				<DialogActions
 					sx={{

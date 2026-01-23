@@ -63,23 +63,23 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 		<Paper
 			elevation={3}
 			sx={{
-				p: 4,
-				maxWidth: 600,
+				p: 2.5,
+				maxWidth: 550,
 				mx: "auto",
-				borderRadius: 3,
+				borderRadius: 2,
 				bgcolor: "background.paper",
 			}}
 		>
-			<Box sx={{ mb: 3, textAlign: "center" }}>
+			<Box sx={{ mb: 2, textAlign: "center" }}>
 				<Typography
-					variant="h5"
+					variant="h6"
 					color="primary"
 					gutterBottom
 					sx={{ fontWeight: "bold" }}
 				>
 					Tu Frase de Recuperación
 				</Typography>
-				<Typography variant="body2" color="text.secondary">
+				<Typography variant="caption" color="text.secondary">
 					Esta frase de 12 palabras es la única forma de recuperar tus datos si
 					olvidas tu contraseña.
 				</Typography>
@@ -88,19 +88,23 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 			<Alert
 				severity="warning"
 				icon={<Warning />}
-				sx={{ mb: 3, "& .MuiAlert-message": { fontWeight: "bold" } }}
+				sx={{
+					mb: 2,
+					py: 0.5,
+					"& .MuiAlert-message": { fontWeight: "bold", fontSize: "0.8rem" },
+				}}
 			>
-				NUNCA la compartas con nadie. Los empleados de Lazo jamás te la pedirán.
+				NUNCA la compartas. Los empleados de Lazo jamás te la pedirán.
 			</Alert>
 
 			<Box
 				sx={{
 					position: "relative",
-					p: 3,
+					p: 2,
 					bgcolor: "action.hover",
 					borderRadius: 2,
-					mb: 3,
-					minHeight: 120,
+					mb: 2,
+					minHeight: 100,
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
@@ -136,7 +140,7 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 
 				<Grid container spacing={2}>
 					{words.map((word, index) => (
-						<Grid item xs={4} key={index}>
+						<Grid key={index} size={{ xs: 4 }}>
 							<Box
 								sx={{
 									display: "flex",
@@ -175,7 +179,7 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 				)}
 			</Box>
 
-			<Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 4 }}>
+			<Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
 				<Tooltip title="Copiar al portapapeles">
 					<Button
 						startIcon={<ContentCopy />}
@@ -201,7 +205,7 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 				</Tooltip>
 			</Stack>
 
-			<Box sx={{ p: 2, bgcolor: "info.lighter", borderRadius: 2, mb: 3 }}>
+			<Box sx={{ p: 1.5, bgcolor: "info.lighter", borderRadius: 1, mb: 2 }}>
 				<Stack direction="row" spacing={1} alignItems="flex-start">
 					<Info color="info" sx={{ mt: 0.3 }} />
 					<Typography variant="body2" color="info.main">
@@ -225,7 +229,7 @@ export const RecoveryPhraseDisplay: React.FC<RecoveryPhraseDisplayProps> = ({
 						seguro.
 					</Typography>
 				}
-				sx={{ mb: 3, display: "block" }}
+				sx={{ mb: 2, display: "block" }}
 			/>
 
 			<Button

@@ -61,6 +61,13 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 				const response = await fetch(
 					`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
 				);
+
+				if (!response.ok) {
+					throw new Error(
+						"Error al generar la frase de recuperación. Intenta nuevamente.",
+					);
+				}
+
 				const { phrase, masterKey } = await response.json();
 
 				setRecoveryPhrase(phrase);

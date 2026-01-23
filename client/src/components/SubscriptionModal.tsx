@@ -71,7 +71,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				.catch((err) => {
 					console.error("Error fetching plans from backend:", err);
 					setError(
-						"Error al cargar los planes. Por favor, intenta nuevamente."
+						"Error al cargar los planes. Por favor, intenta nuevamente.",
 					);
 				});
 		}
@@ -136,7 +136,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				if (!response.ok) {
 					const errorData = await response.json().catch(() => ({}));
 					throw new Error(
-						errorData.error || "Error al seleccionar plan gratuito"
+						errorData.error || "Error al seleccionar plan gratuito",
 					);
 				}
 				onClose();
@@ -145,7 +145,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				console.error("Error selecting free plan:", error);
 				setError(
 					error.message ||
-						"Error al seleccionar plan. Por favor, intenta nuevamente."
+						"Error al seleccionar plan. Por favor, intenta nuevamente.",
 				);
 			} finally {
 				setLoading(false);
@@ -181,7 +181,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				if (!response.ok) {
 					const errorData = await response.json().catch(() => ({}));
 					throw new Error(
-						errorData.message || "Error al activar plan con código promocional"
+						errorData.message || "Error al activar plan con código promocional",
 					);
 				}
 
@@ -233,7 +233,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
 					if (!promoResponse.ok) {
 						console.warn(
-							"Error applying promo code, but subscription was created"
+							"Error applying promo code, but subscription was created",
 						);
 					}
 				} catch (promoError) {
@@ -249,14 +249,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 				onClose();
 			} else {
 				throw new Error(
-					"No se recibió URL de pago. Por favor, intenta nuevamente."
+					"No se recibió URL de pago. Por favor, intenta nuevamente.",
 				);
 			}
 		} catch (error: any) {
 			console.error("Error creating subscription:", error);
 			setError(
 				error.message ||
-					"Error al crear suscripción. Por favor, intenta nuevamente."
+					"Error al crear suscripción. Por favor, intenta nuevamente.",
 			);
 		} finally {
 			setLoading(false);
@@ -287,24 +287,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		return (
 			<Card
 				sx={{
-					minHeight: { xs: "auto", sm: 480 },
+					minHeight: { xs: "auto", sm: 360 },
 					display: "flex",
 					flexDirection: "column",
-					borderRadius: 4,
+					borderRadius: 3,
 					boxShadow: (theme) => theme.shadows[2],
 					border: "1px solid",
 					borderColor: "transparent",
 					"&:hover": {
 						borderColor: color,
-						transform: { xs: "none", sm: "translateY(-4px)" },
+						transform: { xs: "none", sm: "translateY(-2px)" },
 					},
-					transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+					transition: "all 0.2s ease",
 					bgcolor: "background.paper",
 				}}
 			>
 				<CardContent
 					sx={{
-						p: { xs: 2, sm: 3 },
+						p: { xs: 1.5, sm: 2 },
 						flexGrow: 1,
 						display: "flex",
 						flexDirection: "column",
@@ -442,15 +442,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 		<Dialog
 			open={open}
 			onClose={onClose}
-			maxWidth="lg"
+			maxWidth="md"
 			fullWidth
 			PaperProps={{
 				sx: {
-					borderRadius: 4,
+					borderRadius: 3,
 					bgcolor: "background.default",
-					maxHeight: "95vh",
+					maxHeight: "90vh",
 					width: { xs: "100%", sm: "95%" },
-					maxWidth: { xs: "100%", sm: "1100px !important" },
+					maxWidth: { xs: "100%", sm: "950px !important" },
 					m: { xs: 0, sm: 2 },
 					"&::-webkit-scrollbar": { display: "none" },
 					msOverflowStyle: "none",
@@ -461,30 +461,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 			<Box
 				sx={{
 					textAlign: "center",
-					pt: { xs: 3, sm: 6 },
-					pb: 2,
+					pt: { xs: 2, sm: 3 },
+					pb: 1,
 					px: { xs: 2, sm: 0 },
 				}}
 			>
 				<Typography
-					variant="h3"
+					variant="h4"
 					component="h1"
 					fontWeight="bold"
 					sx={{
 						color: "primary.main",
-						fontSize: { xs: "1.75rem", sm: "2.5rem" },
+						fontSize: { xs: "1.5rem", sm: "2rem" },
 					}}
 				>
 					Elige tu Plan Lazo
 				</Typography>
 				<Typography
-					variant="h6"
+					variant="body1"
 					component="p"
 					color="text.secondary"
 					sx={{
-						mt: 1,
+						mt: 0.5,
 						fontWeight: 400,
-						fontSize: { xs: "0.875rem", sm: "1.25rem" },
+						fontSize: { xs: "0.875rem", sm: "1rem" },
 					}}
 				>
 					Soluciones inteligentes para cada etapa de tu práctica.
@@ -492,8 +492,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 			</Box>
 			<DialogContent
 				sx={{
-					pb: { xs: 3, sm: 6 },
-					px: { xs: 2, sm: 4 },
+					pb: { xs: 2, sm: 3 },
+					px: { xs: 2, sm: 3 },
 					overflow: "auto",
 					display: "flex",
 					flexDirection: "column",

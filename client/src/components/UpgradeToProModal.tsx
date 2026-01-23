@@ -108,16 +108,17 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({
 			fullWidth
 			PaperProps={{
 				sx: {
-					borderRadius: 4,
+					borderRadius: 3,
 					bgcolor: "background.default",
 					overflow: "hidden",
+					maxHeight: "90vh",
 				},
 			}}
 		>
 			<Box
 				sx={{
 					background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-					p: 4,
+					p: 2.5,
 					textAlign: "center",
 					color: "primary.contrastText",
 				}}
@@ -127,29 +128,29 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({
 					animate={{ scale: 1 }}
 					transition={{ type: "spring", duration: 0.5 }}
 				>
-					<RocketLaunchIcon sx={{ fontSize: 64, mb: 2 }} />
+					<RocketLaunchIcon sx={{ fontSize: 40, mb: 1 }} />
 				</motion.div>
-				<Typography variant="h4" fontWeight="bold" gutterBottom>
+				<Typography variant="h5" fontWeight="bold" gutterBottom>
 					¡Alcanzaste tu límite mensual!
 				</Typography>
-				<Typography variant="body1" sx={{ opacity: 0.95 }}>
+				<Typography variant="body2" sx={{ opacity: 0.95 }}>
 					Has usado {usedTranscriptions} de 3 transcripciones gratuitas en{" "}
 					{formatMonthYear(monthYear)}
 				</Typography>
 			</Box>
 
-			<DialogContent sx={{ p: 4 }}>
-				<Stack spacing={3}>
+			<DialogContent sx={{ p: 2.5 }}>
+				<Stack spacing={2}>
 					<Box>
-						<Typography variant="h6" fontWeight="bold" gutterBottom>
+						<Typography variant="subtitle1" fontWeight="bold" gutterBottom>
 							Desbloquea transcripciones ilimitadas
 						</Typography>
-						<Typography variant="body2" color="text.secondary">
+						<Typography variant="caption" color="text.secondary">
 							Actualiza al Plan Pro y disfruta de todos estos beneficios:
 						</Typography>
 					</Box>
 
-					<Stack spacing={1.5}>
+					<Stack spacing={1}>
 						{[
 							"Grabaciones ilimitadas cada mes",
 							"Transcripción Whisper-v3 de alta calidad",
@@ -160,9 +161,9 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({
 						].map((feature, i) => (
 							<Box
 								key={i}
-								sx={{ display: "flex", gap: 1.5, alignItems: "center" }}
+								sx={{ display: "flex", gap: 1, alignItems: "center" }}
 							>
-								<CheckCircleIcon sx={{ color: "primary.main", fontSize: 20 }} />
+								<CheckCircleIcon sx={{ color: "primary.main", fontSize: 18 }} />
 								<Typography variant="body2">{feature}</Typography>
 							</Box>
 						))}
@@ -172,13 +173,13 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({
 
 					<Box sx={{ textAlign: "center" }}>
 						<Typography
-							variant="h3"
+							variant="h4"
 							fontWeight="bold"
 							sx={{ color: "primary.main" }}
 						>
 							ARS ${proPrice.toLocaleString("es-AR")}
 						</Typography>
-						<Typography variant="body2" color="text.secondary">
+						<Typography variant="caption" color="text.secondary">
 							por mes • Cancela cuando quieras
 						</Typography>
 					</Box>
