@@ -20,8 +20,8 @@ log "Current disk usage: ${USAGE}%"
 
 # Check if usage exceeds threshold
 if [ "$USAGE" -ge "$CRITICAL_THRESHOLD" ]; then
-    log "⚠️  CRITICAL: Disk usage at ${USAGE}% (threshold: ${CRITICAL_THRESHOLD}%)"
-    log "🗑️  Running AGGRESSIVE cleanup..."
+    log "CRITICAL: Disk usage at ${USAGE}% (threshold: ${CRITICAL_THRESHOLD}%)"
+    log "Running AGGRESSIVE cleanup..."
     
     # Emergency cleanup
     docker system prune -a -f --volumes
@@ -33,11 +33,11 @@ if [ "$USAGE" -ge "$CRITICAL_THRESHOLD" ]; then
     npm cache clean --force 2>/dev/null || true
     
     NEW_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-    log "✅ Cleanup complete. New usage: ${NEW_USAGE}%"
+    log "Cleanup complete. New usage: ${NEW_USAGE}%"
     
 elif [ "$USAGE" -ge "$THRESHOLD_PERCENT" ]; then
-    log "⚠️  WARNING: Disk usage at ${USAGE}% (threshold: ${THRESHOLD_PERCENT}%)"
-    log "🧹 Running standard cleanup..."
+    log "WARNING: Disk usage at ${USAGE}% (threshold: ${THRESHOLD_PERCENT}%)"
+    log "Running standard cleanup..."
     
     # Standard cleanup
     docker container prune -f
@@ -47,9 +47,9 @@ elif [ "$USAGE" -ge "$THRESHOLD_PERCENT" ]; then
     sudo journalctl --vacuum-time=7d
     
     NEW_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-    log "✅ Cleanup complete. New usage: ${NEW_USAGE}%"
+    log "Cleanup complete. New usage: ${NEW_USAGE}%"
 else
-    log "✅ Disk usage is healthy (${USAGE}%)"
+    log "Disk usage is healthy (${USAGE}%)"
 fi
 
 # Display disk usage summary

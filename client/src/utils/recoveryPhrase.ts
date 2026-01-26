@@ -141,7 +141,7 @@ Fecha de generación: ${date}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚠️  ADVERTENCIA DE SEGURIDAD CRÍTICA
+ADVERTENCIA DE SEGURIDAD CRÍTICA
 
 Esta frase de 12 palabras es la ÚNICA forma de recuperar tus datos
 si olvidas tu contraseña. Guárdala con el mismo cuidado que guardarías
@@ -155,17 +155,17 @@ ${phrase.map((word, i) => `  ${String(i + 1).padStart(2, " ")}. ${word}`).join("
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 INSTRUCCIONES DE SEGURIDAD:
+INSTRUCCIONES DE SEGURIDAD:
 
-✓ Guarda este archivo en un lugar seguro (USB cifrado, caja fuerte)
-✓ Considera imprimirlo y guardarlo físicamente
-✓ NUNCA lo compartas con nadie, ni siquiera con soporte técnico
-✓ NUNCA lo guardes en la nube sin cifrar
-✓ Si sospechas que fue comprometido, regenera una nueva frase
+- Guarda este archivo en un lugar seguro (USB cifrado, caja fuerte)
+- Considera imprimirlo y guardarlo físicamente
+- NUNCA lo compartas con nadie, ni siquiera con soporte técnico
+- NUNCA lo guardes en la nube sin cifrar
+- Si sospechas que fue comprometido, regenera una nueva frase
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔐 ¿QUÉ PROTEGE ESTA FRASE?
+¿QUÉ PROTEGE ESTA FRASE?
 
 Esta frase protege TODOS tus datos médicos cifrados:
 - Transcripciones de sesiones
@@ -179,7 +179,7 @@ total (Zero-Knowledge).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📞 ¿NECESITAS AYUDA?
+¿NECESITAS AYUDA?
 
 Si tienes dudas sobre cómo guardar esta frase de forma segura,
 consulta nuestra guía de seguridad en:

@@ -2,7 +2,7 @@
   "name": "lazo-client",
   "private": true,
   "license": "UNLICENSED",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Lazo Client Application",
   "author": "Lazo Team",
   "type": "module",

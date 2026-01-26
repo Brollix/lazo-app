@@ -1,4 +1,4 @@
-# 🧶 Lazo
+# Lazo
 
 ### Tu Copiloto Inteligente para Terapia
 
@@ -8,7 +8,7 @@ Mediante **Inteligencia Artificial de última generación**, Lazo escucha (si t�
 
 ---
 
-## 📸 Interfaz Intuitiva
+## Interfaz Intuitiva
 
 Lazo cuenta con una interfaz moderna y adaptable (Modo Claro / Oscuro) diseñada para reducir la fatiga visual.
 
@@ -16,7 +16,7 @@ Lazo cuenta con una interfaz moderna y adaptable (Modo Claro / Oscuro) diseñada
 
 ---
 
-## 🚀 ¿Por qué Lazo?
+## ¿Por qué Lazo?
 
 La carga administrativa es la parte más tediosa de la terapia. Lazo elimina ese peso de tus hombros:
 
@@ -26,9 +26,9 @@ La carga administrativa es la parte más tediosa de la terapia. Lazo elimina ese
 
 ---
 
-## ✨ Lo que Lazo hace por ti
+## Lo que Lazo hace por ti
 
-### 🎙️ Transcripción y Análisis Automático
+### Transcripción y Análisis Automático
 
 Graba tus sesiones de forma segura y deja que nuestra IA las convierta en texto y extraiga lo importante.
 
@@ -38,7 +38,7 @@ Graba tus sesiones de forma segura y deja que nuestra IA las convierta en texto 
 
 ![Flujo Clínico](screenshots/clinical/clinical_dashboard_flow.webp)
 
-### 👥 Gestión Integral de Pacientes
+### Gestión Integral de Pacientes
 
 Tu consultorio digital en un solo lugar.
 
@@ -47,7 +47,7 @@ Tu consultorio digital en un solo lugar.
 
 ![Gestión de Pacientes](screenshots/patients/patient_management.webp)
 
-### 🔒 Privacidad y Seguridad Primero
+### Privacidad y Seguridad Primero
 
 Entendemos la confidencialidad de tu profesión.
 
@@ -56,7 +56,7 @@ Entendemos la confidencialidad de tu profesión.
 
 ---
 
-## 🎯 Ideal para...
+## Ideal para...
 
 - **Psicólogos Clínicos** que buscan modernizar su práctica.
 - **Psiquiatras y Terapeutas** que necesitan optimizar su tiempo.

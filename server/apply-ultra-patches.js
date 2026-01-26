@@ -36,13 +36,13 @@ function applyPatches() {
 \t\t// CREDIT VERIFICATION BASED ON PLAN TYPE`;
 
 	if (content.includes("checkUltraSessionLimit")) {
-		console.log("✓ Patch 1: Ultra session limit check - Already applied");
+		console.log("Patch 1: Ultra session limit check - Already applied");
 	} else if (content.includes(patch1Find)) {
 		content = content.replace(patch1Find, patch1Replace);
-		console.log("✓ Patch 1: Ultra session limit check - Applied");
+		console.log("Patch 1: Ultra session limit check - Applied");
 		patchesApplied++;
 	} else {
-		console.log("✗ Patch 1: Pattern not found");
+		console.log("Patch 1: Pattern not found");
 	}
 
 	// Patch 2: Add Ultra standard credit check
@@ -65,13 +65,13 @@ function applyPatches() {
 \t\t// Additional validation: High Precision only for Ultra users`;
 
 	if (content.includes("Ultra plan with standard mode")) {
-		console.log("✓ Patch 2: Ultra standard credit check - Already applied");
+		console.log("Patch 2: Ultra standard credit check - Already applied");
 	} else if (content.includes(patch2Find)) {
 		content = content.replace(patch2Find, patch2Replace);
-		console.log("✓ Patch 2: Ultra standard credit check - Applied");
+		console.log("Patch 2: Ultra standard credit check - Applied");
 		patchesApplied++;
 	} else {
-		console.log("✗ Patch 2: Pattern not found");
+		console.log("Patch 2: Pattern not found");
 	}
 
 	// Patch 3: Add Ultra session counter
@@ -84,13 +84,13 @@ function applyPatches() {
 \t\t\t\tawait incrementUltraSessionCount(userId);`;
 
 	if (content.includes("incrementUltraSessionCount")) {
-		console.log("✓ Patch 3: Ultra session counter - Already applied");
+		console.log("Patch 3: Ultra session counter - Already applied");
 	} else if (content.includes(patch3Find)) {
 		content = content.replace(patch3Find, patch3Replace);
-		console.log("✓ Patch 3: Ultra session counter - Applied");
+		console.log("Patch 3: Ultra session counter - Applied");
 		patchesApplied++;
 	} else {
-		console.log("✗ Patch 3: Pattern not found");
+		console.log("Patch 3: Pattern not found");
 	}
 
 	// Write back if changes were made

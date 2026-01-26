@@ -10,13 +10,13 @@ const envLocalPath = path.resolve(__dirname, "../.env.local");
 const envPath = path.resolve(__dirname, "../.env");
 
 if (fs.existsSync(envLocalPath)) {
-	console.log("[Config] 🧪 Cargando .env.local (modo desarrollo/test)");
+	console.log("[Config] Cargando .env.local (modo desarrollo/test)");
 	dotenv.config({ path: envLocalPath });
 } else if (fs.existsSync(envPath)) {
-	console.log("[Config] 🚀 Cargando .env (modo producción)");
+	console.log("[Config] Cargando .env (modo producción)");
 	dotenv.config({ path: envPath });
 } else {
-	console.warn("[Config] ⚠️  No se encontró .env ni .env.local");
+	console.warn("[Config] No se encontró .env ni .env.local");
 	dotenv.config(); // Fallback to default behavior
 }
 
@@ -199,10 +199,13 @@ app.post(
 			if (profile.plan_type === "free") {
 				if (profile.credits_remaining <= 0) {
 					return res.status(403).json({
-						message:
-							"Créditos agotados. Actualiza a Pro para 100 sesiones/mes.",
+						message: "monthly_limit_exceeded",
+						error:
+							"Agotaste tus 3 créditos gratuitos. Actualiza a Pro para 100 sesiones/mes.",
 						upgradeRequired: true,
 						suggestedPlan: "pro",
+						used: 3,
+						limit: 3,
 					});
 				}
 			}
@@ -898,13 +901,27 @@ app.post("/api/ai-action", async (req: any, res: any) => {
 		const { transcriptText, actionType, targetLanguage, patientName } =
 			req.body;
 
-		if (!transcriptText || !actionType) {
+		if (!transcriptText || !actionType || !req.body.userId) {
 			return res.status(400).json({
-				error: "Faltan parámetros requeridos (transcriptText, actionType)",
+				error:
+					"Faltan parámetros requeridos (transcriptText, actionType, userId)",
 			});
 		}
 
-		console.log(`Ejecutando acción IA: ${actionType}`);
+		const userId = req.body.userId;
+		const profile = await getUserProfile(userId);
+
+		// Check credits for free plan
+		if (profile.plan_type === "free" && profile.credits_remaining <= 0) {
+			return res.status(403).json({
+				message: "monthly_limit_exceeded",
+				error:
+					"Agotaste tus créditos. Mejora tu plan para seguir usando la IA.",
+				upgradeRequired: true,
+			});
+		}
+
+		console.log(`Ejecutando acción IA: ${actionType} para usuario ${userId}`);
 		const result = await performAiAction(
 			transcriptText,
 			actionType,
@@ -1079,7 +1096,7 @@ const getMercadoPagoAccessToken = () => {
 		const testToken = process.env.MP_TEST_ACCESS_TOKEN;
 		if (!testToken) {
 			console.warn(
-				"[Webhook] ⚠️  MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado",
+				"[Webhook] MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado",
 			);
 		}
 		return testToken || "";
@@ -1087,7 +1104,7 @@ const getMercadoPagoAccessToken = () => {
 		const prodToken = process.env.MP_ACCESS_TOKEN;
 		if (!prodToken) {
 			console.warn(
-				"[Webhook] ⚠️  MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado",
+				"[Webhook] MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado",
 			);
 		}
 		return prodToken || "";
@@ -1100,7 +1117,7 @@ const mpClient = new MercadoPagoConfig({
 
 // Log current mode on startup
 console.log(
-	`[Webhook] 🔧 MercadoPago modo: ${isTestMode ? "TEST 🧪" : "PRODUCCIÓN 🚀"}`,
+	`[Webhook] MercadoPago modo: ${isTestMode ? "TEST" : "PRODUCCIÓN"}`,
 );
 
 app.post("/api/mercadopago-webhook", async (req, res) => {
@@ -1180,7 +1197,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 						}
 
 						if (payment.status === "approved") {
-							console.log(`[Webhook] ✅ Recurring payment APPROVED!`);
+							console.log(`[Webhook] Recurring payment APPROVED!`);
 							console.log(
 								`[Webhook] User: ${userId}, Subscription: ${mpSubscriptionId}, Amount: ${payment.transaction_amount}, Payer Email: ${payerEmail}`,
 							);
@@ -1204,7 +1221,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 							// Check if plan could not be determined (edge case: payment webhook before subscription webhook)
 							if (result?.warning) {
-								console.warn(`[Webhook] ⚠️ WARNING: ${result.warning}`);
+								console.warn(`[Webhook] WARNING: ${result.warning}`);
 								console.warn(
 									`[Webhook] This may indicate a race condition. Subscription record may need to be created first.`,
 								);
@@ -1218,19 +1235,19 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 
 							if (result?.plan_determined) {
 								console.log(
-									`[Webhook] ✅ SUCCESS: Payment recorded, credits renewed according to plan:`,
+									`[Webhook] SUCCESS: Payment recorded, credits renewed according to plan:`,
 									result,
 								);
 							} else {
 								console.log(
-									`[Webhook] ⚠️ Payment recorded but plan not determined - credits not renewed:`,
+									`[Webhook] Payment recorded but plan not determined - credits not renewed:`,
 									result,
 								);
 							}
 						} else {
 							// Payment failed/rejected - only record, don't renew credits
 							console.log(
-								`[Webhook] ⚠️ Payment ${payment.status} for subscription ${mpSubscriptionId} (status_detail: ${payment.status_detail})`,
+								`[Webhook] Payment ${payment.status} for subscription ${mpSubscriptionId} (status_detail: ${payment.status_detail})`,
 							);
 							await recordPaymentAndRenewCredits(
 								userId,
@@ -1246,7 +1263,7 @@ app.post("/api/mercadopago-webhook", async (req, res) => {
 							);
 						}
 					} catch (dbError) {
-						console.error(`[Webhook] ❌ DB Error recording payment:`, dbError);
+						console.error(`[Webhook] DB Error recording payment:`, dbError);
 					}
 				} else {
 					console.warn(
@@ -1357,14 +1374,14 @@ app.post("/api/cancel-subscription", async (req, res) => {
 
 	try {
 		console.log(
-			`[Cancel] 🔄 Processing cancellation for user ${userId}, keepCredits: ${keepCredits}`,
+			`[Cancel] Processing cancellation for user ${userId}, keepCredits: ${keepCredits}`,
 		);
 
 		// Get user profile
 		const profile = await getUserProfile(userId);
 
 		if (!profile || !profile.email) {
-			console.error(`[Cancel] ❌ User not found: ${userId}`);
+			console.error(`[Cancel] User not found: ${userId}`);
 			return res.status(404).json({ error: "Usuario no encontrado" });
 		}
 
@@ -1374,7 +1391,7 @@ app.post("/api/cancel-subscription", async (req, res) => {
 
 		if (profile.plan_type === "free" || !profile.subscription_id) {
 			console.warn(
-				`[Cancel] ⚠️ User ${userId} has no active subscription (plan: ${profile.plan_type})`,
+				`[Cancel] User ${userId} has no active subscription (plan: ${profile.plan_type})`,
 			);
 			return res.status(400).json({
 				error: "El usuario no tiene una suscripción activa",
@@ -1386,7 +1403,7 @@ app.post("/api/cancel-subscription", async (req, res) => {
 			`[Cancel] Cancelling in MercadoPago: ${profile.subscription_id}`,
 		);
 		await cancelMPSubscription(profile.subscription_id);
-		console.log(`[Cancel] ✅ MercadoPago subscription cancelled`);
+		console.log(`[Cancel] MercadoPago subscription cancelled`);
 
 		// Cancel subscription in database with keepCredits option
 		console.log(`[Cancel] Updating database...`);
@@ -1395,7 +1412,7 @@ app.post("/api/cancel-subscription", async (req, res) => {
 		// Get updated profile to verify
 		const updatedProfile = await getUserProfile(userId);
 		console.log(
-			`[Cancel] ✅ Subscription cancelled successfully - New plan: ${updatedProfile.plan_type}, Remaining credits: ${updatedProfile.credits_remaining}, Premium: ${updatedProfile.premium_credits_remaining}`,
+			`[Cancel] Subscription cancelled successfully - New plan: ${updatedProfile.plan_type}, Remaining credits: ${updatedProfile.credits_remaining}, Premium: ${updatedProfile.premium_credits_remaining}`,
 		);
 
 		// Provide appropriate message based on keepCredits choice
@@ -1420,7 +1437,7 @@ app.post("/api/cancel-subscription", async (req, res) => {
 			note,
 		});
 	} catch (error: any) {
-		console.error("[Cancel] ❌ Error cancelling subscription:", error);
+		console.error("[Cancel] Error cancelling subscription:", error);
 		res.status(500).json({
 			error: "Error al cancelar la suscripción",
 			details: error.message,

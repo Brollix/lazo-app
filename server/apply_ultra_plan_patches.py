@@ -15,14 +15,14 @@ def apply_patch(filepath, find_text, replace_text, description):
     print(f"  File: {filepath}")
     
     if not os.path.exists(filepath):
-        print(f"  ❌ File not found!")
+        print(f"  File not found!")
         return False
     
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
     
     if find_text not in content:
-        print(f"  ⚠️  Pattern not found - may already be patched or file structure changed!")
+        print(f"  Pattern not found - may already be patched or file structure changed!")
         return False
     
     new_content = content.replace(find_text, replace_text)
@@ -30,7 +30,7 @@ def apply_patch(filepath, find_text, replace_text, description):
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(new_content)
     
-    print(f"  ✅ Patched successfully!")
+    print(f"  Patched successfully!")
     return True
 
 def main():
@@ -91,15 +91,15 @@ def main():
     
     print("\n" + "=" * 80)
     print(f"PATCH SUMMARY:")
-    print(f"  ✅ Applied: {patches_applied}")
-    print(f"  ❌ Failed: {patches_failed}")
+    print(f"  Applied: {patches_applied}")
+    print(f"  Failed: {patches_failed}")
     print("=" * 80)
     
     if patches_failed > 0:
-        print("\n⚠️  Some patches failed. Please review the manual changes file.")
+        print("\nSome patches failed. Please review the manual changes file.")
         print("   File: server/MANUAL_CHANGES_ULTRA_PLAN.ts")
     else:
-        print("\n✅ All patches applied successfully!")
+        print("\nAll patches applied successfully!")
         print("\nNEXT STEPS:")
         print("1. Run: npm run build --workspace=server")
         print("2. Apply database migration")

@@ -9,13 +9,13 @@ const envLocalPath = path.resolve(__dirname, "../../.env.local");
 const envPath = path.resolve(__dirname, "../../.env");
 
 if (fs.existsSync(envLocalPath)) {
-	console.log("[Config] 🧪 Cargando .env.local (modo desarrollo/test)");
+	console.log("[Config] Cargando .env.local (modo desarrollo/test)");
 	dotenv.config({ path: envLocalPath });
 } else if (fs.existsSync(envPath)) {
-	console.log("[Config] 🚀 Cargando .env (modo producción)");
+	console.log("[Config] Cargando .env (modo producción)");
 	dotenv.config({ path: envPath });
 } else {
-	console.warn("[Config] ⚠️  No se encontró .env ni .env.local");
+	console.warn("[Config] No se encontró .env ni .env.local");
 	dotenv.config(); // Fallback to default behavior
 }
 
@@ -31,7 +31,7 @@ const getAccessToken = () => {
 		const testToken = process.env.MP_TEST_ACCESS_TOKEN;
 		if (!testToken) {
 			console.warn(
-				"[MercadoPago] ⚠️  MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado"
+				"[MercadoPago] MODO TEST activado pero MP_TEST_ACCESS_TOKEN no está configurado",
 			);
 		}
 		return testToken || "";
@@ -39,7 +39,7 @@ const getAccessToken = () => {
 		const prodToken = process.env.MP_ACCESS_TOKEN;
 		if (!prodToken) {
 			console.warn(
-				"[MercadoPago] ⚠️  MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado"
+				"[MercadoPago] MODO PRODUCCIÓN activado pero MP_ACCESS_TOKEN no está configurado",
 			);
 		}
 		return prodToken || "";
@@ -54,11 +54,11 @@ export const client = new MercadoPagoConfig({
 
 // Log current mode on startup
 console.log(
-	`[MercadoPago] 🔧 Modo configurado: ${isTestMode ? "TEST 🧪" : "PRODUCCIÓN 🚀"}`
+	`[MercadoPago] Modo configurado: ${isTestMode ? "TEST" : "PRODUCCIÓN"}`,
 );
 if (!accessToken) {
 	console.error(
-		`[MercadoPago] ❌ ERROR: Access Token no configurado para modo ${mpMode}`
+		`[MercadoPago] ERROR: Access Token no configurado para modo ${mpMode}`,
 	);
 }
 
@@ -69,7 +69,7 @@ export const createRecurringSubscription = async (
 	planId: "pro" | "ultra",
 	userId: string,
 	userEmail: string,
-	redirectUrl?: string
+	redirectUrl?: string,
 ) => {
 	console.log("[createRecurringSubscription] Params:", {
 		planId,
@@ -85,7 +85,7 @@ export const createRecurringSubscription = async (
 
 	if (!process.env.BACKEND_URL) {
 		console.warn(
-			"[createRecurringSubscription] BACKEND_URL missing. Webhooks will not be received."
+			"[createRecurringSubscription] BACKEND_URL missing. Webhooks will not be received.",
 		);
 	}
 
@@ -131,7 +131,7 @@ export const createRecurringSubscription = async (
 
 		console.log(
 			"[createRecurringSubscription] Creating preapproval:",
-			JSON.stringify(preApprovalBody, null, 2)
+			JSON.stringify(preApprovalBody, null, 2),
 		);
 
 		const response = await preApproval.create({ body: preApprovalBody });
@@ -146,7 +146,7 @@ export const createRecurringSubscription = async (
 	} catch (err: any) {
 		console.error("[createRecurringSubscription] FAILED:", err.message || err);
 		throw new Error(
-			`MercadoPago Subscription Error: ${err.message || String(err)}`
+			`MercadoPago Subscription Error: ${err.message || String(err)}`,
 		);
 	}
 };
@@ -172,7 +172,7 @@ export const cancelSubscription = async (subscriptionId: string) => {
 	const preApproval = new PreApproval(client);
 	try {
 		console.log(
-			`[cancelSubscription] Cancelling subscription ${subscriptionId}`
+			`[cancelSubscription] Cancelling subscription ${subscriptionId}`,
 		);
 
 		const result = await preApproval.update({

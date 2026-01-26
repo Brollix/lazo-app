@@ -539,7 +539,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 										{validating ?
 											<CircularProgress size={20} color="inherit" />
 										: validatedPromo ?
-											"✓"
+											"Check"
 										:	"Aplicar"}
 									</Button>
 								</InputAdornment>
@@ -554,7 +554,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 					{validatedPromo && (
 						<Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>
 							<Typography variant="body2" fontWeight="bold">
-								¡Código válido! 🎉
+								¡Código válido!
 							</Typography>
 							<Typography variant="body2">
 								{validatedPromo.discount_percentage}% de descuento por{" "}

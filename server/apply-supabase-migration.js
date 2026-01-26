@@ -11,14 +11,14 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-	console.error("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+	console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
 	process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function applyMigration() {
-	console.log("🚀 Applying Supabase Migration...\n");
+	console.log("Applying Supabase Migration...\n");
 
 	// Read only the function updates from the migration file
 	const updateSubscriptionFunction = `
@@ -163,7 +163,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 `;
 
 	try {
-		console.log("📝 Updating create_or_update_subscription function...");
+		console.log("Updating create_or_update_subscription function...");
 
 		// Use REST API to execute SQL
 		const response1 = await fetch(`${supabaseUrl}/rest/v1/rpc/query`, {
@@ -179,9 +179,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 		// Supabase doesn't expose raw SQL execution via REST API for security
 		// We need to use the SQL Editor in the dashboard or psql
-		console.log(
-			"⚠️  Direct SQL execution not available via Supabase JS client\n"
-		);
+		console.log("Direct SQL execution not available via Supabase JS client\n");
 		console.log("Using alternative approach: SQL query construction...\n");
 
 		// Alternative: Try to use Supabase's query method
@@ -191,24 +189,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 		if (e1) {
 			console.log(
-				"⚠️  RPC query method not available. Trying direct approach...\n"
+				"RPC query method not available. Trying direct approach...\n",
 			);
 
 			// Try posting to /database/query endpoint
 			const directUrl = `${supabaseUrl.replace(
 				"supabase.co",
-				"supabase.co/database/query"
+				"supabase.co/database/query",
 			)}`;
 			console.log(`Attempting direct query to: ${directUrl}`);
 
 			// This won't work with standard Supabase setup
-			console.log("\n❌ Cannot execute raw SQL via Supabase JS client");
+			console.log("\nCannot execute raw SQL via Supabase JS client");
 			console.log(
-				"📋 Migration must be applied manually via Supabase Dashboard\n"
+				"Migration must be applied manually via Supabase Dashboard\n",
 			);
-			console.log("=" .repeat(60));
+			console.log("=".repeat(60));
 			console.log("COPY AND RUN THESE TWO FUNCTIONS IN SUPABASE SQL EDITOR:");
-			console.log("=" .repeat(60));
+			console.log("=".repeat(60));
 			console.log("\n1️⃣  Update create_or_update_subscription:\n");
 			console.log(updateSubscriptionFunction);
 			console.log("\n" + "=".repeat(60));
@@ -216,15 +214,15 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 			console.log(updatePaymentFunction);
 			console.log("\n" + "=".repeat(60));
 			console.log(
-				"\n🔗 Go to: https://supabase.com/dashboard/project/_/sql/new\n"
+				"\nGo to: https://supabase.com/dashboard/project/_/sql/new\n",
 			);
 			return;
 		}
 
-		console.log("✅ Migration applied successfully!");
+		console.log("Migration applied successfully!");
 	} catch (error) {
-		console.error("\n❌ Error:", error.message);
-		console.log("\n📋 Please apply migration manually in Supabase SQL Editor");
+		console.error("\nError:", error.message);
+		console.log("\nPlease apply migration manually in Supabase SQL Editor");
 		console.log("   URL: https://supabase.com/dashboard/project/_/sql/new\n");
 	}
 }

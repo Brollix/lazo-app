@@ -47,6 +47,8 @@ import {
 } from "../styles.theme";
 
 import { AudioUploader, ProcessSessionResponse } from "./AudioUploader";
+import { UpgradeToProModal } from "./UpgradeToProModal";
+import { useUserPlan } from "../hooks/useUserPlan";
 import { ContextPanel } from "./ContextPanel";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 import { Patient } from "./PatientsList";
@@ -78,6 +80,60 @@ const formatDuration = (seconds?: number) => {
 	const secs = Math.round(seconds % 60);
 	if (mins === 0) return `(${secs} seg)`;
 	return `(${mins} min ${secs.toString().padStart(2, "0")}s)`;
+};
+
+interface AnalysisChatActionsProps {
+	usedActions: Set<string>;
+	onAction: (
+		action:
+			| "soap"
+			| "resumen"
+			| "tareas"
+			| "psicologico"
+			| "intervencion"
+			| "animo",
+	) => void;
+}
+
+const AnalysisChatActions: React.FC<AnalysisChatActionsProps> = ({
+	usedActions,
+	onAction,
+}) => {
+	return (
+		<Stack
+			direction="row"
+			spacing={1}
+			sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
+		>
+			<Button
+				variant="outlined"
+				size="small"
+				onClick={() => onAction("resumen")}
+				disabled={usedActions.has("resumen")}
+				sx={{ borderRadius: 2, textTransform: "none" }}
+			>
+				Resumen Ejecutivo
+			</Button>
+			<Button
+				variant="outlined"
+				size="small"
+				onClick={() => onAction("tareas")}
+				disabled={usedActions.has("tareas")}
+				sx={{ borderRadius: 2, textTransform: "none" }}
+			>
+				Tareas y Objetivos
+			</Button>
+			<Button
+				variant="outlined"
+				size="small"
+				onClick={() => onAction("psicologico")}
+				disabled={usedActions.has("psicologico")}
+				sx={{ borderRadius: 2, textTransform: "none" }}
+			>
+				Análisis Psicológico
+			</Button>
+		</Stack>
+	);
 };
 
 export const Dashboard: React.FC<{
@@ -116,6 +172,7 @@ export const Dashboard: React.FC<{
 		null,
 	);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [usedActions, setUsedActions] = useState<Set<string>>(new Set());
 	const [isActionLoading, setIsActionLoading] = useState(false);
 	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
 	const [isFocusMode, setIsFocusMode] = useState(false);
@@ -144,6 +201,8 @@ export const Dashboard: React.FC<{
 	const [sessions, setSessions] = useState<ClinicalSession[]>([]);
 	const [sessionsLoading, setSessionsLoading] = useState(false);
 	const [showSessionsSidebar, setShowSessionsSidebar] = useState(false);
+	const { planData, refreshPlan } = useUserPlan(userId);
+	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
 	// Sync ref with state
 	useEffect(() => {
@@ -328,6 +387,11 @@ export const Dashboard: React.FC<{
 
 		localStorage.setItem(key, JSON.stringify(draft));
 	}, [sessionData, soapContent, messages, patient?.id]);
+
+	// Reset used actions when switching sessions
+	useEffect(() => {
+		setUsedActions(new Set());
+	}, [initialSession?.id]);
 	// -------------------------
 
 	const handleAnalysisComplete = (data: ProcessSessionResponse) => {
@@ -335,40 +399,10 @@ export const Dashboard: React.FC<{
 
 		// Show analyzed greeting with chips as requested
 		addMessage(
-			"bot",
 			`He analizado el audio de **${
 				patient?.name || "Paciente"
 			} ${formatDuration(data.localDuration)}**. ¿Por dónde quieres empezar?`,
-			<Stack
-				direction="row"
-				spacing={1}
-				sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
-			>
-				<Button
-					variant="outlined"
-					size="small"
-					onClick={() => handleQuickAction("resumen")}
-					sx={{ borderRadius: 2, textTransform: "none" }}
-				>
-					Resumen Ejecutivo
-				</Button>
-				<Button
-					variant="outlined"
-					size="small"
-					onClick={() => handleQuickAction("tareas")}
-					sx={{ borderRadius: 2, textTransform: "none" }}
-				>
-					Tareas y Objetivos
-				</Button>
-				<Button
-					variant="outlined"
-					size="small"
-					onClick={() => handleQuickAction("psicologico")}
-					sx={{ borderRadius: 2, textTransform: "none" }}
-				>
-					Análisis Psicológico
-				</Button>
-			</Stack>,
+			"analysis-actions" as any,
 		);
 
 		// Check for Risks
@@ -386,7 +420,7 @@ export const Dashboard: React.FC<{
 					}}
 				>
 					<Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-						🚨 ALERTA DE RIESGO DETECTADA
+						ALERTA DE RIESGO DETECTADA
 					</Typography>
 					<Typography variant="body2">
 						{data.analysis.risk_assessment.summary}
@@ -435,9 +469,13 @@ export const Dashboard: React.FC<{
 			| "animo",
 	) => {
 		const currentSessionData = sessionDataRef.current;
-		if (!currentSessionData) return;
+		if (!currentSessionData || usedActions.has(action)) return;
 
 		if (action === "soap") {
+			if (planData?.plan_type === "free" && planData.credits_remaining <= 0) {
+				setUpgradeModalOpen(true);
+				return;
+			}
 			generateClinicalNote(currentSessionData);
 			addMessage(
 				"bot",
@@ -447,6 +485,11 @@ export const Dashboard: React.FC<{
 					:	"Clínico"
 				}**). Ya puedes verla y editarla en el panel de la izquierda.`,
 			);
+			return;
+		}
+
+		if (planData?.plan_type === "free" && planData.credits_remaining <= 0) {
+			setUpgradeModalOpen(true);
 			return;
 		}
 
@@ -487,12 +530,16 @@ export const Dashboard: React.FC<{
 					transcriptText: currentSessionData.transcript,
 					actionType: action,
 					patientName: patient?.name || "el paciente",
+					userId: userId,
 				}),
 			});
 
 			if (!response.ok) throw new Error("Error en la acción de IA");
 
 			const data = await response.json();
+
+			// Add to used actions
+			setUsedActions((prev) => new Set(prev).add(action));
 
 			// Remove loading message and add result
 			setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
@@ -627,7 +674,7 @@ export const Dashboard: React.FC<{
 				if (updateError) throw updateError;
 				setAlertModal({
 					open: true,
-					message: "✓ Sesión actualizada exitosamente",
+					message: "Sesión actualizada exitosamente",
 					severity: "success",
 				});
 			} else {
@@ -655,7 +702,7 @@ export const Dashboard: React.FC<{
 				if (insertError) throw insertError;
 				setAlertModal({
 					open: true,
-					message: `✓ Sesión #${nextNum} guardada exitosamente`,
+					message: `Sesión #${nextNum} guardada exitosamente`,
 					severity: "success",
 				});
 
@@ -690,6 +737,7 @@ export const Dashboard: React.FC<{
 			setSoapContent("");
 			setSessionData(null);
 			setMessages([]);
+			setUsedActions(new Set());
 
 			await fetchSessions();
 			if (onBack) onBack(); // Go back to sessions list after save
@@ -706,6 +754,7 @@ export const Dashboard: React.FC<{
 	};
 
 	const handleLoadSession = async (session: ClinicalSession) => {
+		setUsedActions(new Set());
 		try {
 			if (!userId) {
 				setAlertModal({
@@ -787,6 +836,12 @@ export const Dashboard: React.FC<{
 	const handleUploadCheck = () => {
 		if (!userAppPlan) {
 			setSubscriptionModalOpen(true);
+		} else if (
+			userAppPlan === "free" &&
+			planData &&
+			planData.credits_remaining <= 0
+		) {
+			setUpgradeModalOpen(true);
 		} else {
 			setOpenUploadModal(true);
 		}
@@ -817,6 +872,7 @@ export const Dashboard: React.FC<{
 			setSessionData(null);
 			setSoapContent("");
 			setMessages([]);
+			setUsedActions(new Set());
 			// Auto-open upload since we are new and empty
 			setOpenUploadModal(true);
 		}
@@ -829,6 +885,11 @@ export const Dashboard: React.FC<{
 			localStorage.setItem(`lazo_onboarding_${userId}`, "true");
 		}
 		setShowOnboarding(false);
+	};
+
+	const handleUpgradeClose = () => {
+		setUpgradeModalOpen(false);
+		refreshPlan();
 	};
 
 	return (
@@ -1182,7 +1243,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("soap")}
 								/>
 								<Chip
 									icon={<DescriptionIcon fontSize="small" />}
@@ -1192,7 +1253,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("resumen")}
 								/>
 								<Chip
 									icon={<TaskAlt fontSize="small" />}
@@ -1202,7 +1263,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("tareas")}
 								/>
 								<Chip
 									icon={<Psychology fontSize="small" />}
@@ -1212,7 +1273,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("psicologico")}
 								/>
 								<Chip
 									icon={<SmartToy fontSize="small" />}
@@ -1222,7 +1283,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("intervencion")}
 								/>
 								<Chip
 									icon={<Category fontSize="small" />}
@@ -1232,7 +1293,7 @@ export const Dashboard: React.FC<{
 									clickable
 									color="primary"
 									variant="outlined"
-									disabled={isActionLoading}
+									disabled={isActionLoading || usedActions.has("animo")}
 								/>
 							</Stack>
 						)}
@@ -1339,7 +1400,14 @@ export const Dashboard: React.FC<{
 												<ReactMarkdown>{msg.content}</ReactMarkdown>
 											</Box>
 										:	msg.content}
-										{msg.actions && <Box sx={{ mt: 1 }}>{msg.actions}</Box>}
+										{msg.actions === "analysis-actions" ?
+											<AnalysisChatActions
+												usedActions={usedActions}
+												onAction={handleQuickAction}
+											/>
+										: msg.actions ?
+											<Box sx={{ mt: 1 }}>{msg.actions}</Box>
+										:	null}
 									</Paper>
 								</Box>
 							))
@@ -1511,6 +1579,17 @@ export const Dashboard: React.FC<{
 				open={showOnboarding}
 				onComplete={handleCompleteOnboarding}
 			/>
+
+			{planData && userId && (
+				<UpgradeToProModal
+					open={upgradeModalOpen}
+					onClose={handleUpgradeClose}
+					userId={userId}
+					userEmail={planData.email || ""}
+					usedTranscriptions={3}
+					monthYear={new Date().toISOString().slice(0, 7)}
+				/>
+			)}
 		</Box>
 	);
 };
