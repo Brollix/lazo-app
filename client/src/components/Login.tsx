@@ -17,7 +17,10 @@ import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
 import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
 import { PasswordRecoveryWithPhrase } from "./PasswordRecoveryWithPhrase";
 
-export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+export const Login: React.FC<{
+	onLogin: () => void;
+	onNavigateToInfo: () => void;
+}> = ({ onLogin, onNavigateToInfo }) => {
 	const encryption = useEncryption();
 	const [isSignUp, setIsSignUp] = useState(false);
 	const [email, setEmail] = useState("");
@@ -307,13 +310,23 @@ export const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 						:	"¿No tienes cuenta? Regístrate"}
 					</Link>
 					{!isSignUp && (
-						<Link
-							component="button"
-							variant="body2"
-							onClick={() => setShowRecoveryDialog(true)}
-						>
-							¿Olvidaste tu contraseña?
-						</Link>
+						<>
+							<Link
+								component="button"
+								variant="body2"
+								onClick={() => setShowRecoveryDialog(true)}
+							>
+								¿Olvidaste tu contraseña?
+							</Link>
+							<Link
+								component="button"
+								variant="body2"
+								onClick={onNavigateToInfo}
+								sx={{ fontWeight: "bold", color: "primary.main" }}
+							>
+								Seguridad y Cumplimiento Normativo
+							</Link>
+						</>
 					)}
 				</Box>
 			</Paper>

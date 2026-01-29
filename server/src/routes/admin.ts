@@ -323,7 +323,9 @@ router.get("/activity-feed", isAdmin, async (req: Request, res: Response) => {
 	try {
 		const { data, error } = await supabase
 			.from("processing_sessions")
-			.select("id, created_at, status, mode, error_message, result")
+			.select(
+				"id, created_at, status, mode, error_message, result, encrypted_result, duration",
+			)
 			.order("created_at", { ascending: false })
 			.limit(10);
 
@@ -335,7 +337,7 @@ router.get("/activity-feed", isAdmin, async (req: Request, res: Response) => {
 			status: s.status,
 			mode: s.mode,
 			error: s.error_message,
-			duration: s.result?.duration || "N/A",
+			duration: s.duration || s.result?.duration || "N/A",
 		}));
 
 		res.json({ feed });

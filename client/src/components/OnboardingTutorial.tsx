@@ -11,6 +11,8 @@ import {
 	Paper,
 	Stack,
 	IconButton,
+	useTheme,
+	alpha,
 } from "@mui/material";
 import {
 	Lock as LockIcon,
@@ -37,6 +39,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 	open,
 	onComplete,
 }) => {
+	const theme = useTheme();
 	const [activeStep, setActiveStep] = useState(0);
 
 	const handleNext = () => {
@@ -92,15 +95,16 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "primary.main",
-								color: "white",
+								color: "primary.contrastText",
 								mb: 1.5,
+								boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
 							}}
 						>
 							<LockIcon sx={{ fontSize: 32 }} />
 						</Box>
 
 						<Typography variant="h6" gutterBottom fontWeight="bold">
-							🔒 Tus datos están protegidos
+							Tus datos están protegidos
 						</Typography>
 
 						<Typography
@@ -115,16 +119,22 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 						<Paper
 							elevation={0}
 							sx={{
-								bgcolor: "background.default",
+								bgcolor: alpha(theme.palette.background.default, 0.5),
 								p: 2,
 								borderRadius: 2,
 								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
+								border: `1px solid ${theme.palette.divider}`,
 							}}
 						>
-							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-								¿Qué es el SALT?
+							<Typography
+								variant="subtitle2"
+								fontWeight="bold"
+								gutterBottom
+								sx={{ color: "primary.main" }}
+							>
+								¿Qué es la Frase de Recuperación?
 							</Typography>
 
 							<Typography variant="body2" sx={{ mb: 1 }}>
@@ -146,14 +156,18 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								sx={{
 									mt: 1.5,
 									p: 1.5,
-									bgcolor: "warning.light",
+									bgcolor: alpha(theme.palette.warning.main, 0.1),
 									borderRadius: 1,
 									border: "1px solid",
-									borderColor: "warning.main",
+									borderColor: alpha(theme.palette.warning.main, 0.2),
 								}}
 							>
-								<Typography variant="caption" fontWeight="bold">
-									⚠️ Tu contraseña es la única forma de acceder a tus datos.
+								<Typography
+									variant="caption"
+									color="warning.dark"
+									fontWeight="bold"
+								>
+									Tu contraseña es la única forma de acceder a tus datos.
 									Guárdala en un lugar seguro.
 								</Typography>
 							</Box>
@@ -170,15 +184,16 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "success.main",
-								color: "white",
+								color: "success.contrastText",
 								mb: 1.5,
+								boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.4)}`,
 							}}
 						>
 							<MicIcon sx={{ fontSize: 32 }} />
 						</Box>
 
 						<Typography variant="h6" gutterBottom fontWeight="bold">
-							🎙️ Graba tus sesiones clínicas
+							Graba tus sesiones clínicas
 						</Typography>
 
 						<Typography
@@ -193,15 +208,21 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 						<Paper
 							elevation={0}
 							sx={{
-								bgcolor: "background.default",
+								bgcolor: alpha(theme.palette.background.default, 0.5),
 								p: 2,
 								borderRadius: 2,
 								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
+								border: `1px solid ${theme.palette.divider}`,
 							}}
 						>
-							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+							<Typography
+								variant="subtitle2"
+								fontWeight="bold"
+								gutterBottom
+								sx={{ color: "success.main" }}
+							>
 								¿Cómo funciona?
 							</Typography>
 
@@ -221,14 +242,14 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								sx={{
 									mt: 1.5,
 									p: 1.5,
-									bgcolor: "info.light",
+									bgcolor: alpha(theme.palette.info.main, 0.08),
 									borderRadius: 1,
 									border: "1px solid",
-									borderColor: "info.main",
+									borderColor: alpha(theme.palette.info.main, 0.2),
 								}}
 							>
-								<Typography variant="caption">
-									💡 Usa grabaciones claras para mejores resultados.
+								<Typography variant="caption" color="info.main">
+									Usa grabaciones claras para mejores resultados.
 								</Typography>
 							</Box>
 						</Paper>
@@ -244,15 +265,16 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								p: 1.5,
 								borderRadius: "50%",
 								bgcolor: "secondary.main",
-								color: "white",
+								color: "secondary.contrastText",
 								mb: 1.5,
+								boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.4)}`,
 							}}
 						>
 							<PsychologyIcon sx={{ fontSize: 32 }} />
 						</Box>
 
 						<Typography variant="h6" gutterBottom fontWeight="bold">
-							🧠 Análisis clínico automático
+							Análisis clínico automático
 						</Typography>
 
 						<Typography
@@ -266,33 +288,39 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 						<Paper
 							elevation={0}
 							sx={{
-								bgcolor: "background.default",
+								bgcolor: alpha(theme.palette.background.default, 0.5),
 								p: 2,
 								borderRadius: 2,
 								maxWidth: 500,
 								mx: "auto",
 								textAlign: "left",
+								border: `1px solid ${theme.palette.divider}`,
 							}}
 						>
-							<Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+							<Typography
+								variant="subtitle2"
+								fontWeight="bold"
+								gutterBottom
+								sx={{ color: "secondary.main" }}
+							>
 								¿Qué obtienes?
 							</Typography>
 
 							<Stack spacing={0.5}>
 								<Typography variant="body2">
-									📋 <strong>Notas SOAP</strong> automáticas
+									<strong>Notas SOAP</strong> automáticas
 								</Typography>
 								<Typography variant="body2">
-									🎯 <strong>Resumen</strong> de puntos clave
+									<strong>Resumen</strong> de puntos clave
 								</Typography>
 								<Typography variant="body2">
-									✅ <strong>Tareas</strong> y objetivos identificados
+									<strong>Tareas</strong> y objetivos identificados
 								</Typography>
 								<Typography variant="body2">
-									🧠 <strong>Análisis</strong> del estado emocional
+									<strong>Análisis</strong> del estado emocional
 								</Typography>
 								<Typography variant="body2">
-									⚠️ <strong>Alertas</strong> de señales de riesgo
+									<strong>Alertas</strong> de señales de riesgo
 								</Typography>
 							</Stack>
 
@@ -300,14 +328,14 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 								sx={{
 									mt: 1.5,
 									p: 1.5,
-									bgcolor: "success.light",
+									bgcolor: alpha(theme.palette.success.main, 0.12),
 									borderRadius: 1,
 									border: "1px solid",
-									borderColor: "success.main",
+									borderColor: alpha(theme.palette.success.main, 0.25),
 								}}
 							>
-								<Typography variant="caption">
-									✨ <strong>Privacidad:</strong> Los datos se descifran solo en
+								<Typography variant="caption" color="success.main">
+									<strong>Privacidad:</strong> Los datos se descifran solo en
 									memoria para el análisis.
 								</Typography>
 							</Box>

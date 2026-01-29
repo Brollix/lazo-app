@@ -31,7 +31,7 @@ const groq = new Groq({
 
 // Initialize Deepgram
 const deepgram = createClient(
-	process.env.DEEPGRAM_API_KEY || "YOUR_DEEPGRAM_API_KEY"
+	process.env.DEEPGRAM_API_KEY || "YOUR_DEEPGRAM_API_KEY",
 );
 
 /**
@@ -47,25 +47,25 @@ const sanitizeTranscript = (text: string): string => {
 	// Remove DNI patterns (Argentina: 12.345.678 or 12345678 or 12-345-678)
 	sanitized = sanitized.replace(
 		/\b\d{1,2}[\.\-]?\d{3}[\.\-]?\d{3}\b/g,
-		"[DNI_REDACTED]"
+		"[DNI_REDACTED]",
 	);
 
 	// Remove phone patterns (Argentina: +54 11 1234-5678, 011-1234-5678, etc.)
 	sanitized = sanitized.replace(
 		/(\+?54\s?)?(\(?\d{2,4}\)?[\s\-]?)?\d{4}[\s\-]?\d{4}/g,
-		"[PHONE_REDACTED]"
+		"[PHONE_REDACTED]",
 	);
 
 	// Remove email addresses
 	sanitized = sanitized.replace(
 		/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-		"[EMAIL_REDACTED]"
+		"[EMAIL_REDACTED]",
 	);
 
 	// Remove addresses (basic pattern for street numbers)
 	sanitized = sanitized.replace(
 		/\b\d{1,5}\s+[A-Za-zÀ-ÿ\s]+\s+\d{1,5}\b/g,
-		"[ADDRESS_REDACTED]"
+		"[ADDRESS_REDACTED]",
 	);
 
 	return sanitized;
@@ -79,7 +79,7 @@ export const processTranscriptWithClaude = async (
 	patientAge?: number,
 	patientGender?: string,
 	isUltraPlan: boolean = false,
-	historicalContext?: string | null
+	historicalContext?: string | null,
 ) => {
 	// Build historical context section if available (Ultra Plan only)
 	const historicalContextSection =
@@ -233,12 +233,13 @@ export const processTranscriptWithClaude = async (
 	// Replace the original transcript in the prompt with sanitized version
 	const finalPrompt = prompt.replace(
 		`"${transcriptText}"`,
-		`"${sanitizedTranscript}"`
+		`"${sanitizedTranscript}"`,
 	);
 
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
 		max_tokens: 3000,
+		temperature: 0,
 		messages: [
 			{
 				role: "user",
@@ -297,7 +298,7 @@ export const performAiAction = async (
 	targetLanguage: string = "Spanish",
 	patientName: string = "el paciente",
 	patientAge?: number,
-	patientGender?: string
+	patientGender?: string,
 ) => {
 	let actionPrompt = "";
 
@@ -355,12 +356,13 @@ export const performAiAction = async (
 	// Replace the original transcript in the prompt with sanitized version
 	const finalPrompt = prompt.replace(
 		`"${transcriptText}"`,
-		`"${sanitizedTranscript}"`
+		`"${sanitizedTranscript}"`,
 	);
 
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
 		max_tokens: 2000,
+		temperature: 0,
 		messages: [
 			{
 				role: "user",
@@ -401,7 +403,7 @@ export const processWithLlama3 = async (
 	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP",
 	patientName: string = "el paciente",
 	patientAge?: number,
-	patientGender?: string
+	patientGender?: string,
 ) => {
 	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.
     
@@ -515,12 +517,12 @@ export const transcribeAudio = async (
 	fileBuffer: Buffer,
 	planType: "free" | "pro" | "ultra" = "free",
 	useHighPrecision: boolean = false,
-	mimeType: string = "audio/wav"
+	mimeType: string = "audio/wav",
 ) => {
 	// Only use Deepgram if user is Ultra AND explicitly requested high precision
 	if (planType === "ultra" && useHighPrecision) {
 		console.log(
-			"[AI] Using Deepgram (Ultra + High Precision) for transcription..."
+			"[AI] Using Deepgram (Ultra + High Precision) for transcription...",
 		);
 		const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
 			fileBuffer,
@@ -531,7 +533,7 @@ export const transcribeAudio = async (
 				language: "es",
 				// CRITICAL: Zero data retention for HIPAA/privacy compliance
 				data_logging: false,
-			}
+			},
 		);
 
 		if (error) throw error;
@@ -566,7 +568,7 @@ export const transcribeAudio = async (
 export const sanitizeForMedicalReport = async (
 	soapNote: string,
 	sessionDate?: string,
-	therapistName?: string
+	therapistName?: string,
 ) => {
 	const prompt = `You are a medical documentation specialist. Your task is to transform a clinical SOAP note into a formal, professional medical report suitable for submission to insurance companies (obras sociales/prepagas) in Argentina.
 
@@ -623,6 +625,7 @@ IMPORTANT: Output ONLY the formatted medical report in markdown. Do not include 
 	const payload = {
 		anthropic_version: "bedrock-2023-05-31",
 		max_tokens: 2000,
+		temperature: 0,
 		messages: [
 			{
 				role: "user",

@@ -1,0 +1,154 @@
+src/components/Dashboard.tsx(1,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/Dashboard.tsx(41,26): error TS6142: Module './Settings' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/Settings.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(42,35): error TS6142: Module './SubscriptionModal' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/SubscriptionModal.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(43,28): error TS6142: Module './AlertModal' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/AlertModal.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(52,55): error TS6142: Module './AudioUploader' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/AudioUploader.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(53,35): error TS6142: Module './LiveTranscription' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/LiveTranscription.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(54,35): error TS6142: Module './UpgradeToProModal' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/UpgradeToProModal.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(56,30): error TS6142: Module './ContextPanel' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/ContextPanel.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(57,32): error TS6142: Module './SoapNoteEditor' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/SoapNoteEditor.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(58,25): error TS6142: Module './PatientsList' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/PatientsList.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(59,29): error TS6142: Module './AudioPlayer' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/AudioPlayer.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(60,36): error TS6142: Module './OnboardingTutorial' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/OnboardingTutorial.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(64,37): error TS6142: Module './ModeSelectionScreen' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/ModeSelectionScreen.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(65,35): error TS6142: Module './ManualNotesScreen' was resolved to 'C:/Users/agusb/lazo-app/client/src/components/ManualNotesScreen.tsx', but '--jsx' is not set.
+src/components/Dashboard.tsx(109,3): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(114,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(123,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(132,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(232,19): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/components/Dashboard.tsx(232,31): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/Dashboard.tsx(414,4): error TS2345: Argument of type '`He analizado el audio de **${any} ${string}**. \u00BFPor d\u00F3nde quieres empezar?`' is not assignable to parameter of type '"user" | "bot"'.
+src/components/Dashboard.tsx(424,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(434,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(437,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(440,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(442,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(540,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(541,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(542,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(552,20): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/components/Dashboard.tsx(552,32): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/Dashboard.tsx(585,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(587,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(942,3): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(952,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(961,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(973,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(975,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(995,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1003,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1004,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1007,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1016,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1021,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1022,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1036,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1045,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1050,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1053,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1060,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1068,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1082,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1083,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1086,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1091,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1096,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1102,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1108,23): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/components/Dashboard.tsx(1108,35): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/Dashboard.tsx(1125,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1136,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1147,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1163,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1167,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1168,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1171,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1176,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1179,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1182,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1192,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1202,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1208,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1218,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1222,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1225,21): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1230,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1241,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1244,20): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1267,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1276,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1284,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1285,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1286,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1303,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1308,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1309,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1318,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1319,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1328,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1329,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1338,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1339,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1348,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1349,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1358,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1359,16): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1373,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1385,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1397,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1405,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1410,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1416,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1427,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1434,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1437,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1456,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1470,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1474,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1479,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1485,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1488,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1501,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1514,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1525,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1541,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1549,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1550,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1551,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1564,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1566,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1567,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1570,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1571,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1572,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1576,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1578,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1583,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1587,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1588,14): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1590,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1610,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1627,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1629,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1630,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1640,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1643,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1655,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1666,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1667,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1677,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1680,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1692,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1693,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1704,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1713,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/Dashboard.tsx(1719,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/hooks/useUserPlan.ts(25,20): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/hooks/useUserPlan.ts(25,32): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/supabaseClient.ts(3,21): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/supabaseClient.ts(3,33): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/supabaseClient.ts(4,25): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/supabaseClient.ts(4,37): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+../node_modules/@mui/utils/requirePropFactory/requirePropFactory.d.ts(2,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/prop-types/index"' can only be default-imported using the 'esModuleInterop' flag
+../node_modules/@supabase/supabase-js/dist/index.d.cts(176,46): error TS2304: Cannot find name 'InternalSupabaseKey'.

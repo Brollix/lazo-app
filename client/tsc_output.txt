@@ -1,0 +1,206 @@
+src/components/InfoPage.tsx(1,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/InfoPage.tsx(31,3): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(38,4): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(40,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(48,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(55,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(56,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(63,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(74,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(84,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(95,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(102,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(119,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(123,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(130,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(131,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(131,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; md: number; lg: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; md: number; lg: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(132,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(133,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(134,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(140,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(147,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(148,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(154,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(172,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(173,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(179,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(186,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(187,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(193,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(201,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(202,20): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(203,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(206,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(222,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(223,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(224,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(231,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(232,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(238,12): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(264,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(268,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(275,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(276,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(276,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(277,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(285,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(295,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(296,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(298,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(299,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(301,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(302,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(304,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(305,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(309,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(309,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(310,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(318,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(328,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(329,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(331,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(332,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(334,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(335,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(339,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(339,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(340,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(348,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(358,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(359,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(361,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(362,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(364,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(365,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(367,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(368,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(373,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(384,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(388,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(395,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(396,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(403,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(405,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(415,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(416,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(416,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(417,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(418,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(424,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(424,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(425,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(426,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(432,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(432,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(433,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(434,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(440,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(440,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; sm: number; md: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; sm: number; md: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(441,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(442,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(450,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(451,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(458,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(461,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(462,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(467,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(475,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(482,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(485,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(486,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(491,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(492,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(498,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(505,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(508,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(510,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(514,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(525,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(529,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(536,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(537,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(537,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<...>): Element', gave the following error.
+    Property 'component' is missing in type '{ children: Element; item: true; xs: number; md: number; lg: number; }' but required in type '{ component: ElementType<any, keyof IntrinsicElements>; }'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element', gave the following error.
+    Type '{ children: Element; item: true; xs: number; md: number; lg: number; }' is not assignable to type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & { sx?: SxProps<Theme>; } & SystemProps<Theme> & Omit<Omit<DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>, "ref"> & { ...; }, StandardSystemKeys | ... 1 more ... | keyof GridBaseProps>'.
+src/components/InfoPage.tsx(538,8): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(539,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(540,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(557,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(558,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(564,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(574,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(575,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(592,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(593,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(599,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(610,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(611,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(628,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(629,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(635,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(646,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(647,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(664,10): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(665,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(671,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(686,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(690,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(697,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(698,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(704,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(706,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(708,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(715,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(716,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(720,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(723,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(727,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(735,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(739,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(742,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/InfoPage.tsx(746,6): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+../node_modules/@mui/utils/requirePropFactory/requirePropFactory.d.ts(2,8): error TS1259: Module '"C:/Users/agusb/lazo-app/node_modules/@types/prop-types/index"' can only be default-imported using the 'esModuleInterop' flag

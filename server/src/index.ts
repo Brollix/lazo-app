@@ -319,6 +319,7 @@ app.post(
 
 					// Helper: extract text and basic diarization logic
 					let transcriptText = "";
+					let sessionDuration = 0; // Duration in seconds
 
 					// Normalized structure for processing
 					interface TranscriptWord {
@@ -344,6 +345,8 @@ app.post(
 						const alt = (transcriptionResult as any).results.channels[0]
 							.alternatives[0];
 						transcriptText = alt.transcript;
+						sessionDuration =
+							(transcriptionResult as any).metadata?.duration || 0;
 
 						// Deepgram provides words with speaker labels if diarize=true
 						if (alt.words) {
@@ -376,6 +379,7 @@ app.post(
 					// 2. GROQ / WHISPER (Free/Pro Plan)
 					else if ((transcriptionResult as any).segments) {
 						transcriptText = (transcriptionResult as any).text;
+						sessionDuration = (transcriptionResult as any).duration || 0;
 						// Groq (Whisper) standard response doesn't have speaker diarization usually
 						const segments = (transcriptionResult as any).segments;
 
@@ -670,6 +674,7 @@ app.post(
 						status: "completed",
 						temp_result: resultData,
 						temp_result_expires_at: expiresAt,
+						duration: sessionDuration, // Save unencrypted duration for admin stats
 					});
 
 					console.log(
@@ -810,6 +815,134 @@ app.post("/api/clear-temp-result", async (req: any, res: any) => {
 		console.error("Error clearing temp result:", error);
 		res.status(500).json({
 			error: "Error clearing temp result",
+			details: error.message,
+		});
+	}
+});
+
+// NEW: Live Transcription - Process audio chunks in real-time
+app.post(
+	"/api/transcribe-chunk",
+	upload.single("audio"),
+	async (req: any, res: any) => {
+		try {
+			if (!req.file) {
+				return res
+					.status(400)
+					.json({ message: "No se proporcionó ningún archivo de audio" });
+			}
+
+			const userId = req.body.userId || "anonymous";
+			const chunkIndex = parseInt(req.body.chunkIndex) || 0;
+			const sessionId = req.body.sessionId; // Optional: for tracking live session
+
+			console.log(
+				`[LiveTranscribe] User: ${userId}, Chunk: ${chunkIndex}, Size: ${req.file.size} bytes`,
+			);
+
+			// Check and renew monthly credits if needed
+			await renewMonthlyCredits(userId);
+
+			// Get fresh profile after potential renewal
+			const profile = await getUserProfile(userId);
+
+			// CREDIT VERIFICATION (same logic as /api/process-session)
+			if (profile.plan_type === "free") {
+				if (profile.credits_remaining <= 0) {
+					return res.status(403).json({
+						message: "monthly_limit_exceeded",
+						error:
+							"Agotaste tus 3 créditos gratuitos. Actualiza a Pro para 100 sesiones/mes.",
+						upgradeRequired: true,
+						suggestedPlan: "pro",
+					});
+				}
+			}
+
+			// Transcribe chunk with Groq (fast, cost-effective)
+			console.log(`[LiveTranscribe] Transcribing chunk ${chunkIndex}...`);
+			const transcriptionResult = await transcribeAudio(
+				req.file.buffer,
+				profile.plan_type as any,
+				false, // Always use standard mode (Groq) for live transcription
+				req.file.mimetype,
+			);
+
+			// Extract text from transcription result
+			let transcriptText = "";
+			if ((transcriptionResult as any).text) {
+				transcriptText = (transcriptionResult as any).text;
+			} else if ((transcriptionResult as any).results?.channels?.[0]) {
+				const alt = (transcriptionResult as any).results.channels[0]
+					.alternatives[0];
+				transcriptText = alt.transcript;
+			}
+
+			console.log(
+				`[LiveTranscribe] Chunk ${chunkIndex} transcribed: ${transcriptText.substring(0, 50)}...`,
+			);
+
+			// Return transcription immediately
+			res.json({
+				success: true,
+				chunkIndex: chunkIndex,
+				transcript: transcriptText,
+				timestamp: Date.now(),
+			});
+		} catch (error: any) {
+			console.error("Error transcribing chunk:", error);
+			res.status(500).json({
+				message: "Error al transcribir el chunk de audio",
+				error: error.message,
+			});
+		}
+	},
+);
+
+// NEW: Live Psychological Analysis (Ultra Plan - Optional)
+app.post("/api/analyze-live", async (req: any, res: any) => {
+	try {
+		const { userId, accumulatedTranscript, patientName } = req.body;
+
+		if (!userId || !accumulatedTranscript) {
+			return res.status(400).json({
+				error: "Missing required parameters: userId, accumulatedTranscript",
+			});
+		}
+
+		console.log(
+			`[LiveAnalysis] User: ${userId}, Transcript length: ${accumulatedTranscript.length} chars`,
+		);
+
+		// Verify user has Ultra plan
+		const profile = await getUserProfile(userId);
+		if (profile.plan_type !== "ultra") {
+			return res.status(403).json({
+				error: "Live psychological analysis is exclusive to Ultra Plan",
+				upgradeRequired: true,
+				requiredPlan: "ultra",
+			});
+		}
+
+		// Use performAiAction with "psicologico" action type
+		const result = await performAiAction(
+			accumulatedTranscript,
+			"psicologico",
+			"Spanish",
+			patientName || "el paciente",
+		);
+
+		console.log(`[LiveAnalysis] Analysis completed for user ${userId}`);
+
+		res.json({
+			success: true,
+			analysis: result.result,
+			timestamp: Date.now(),
+		});
+	} catch (error: any) {
+		console.error("Error in live analysis:", error);
+		res.status(500).json({
+			error: "Error al analizar la transcripción en vivo",
 			details: error.message,
 		});
 	}

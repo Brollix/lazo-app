@@ -34,6 +34,9 @@ import {
 	MenuBook,
 	NotificationsActive as NotifyIcon,
 	AdminPanelSettings as AdminIcon,
+	Mic,
+	Edit,
+	GraphicEq,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -57,6 +60,8 @@ import { OnboardingTutorial } from "./OnboardingTutorial";
 import { useEncryption } from "../hooks/useEncryption";
 import { supabase } from "../supabaseClient";
 import ReactMarkdown from "react-markdown";
+import { ModeSelectionScreen } from "./ModeSelectionScreen";
+import { ManualNotesScreen } from "./ManualNotesScreen";
 
 interface ChatMessage {
 	id: string;
@@ -166,6 +171,9 @@ export const Dashboard: React.FC<{
 	const [userAppPlan, setUserAppPlan] = useState<string | null>(null);
 	const [userEmail, setUserEmail] = useState<string>("");
 	const [userSalt, setUserSalt] = useState<string | null>(null);
+	const [sessionMode, setSessionMode] = useState<null | "audio" | "notes">(
+		null,
+	); // Mode selection
 	const [audioFile, setAudioFile] = useState<string | null>(null); // null = "listening/empty", string = "playback"
 	const [soapContent, setSoapContent] = useState("");
 	const [sessionData, setSessionData] = useState<ProcessSessionResponse | null>(
@@ -272,12 +280,13 @@ export const Dashboard: React.FC<{
 			// If initialSession is provided, load it
 			if (initialSession) {
 				handleLoadSession(initialSession);
+				setSessionMode("audio"); // Set to audio mode when loading existing session
 			} else {
 				// Otherwise try draft, but don't auto-open sidebar anymore
 				const draftKey = getStorageKey();
 				if (!draftKey || !localStorage.getItem(draftKey)) {
-					// If no draft and no session, open upload modal
-					setOpenUploadModal(true);
+					// If no draft and no session, show mode selection
+					setSessionMode(null);
 				}
 			}
 		} else {
@@ -892,6 +901,25 @@ export const Dashboard: React.FC<{
 		refreshPlan();
 	};
 
+	const handleSelectAudioMode = () => {
+		setSessionMode("audio");
+		handleUploadCheck(); // Open the upload modal
+	};
+
+	const handleSelectNotesMode = () => {
+		setSessionMode("notes");
+	};
+
+	const handleBackToModeSelection = () => {
+		setSessionMode(null);
+		// Clear any session data
+		setSessionData(null);
+		setSoapContent("");
+		setMessages([]);
+		setUsedActions(new Set());
+		setAudioFile(null);
+	};
+
 	return (
 		<Box
 			sx={{
@@ -901,694 +929,809 @@ export const Dashboard: React.FC<{
 				bgcolor: "background.default",
 			}}
 		>
-			{/* Header */}
-			<Paper
-				elevation={0}
-				square
-				sx={{
-					height: { xs: "auto", sm: themeComponents.dashboard.headerHeight },
-					px: { xs: 2, sm: 3 },
-					py: { xs: 1.5, sm: 0 },
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-					borderBottom: "1px solid",
-					borderColor: "divider",
-					bgcolor: backgrounds.glass.header,
-					backdropFilter: "blur(12px)",
-					position: "sticky",
-					top: 0,
-					zIndex: 10,
-				}}
-			>
-				{/* Left: Back button */}
-				<Box
-					sx={{
-						display: { xs: "flex", sm: "flex" },
-						alignItems: "center",
-						minWidth: { xs: "auto", sm: 120 },
-					}}
-				>
-					{onBack && (
-						<IconButton onClick={onBack} size="small">
-							<ChevronLeft />
-						</IconButton>
-					)}
-					<IconButton
-						onClick={() => setShowSessionsSidebar(!showSessionsSidebar)}
-						size="small"
-						sx={{
-							ml: 1,
-							color: showSessionsSidebar ? "primary.main" : "inherit",
-						}}
-						title="Historial de Sesiones"
-					>
-						<History />
-					</IconButton>
-				</Box>
-
-				{/* Center: Patient name */}
-				<Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
-					<Typography
-						variant="h4"
-						sx={{
-							fontWeight: typographyExtended.fontWeights.bold,
-							letterSpacing: typographyExtended.letterSpacing.tight,
-							color: "text.primary",
-							fontSize: { xs: "1.25rem", sm: "1.5rem", md: "2rem" },
-						}}
-					>
-						{patient ? patient.name : "Nueva Sesión"}
-					</Typography>
-				</Box>
-
-				{/* Right: Settings icon */}
-				<Box
-					sx={{
-						display: "flex",
-						alignItems: "center",
-						gap: 1,
-						minWidth: { xs: "auto", sm: 120 },
-						justifyContent: "flex-end",
-					}}
-				>
-					<IconButton
-						onClick={() => setSettingsOpen(true)}
-						size="small"
-						sx={{ borderRadius: 2 }}
-					>
-						<SettingsIcon />
-					</IconButton>
-					{isAdmin && onNavigateToAdmin && (
-						<IconButton
-							onClick={onNavigateToAdmin}
-							size="small"
-							color="primary"
-							title="Panel de Administración"
-							sx={{ borderRadius: 2 }}
-						>
-							<AdminIcon />
-						</IconButton>
-					)}
-				</Box>
-			</Paper>
-
-			{/* Global Announcement Bar */}
-			{announcement && (
-				<Box
-					sx={{
-						bgcolor: "primary.main",
-						color: "primary.contrastText",
-						px: 3,
-						py: 1,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						gap: 1.5,
-						boxShadow: (theme) => theme.shadows[2],
-						zIndex: 9,
-					}}
-				>
-					<NotifyIcon sx={{ fontSize: 20 }} />
-					<Typography variant="body2" fontWeight="500">
-						{announcement.message}
-					</Typography>
-					<IconButton
-						size="small"
-						onClick={() => setAnnouncement(null)}
-						sx={{ color: "inherit", ml: 2 }}
-					>
-						<ChevronLeft sx={{ transform: "rotate(90deg)" }} />
-					</IconButton>
-				</Box>
+			{/* Mode Selection Screen */}
+			{sessionMode === null && (
+				<ModeSelectionScreen
+					patient={patient}
+					onSelectAudioMode={handleSelectAudioMode}
+					onSelectNotesMode={handleSelectNotesMode}
+				/>
 			)}
 
-			<Settings
-				open={settingsOpen}
-				onClose={() => setSettingsOpen(false)}
-				onLogout={onLogout}
-			/>
-
-			<SubscriptionModal
-				open={subscriptionModalOpen}
-				onClose={() => {
-					setSubscriptionModalOpen(false);
-					// Re-fetch plan to see if they subscribed
-					if (userId) {
-						const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
-						fetch(`${apiUrl}/api/user-plan/${userId}`)
-							.then((res) => res.json())
-							.then((data) => {
-								setUserAppPlan(data.plan_type);
-								// Auto-open upload modal if they now have a plan
-								if (data.plan_type) {
-									setOpenUploadModal(true);
-								}
-							});
-					}
-				}}
-				userId={userId || ""}
-				userEmail={userEmail}
-			/>
-
-			{/* Main Content - Responsive Layout */}
-			<Box
-				sx={{
-					flexGrow: 1,
-					display: "flex",
-					flexDirection: { xs: "column", lg: "row" },
-					p: { xs: 1, sm: 2 },
-					gap: { xs: 1, sm: 2 },
-					overflow: { xs: "auto", lg: "hidden" },
-				}}
-			>
-				{/* Column 1: SOAP Editor (Left) */}
-				<SoapNoteEditor
-					content={soapContent}
-					onChange={setSoapContent}
+			{/* Manual Notes Screen */}
+			{sessionMode === "notes" && (
+				<ManualNotesScreen
+					patient={patient}
+					onBack={handleBackToModeSelection}
 					onSave={handleSaveSession}
 					onDownload={handleExportTxt}
-					method={sessionData?.noteFormat}
-					isFocused={isFocusMode}
-					onToggleFocus={() => setIsFocusMode(!isFocusMode)}
+					content={soapContent}
+					onChange={setSoapContent}
+					userId={userId || undefined}
+					userPlan={userAppPlan}
 				/>
+			)}
 
-				{/* Column 2: Command Center (Center) */}
-				<Paper
-					elevation={0}
-					sx={{
-						flex: themeComponents.dashboard.panelFlex.center,
-						display: isFocusMode ? "none" : "flex", // Hide center in focus mode
-						flexDirection: "column",
-						borderRadius: 4,
-						overflow: "hidden",
-						border: "1px solid",
-						borderColor: "divider",
-						boxShadow: extendedShadows.panel,
-						bgcolor: backgrounds.glass.panel,
-						backdropFilter: "blur(16px)",
-					}}
-				>
-					{/* Draft Confirmation Dialog */}
-					<Dialog
-						open={draftDialogOpen}
-						onClose={() => handleConfirmDraft(true)} // Default to resume if clicked outside? Or block.
+			{/* Audio Dashboard Content - Only show when mode is 'audio' */}
+			{sessionMode === "audio" && (
+				<>
+					{/* Header */}
+					<Paper
+						elevation={0}
+						square
+						sx={{
+							height: {
+								xs: "auto",
+								sm: themeComponents.dashboard.headerHeight,
+							},
+							px: { xs: 2, sm: 3 },
+							py: { xs: 1.5, sm: 0 },
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "space-between",
+							borderBottom: "1px solid",
+							borderColor: "divider",
+							bgcolor: backgrounds.glass.header,
+							backdropFilter: "blur(12px)",
+							position: "sticky",
+							top: 0,
+							zIndex: 10,
+						}}
 					>
-						<DialogContent>
-							<Typography variant="h6" gutterBottom>
-								Sesión No Guardada Encontrada
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								Tienes una sesión anterior que no fue guardada. ¿Quieres
-								continuar con ella o empezar una nueva?
-							</Typography>
-						</DialogContent>
+						{/* Left: Back button */}
 						<Box
-							sx={{ p: 2, display: "flex", justifyContent: "flex-end", gap: 1 }}
+							sx={{
+								display: { xs: "flex", sm: "flex" },
+								alignItems: "center",
+								minWidth: { xs: "auto", sm: 120 },
+							}}
 						>
-							<Button color="error" onClick={() => handleConfirmDraft(false)}>
-								Empezar Nueva (Borrar anterior)
-							</Button>
-							<Button
-								variant="contained"
-								onClick={() => handleConfirmDraft(true)}
+							{onBack && (
+								<IconButton onClick={onBack} size="small">
+									<ChevronLeft />
+								</IconButton>
+							)}
+							<IconButton
+								onClick={() => setShowSessionsSidebar(!showSessionsSidebar)}
+								size="small"
+								sx={{
+									ml: 1,
+									color: showSessionsSidebar ? "primary.main" : "inherit",
+								}}
+								title="Historial de Sesiones"
 							>
-								Continuar Sesión
-							</Button>
+								<History />
+							</IconButton>
 						</Box>
-					</Dialog>
 
-					{/* Top Section: Audio Player or New Session Button */}
-					<Box
-						sx={{
-							p: 2,
-							bgcolor: "background.paper",
-							borderBottom: "1px solid",
-							borderColor: "divider",
-							flexShrink: 0,
-						}}
-					>
-						{audioFile ?
-							<AudioPlayer
-								url={audioFile}
-								biometry={sessionData?.biometry}
-								markers={sessionData?.analysis.key_moments}
-							/>
-						: sessionData ?
-							<Box
+						{/* Center: Patient name */}
+						<Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
+							<Typography
+								variant="h4"
 								sx={{
-									p: 2,
-									textAlign: "center",
-									bgcolor: "action.hover",
-									borderRadius: 2,
-									border: "1px dashed",
-									borderColor: "primary.main",
+									fontWeight: typographyExtended.fontWeights.bold,
+									letterSpacing: typographyExtended.letterSpacing.tight,
+									color: "text.primary",
+									fontSize: { xs: "1.25rem", sm: "1.5rem", md: "2rem" },
 								}}
 							>
-								<Typography variant="body2" color="primary" sx={{ mb: 1 }}>
-									Sesión restaurada. Sube el audio nuevamente para habilitar la
-									reproducción.
-								</Typography>
-								<Button
-									size="small"
-									variant="outlined"
-									startIcon={<CloudUpload />}
-									onClick={() => fileInputRef.current?.click()}
-								>
-									Vincular Audio de Nuevo
-								</Button>
-								<input
-									type="file"
-									ref={fileInputRef}
-									style={{ display: "none" }}
-									accept="audio/*"
-									onChange={(e) => {
-										const file = e.target.files?.[0];
-										if (file) handleAudioSelected(file);
-									}}
-								/>
-							</Box>
-						:	<Button
-								fullWidth
-								variant="outlined"
-								startIcon={<CloudUpload />}
-								onClick={handleUploadCheck}
-								sx={{
-									py: 2,
-									borderRadius: 4,
-									borderStyle: "dashed",
-									borderWidth: 2,
-									"&:hover": {
-										borderStyle: "dashed",
-										borderWidth: 2,
-										bgcolor:
-											theme.palette.mode === "light" ?
-												"primary.light"
-											:	backgrounds.hover.primaryLight,
-									},
-								}}
-							>
-								Subir Audio de Sesión
-							</Button>
-						}
-					</Box>
+								{patient ? patient.name : "Nueva Sesión"}
+							</Typography>
+						</Box>
 
-					{/* Middle: AI Assistant Header & Quick Actions */}
-					<Box
-						sx={{
-							p: 1.5,
-							borderBottom: "1px solid",
-							borderColor: "divider",
-							bgcolor: "background.default",
-							flexShrink: 0,
-						}}
-					>
+						{/* Right: Settings icon */}
 						<Box
 							sx={{
 								display: "flex",
 								alignItems: "center",
-								justifyContent: "space-between",
-								mb: sessionData ? 1.5 : 0,
+								gap: 1,
+								minWidth: { xs: "auto", sm: 120 },
+								justifyContent: "flex-end",
 							}}
 						>
-							<Stack direction="row" alignItems="center" gap={1}>
-								<SmartToy color="primary" fontSize="small" />
-								<Typography
-									variant="subtitle2"
-									sx={{
-										fontWeight: typographyExtended.fontWeights.bold,
-										color: "primary.main",
-										textTransform: "uppercase",
-										fontSize: typographyExtended.fontSizes.sm,
-										letterSpacing: typographyExtended.letterSpacing.relaxed,
-									}}
-								>
-									Asistente IA
-								</Typography>
-							</Stack>
-						</Box>
-
-						{/* Quick Actions Toolbar */}
-						{sessionData && (
-							<Stack
-								direction="row"
-								spacing={1}
-								sx={{ overflowX: "auto", pb: 0.5 }}
+							<IconButton
+								onClick={() => setSettingsOpen(true)}
+								size="small"
+								sx={{ borderRadius: 2 }}
 							>
-								<Chip
-									icon={<Assignment fontSize="small" />}
-									label="Nota Clínica"
-									onClick={() => handleQuickAction("soap")}
+								<SettingsIcon />
+							</IconButton>
+							{isAdmin && onNavigateToAdmin && (
+								<IconButton
+									onClick={onNavigateToAdmin}
 									size="small"
-									clickable
 									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("soap")}
-								/>
-								<Chip
-									icon={<DescriptionIcon fontSize="small" />}
-									label="Resumen"
-									onClick={() => handleQuickAction("resumen")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("resumen")}
-								/>
-								<Chip
-									icon={<TaskAlt fontSize="small" />}
-									label="Tareas"
-									onClick={() => handleQuickAction("tareas")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("tareas")}
-								/>
-								<Chip
-									icon={<Psychology fontSize="small" />}
-									label="Psicológico"
-									onClick={() => handleQuickAction("psicologico")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("psicologico")}
-								/>
-								<Chip
-									icon={<SmartToy fontSize="small" />}
-									label="Intervenciones"
-									onClick={() => handleQuickAction("intervencion")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("intervencion")}
-								/>
-								<Chip
-									icon={<Category fontSize="small" />}
-									label="Ánimo"
-									onClick={() => handleQuickAction("animo")}
-									size="small"
-									clickable
-									color="primary"
-									variant="outlined"
-									disabled={isActionLoading || usedActions.has("animo")}
-								/>
-							</Stack>
-						)}
-					</Box>
+									title="Panel de Administración"
+									sx={{ borderRadius: 2 }}
+								>
+									<AdminIcon />
+								</IconButton>
+							)}
+						</Box>
+					</Paper>
 
-					{/* Chat Area */}
+					{/* Global Announcement Bar */}
+					{announcement && (
+						<Box
+							sx={{
+								bgcolor: "primary.main",
+								color: "primary.contrastText",
+								px: 3,
+								py: 1,
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								gap: 1.5,
+								boxShadow: (theme) => theme.shadows[2],
+								zIndex: 9,
+							}}
+						>
+							<NotifyIcon sx={{ fontSize: 20 }} />
+							<Typography variant="body2" fontWeight="500">
+								{announcement.message}
+							</Typography>
+							<IconButton
+								size="small"
+								onClick={() => setAnnouncement(null)}
+								sx={{ color: "inherit", ml: 2 }}
+							>
+								<ChevronLeft sx={{ transform: "rotate(90deg)" }} />
+							</IconButton>
+						</Box>
+					)}
+
+					<Settings
+						open={settingsOpen}
+						onClose={() => setSettingsOpen(false)}
+						onLogout={onLogout}
+					/>
+
+					<SubscriptionModal
+						open={subscriptionModalOpen}
+						onClose={() => {
+							setSubscriptionModalOpen(false);
+							// Re-fetch plan to see if they subscribed
+							if (userId) {
+								const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+								fetch(`${apiUrl}/api/user-plan/${userId}`)
+									.then((res) => res.json())
+									.then((data) => {
+										setUserAppPlan(data.plan_type);
+										// Auto-open upload modal if they now have a plan
+										if (data.plan_type) {
+											setOpenUploadModal(true);
+										}
+									});
+							}
+						}}
+						userId={userId || ""}
+						userEmail={userEmail}
+					/>
+
+					{/* Main Content - Responsive Layout */}
 					<Box
 						sx={{
-							flex: 1, // Take all remaining space
-							p: 3,
-							bgcolor: "background.paper",
-							overflowY: "auto",
+							flexGrow: 1,
 							display: "flex",
-							flexDirection: "column",
-							gap: 2,
+							flexDirection: { xs: "column", lg: "row" },
+							p: { xs: 1, sm: 2 },
+							gap: { xs: 1, sm: 2 },
+							overflow: { xs: "auto", lg: "hidden" },
 						}}
 					>
-						{messages.length === 0 ?
+						{/* Column 1: SOAP Editor (Left) */}
+						<SoapNoteEditor
+							content={soapContent}
+							onChange={setSoapContent}
+							onSave={handleSaveSession}
+							onDownload={handleExportTxt}
+							method={sessionData?.noteFormat}
+							isFocused={isFocusMode}
+							onToggleFocus={() => setIsFocusMode(!isFocusMode)}
+						/>
+
+						{/* Column 2: Command Center (Center) */}
+						<Paper
+							elevation={0}
+							sx={{
+								flex: themeComponents.dashboard.panelFlex.center,
+								display: isFocusMode ? "none" : "flex", // Hide center in focus mode
+								flexDirection: "column",
+								borderRadius: 4,
+								overflow: "hidden",
+								border: "1px solid",
+								borderColor: "divider",
+								boxShadow: extendedShadows.panel,
+								bgcolor: backgrounds.glass.panel,
+								backdropFilter: "blur(16px)",
+							}}
+						>
+							{/* Draft Confirmation Dialog */}
+							<Dialog
+								open={draftDialogOpen}
+								onClose={() => handleConfirmDraft(true)} // Default to resume if clicked outside? Or block.
+							>
+								<DialogContent>
+									<Typography variant="h6" gutterBottom>
+										Sesión No Guardada Encontrada
+									</Typography>
+									<Typography variant="body2" color="text.secondary">
+										Tienes una sesión anterior que no fue guardada. ¿Quieres
+										continuar con ella o empezar una nueva?
+									</Typography>
+								</DialogContent>
+								<Box
+									sx={{
+										p: 2,
+										display: "flex",
+										justifyContent: "flex-end",
+										gap: 1,
+									}}
+								>
+									<Button
+										color="error"
+										onClick={() => handleConfirmDraft(false)}
+									>
+										Empezar Nueva (Borrar anterior)
+									</Button>
+									<Button
+										variant="contained"
+										onClick={() => handleConfirmDraft(true)}
+									>
+										Continuar Sesión
+									</Button>
+								</Box>
+							</Dialog>
+
+							{/* Top Section: Audio Player or New Session Button */}
 							<Box
 								sx={{
-									flex: 1,
+									p: 2,
+									bgcolor: "background.paper",
+									borderBottom: "1px solid",
+									borderColor: "divider",
+									flexShrink: 0,
+								}}
+							>
+								{audioFile ?
+									<AudioPlayer
+										url={audioFile}
+										biometry={sessionData?.biometry}
+										markers={sessionData?.analysis.key_moments}
+									/>
+								: sessionData ?
+									<Box
+										sx={{
+											p: 2,
+											textAlign: "center",
+											bgcolor: "action.hover",
+											borderRadius: 2,
+											border: "1px dashed",
+											borderColor: "primary.main",
+										}}
+									>
+										<Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+											Sesión restaurada. Sube el audio nuevamente para habilitar
+											la reproducción.
+										</Typography>
+										<Button
+											size="small"
+											variant="outlined"
+											startIcon={<CloudUpload />}
+											onClick={() => fileInputRef.current?.click()}
+										>
+											Vincular Audio de Nuevo
+										</Button>
+										<input
+											type="file"
+											ref={fileInputRef}
+											style={{ display: "none" }}
+											accept="audio/*"
+											onChange={(e) => {
+												const file = e.target.files?.[0];
+												if (file) handleAudioSelected(file);
+											}}
+										/>
+									</Box>
+								:	<Button
+										fullWidth
+										variant="outlined"
+										startIcon={<CloudUpload />}
+										onClick={handleUploadCheck}
+										sx={{
+											py: 2,
+											borderRadius: 4,
+											borderStyle: "dashed",
+											borderWidth: 2,
+											"&:hover": {
+												borderStyle: "dashed",
+												borderWidth: 2,
+												bgcolor:
+													theme.palette.mode === "light" ?
+														"primary.light"
+													:	backgrounds.hover.primaryLight,
+											},
+										}}
+									>
+										Subir Audio de Sesión
+									</Button>
+								}
+							</Box>
+
+							{/* Middle: AI Assistant Header & Quick Actions */}
+							<Box
+								sx={{
+									p: 1.5,
+									borderBottom: "1px solid",
+									borderColor: "divider",
+									bgcolor: "background.default",
+									flexShrink: 0,
+								}}
+							>
+								<Box
+									sx={{
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "space-between",
+										mb: sessionData ? 1.5 : 0,
+									}}
+								>
+									<Stack direction="row" alignItems="center" gap={1}>
+										<SmartToy color="primary" fontSize="small" />
+										<Typography
+											variant="subtitle2"
+											sx={{
+												fontWeight: typographyExtended.fontWeights.bold,
+												color: "primary.main",
+												textTransform: "uppercase",
+												fontSize: typographyExtended.fontSizes.sm,
+												letterSpacing: typographyExtended.letterSpacing.relaxed,
+											}}
+										>
+											Asistente IA
+										</Typography>
+									</Stack>
+								</Box>
+
+								{/* Quick Actions Toolbar */}
+								{sessionData && (
+									<Stack
+										direction="row"
+										spacing={1}
+										sx={{ overflowX: "auto", pb: 0.5 }}
+									>
+										<Chip
+											icon={<Assignment fontSize="small" />}
+											label="Nota Clínica"
+											onClick={() => handleQuickAction("soap")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={isActionLoading || usedActions.has("soap")}
+										/>
+										<Chip
+											icon={<DescriptionIcon fontSize="small" />}
+											label="Resumen"
+											onClick={() => handleQuickAction("resumen")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={isActionLoading || usedActions.has("resumen")}
+										/>
+										<Chip
+											icon={<TaskAlt fontSize="small" />}
+											label="Tareas"
+											onClick={() => handleQuickAction("tareas")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={isActionLoading || usedActions.has("tareas")}
+										/>
+										<Chip
+											icon={<Psychology fontSize="small" />}
+											label="Psicológico"
+											onClick={() => handleQuickAction("psicologico")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={
+												isActionLoading || usedActions.has("psicologico")
+											}
+										/>
+										<Chip
+											icon={<SmartToy fontSize="small" />}
+											label="Intervenciones"
+											onClick={() => handleQuickAction("intervencion")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={
+												isActionLoading || usedActions.has("intervencion")
+											}
+										/>
+										<Chip
+											icon={<Category fontSize="small" />}
+											label="Ánimo"
+											onClick={() => handleQuickAction("animo")}
+											size="small"
+											clickable
+											color="primary"
+											variant="outlined"
+											disabled={isActionLoading || usedActions.has("animo")}
+										/>
+									</Stack>
+								)}
+							</Box>
+
+							{/* Chat Area */}
+							<Box
+								sx={{
+									flex: 1, // Take all remaining space
+									p: 3,
+									bgcolor: "background.paper",
+									overflowY: "auto",
+									display: "flex",
+									flexDirection: "column",
+									gap: 2,
+								}}
+							>
+								{messages.length === 0 ?
+									<Box
+										sx={{
+											flex: 1,
+											display: "flex",
+											flexDirection: "column",
+											alignItems: "center",
+											justifyContent: "center",
+											opacity: opacity.medium,
+											textAlign: "center",
+											px: 4,
+										}}
+									>
+										<SmartToy
+											sx={{
+												fontSize: 48,
+												color: "primary.main",
+												mb: 2,
+												opacity: opacity.low,
+											}}
+										/>
+										<Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+											{patient ?
+												`Asistente de sesión con ${patient.name}`
+											:	"Asistente Lazo"}
+										</Typography>
+										<Typography variant="body2" color="text.secondary">
+											Sube el audio de la sesión para comenzar el análisis
+											automático y generar tu nota SOAP.
+										</Typography>
+									</Box>
+								:	messages.map((msg) => (
+										<Box
+											key={msg.id}
+											sx={{
+												alignSelf:
+													msg.sender === "user" ? "flex-end" : "flex-start",
+												maxWidth: themeComponents.chatMessage.maxWidth,
+												display: "flex",
+												gap: 1.5,
+											}}
+										>
+											{msg.sender === "bot" && (
+												<Avatar
+													sx={{
+														width: themeComponents.chatMessage.avatarSize,
+														height: themeComponents.chatMessage.avatarSize,
+														bgcolor: "primary.main",
+													}}
+												>
+													<SmartToy sx={{ fontSize: 16 }} />
+												</Avatar>
+											)}
+											<Paper
+												elevation={0}
+												sx={{
+													p: 2,
+													bgcolor:
+														msg.sender === "user" ?
+															"primary.main"
+														:	"background.default",
+													color:
+														msg.sender === "user" ?
+															"primary.contrastText"
+														:	"text.primary",
+													borderRadius:
+														msg.sender === "user" ?
+															themeComponents.chatMessage.borderRadius.user
+														:	themeComponents.chatMessage.borderRadius.bot,
+												}}
+											>
+												{typeof msg.content === "string" ?
+													<Box
+														sx={{
+															"& p": {
+																m: 0,
+																fontSize: typographyExtended.fontSizes.md,
+															},
+															"& h3": {
+																m: "0 0 8px 0",
+																fontSize: typographyExtended.fontSizes.lg,
+																fontWeight: typographyExtended.fontWeights.bold,
+															},
+															"& ul": { m: "8px 0", pl: 2 },
+														}}
+													>
+														<ReactMarkdown>{msg.content}</ReactMarkdown>
+													</Box>
+												:	msg.content}
+												{msg.actions === "analysis-actions" ?
+													<AnalysisChatActions
+														usedActions={usedActions}
+														onAction={handleQuickAction}
+													/>
+												: msg.actions ?
+													<Box sx={{ mt: 1 }}>{msg.actions}</Box>
+												:	null}
+											</Paper>
+										</Box>
+									))
+								}
+								<div ref={messagesEndRef} />
+							</Box>
+
+							<Box
+								sx={{
+									p: 2,
+									borderTop: "1px solid",
+									borderColor: "divider",
+									bgcolor: "background.paper",
 									display: "flex",
 									flexDirection: "column",
 									alignItems: "center",
-									justifyContent: "center",
-									opacity: opacity.medium,
-									textAlign: "center",
-									px: 4,
+									gap: 1,
+									flexShrink: 0,
 								}}
 							>
-								<SmartToy
+								<Typography
+									variant="caption"
+									color="text.secondary"
 									sx={{
-										fontSize: 48,
-										color: "primary.main",
-										mb: 2,
-										opacity: opacity.low,
+										fontStyle: "italic",
+										textAlign: "center",
+										width: "100%",
 									}}
-								/>
-								<Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-									{patient ?
-										`Asistente de sesión con ${patient.name}`
-									:	"Asistente Lazo"}
-								</Typography>
-								<Typography variant="body2" color="text.secondary">
-									Sube el audio de la sesión para comenzar el análisis
-									automático y generar tu nota SOAP.
+								>
+									Selecciona una de las acciones predefinidas arriba para
+									analizar la sesión.
 								</Typography>
 							</Box>
-						:	messages.map((msg) => (
+						</Paper>
+
+						{/* Column 3: Context Panel (Right) */}
+						{!isFocusMode && !showSessionsSidebar && (
+							<ContextPanel
+								onAddToNote={(text) => {
+									setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
+								}}
+								analysisData={sessionData ? sessionData.analysis : undefined}
+								biometry={sessionData ? sessionData.biometry : undefined}
+							/>
+						)}
+
+						{/* Column 3 Alternate: Sessions History Sidebar */}
+						{!isFocusMode && showSessionsSidebar && (
+							<Paper
+								elevation={0}
+								sx={{
+									flex: { xs: "0 0 auto", lg: 3 },
+									display: "flex",
+									flexDirection: "column",
+									borderRadius: 4,
+									overflow: "hidden",
+									border: "1px solid",
+									borderColor: "divider",
+									boxShadow: extendedShadows.panel,
+									height: "100%",
+									bgcolor: backgrounds.glass.panel,
+									backdropFilter: "blur(16px)",
+								}}
+							>
 								<Box
-									key={msg.id}
 									sx={{
-										alignSelf:
-											msg.sender === "user" ? "flex-end" : "flex-start",
-										maxWidth: themeComponents.chatMessage.maxWidth,
-										display: "flex",
-										gap: 1.5,
+										p: 2,
+										borderBottom: "1px solid",
+										borderColor: "divider",
+										bgcolor: "background.default",
 									}}
 								>
-									{msg.sender === "bot" && (
-										<Avatar
+									<Stack direction="row" alignItems="center" gap={1}>
+										<History color="primary" fontSize="small" />
+										<Typography
+											variant="subtitle2"
 											sx={{
-												width: themeComponents.chatMessage.avatarSize,
-												height: themeComponents.chatMessage.avatarSize,
-												bgcolor: "primary.main",
+												fontWeight: 700,
+												textTransform: "uppercase",
+												fontSize: "0.75rem",
+												letterSpacing: "0.05em",
 											}}
 										>
-											<SmartToy sx={{ fontSize: 16 }} />
-										</Avatar>
-									)}
-									<Paper
-										elevation={0}
+											Historial de Sesiones
+										</Typography>
+									</Stack>
+								</Box>
+								<Box sx={{ flex: 1, overflowY: "auto" }}>
+									{sessionsLoading ?
+										<Box sx={{ p: 4, textAlign: "center" }}>
+											<CircularProgress size={24} />
+										</Box>
+									: sessions.length === 0 ?
+										<Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
+											<MenuBook sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
+											<Typography variant="body2">
+												No hay sesiones registradas aún.
+											</Typography>
+										</Box>
+									:	<List sx={{ p: 0 }}>
+											{sessions.map((s) => (
+												<ListItem
+													key={s.id}
+													disablePadding
+													sx={{
+														borderBottom: "1px solid",
+														borderColor: "divider",
+													}}
+												>
+													<ListItemButton
+														onClick={() => handleLoadSession(s)}
+														sx={{ py: 1.5 }}
+													>
+														<ListItemIcon sx={{ minWidth: 40 }}>
+															<EventNote color="action" fontSize="small" />
+														</ListItemIcon>
+														<ListItemText
+															primary={`Sesión #${s.session_number}`}
+															secondary={s.session_date}
+															primaryTypographyProps={{
+																variant: "body2",
+																fontWeight: 600,
+															}}
+															secondaryTypographyProps={{ variant: "caption" }}
+														/>
+													</ListItemButton>
+												</ListItem>
+											))}
+										</List>
+									}
+								</Box>
+							</Paper>
+						)}
+					</Box>
+
+					{/* Audio Upload Modal */}
+					<Dialog
+						open={openUploadModal}
+						onClose={() => {
+							setOpenUploadModal(false);
+							setIsLiveMode(false);
+						}}
+						maxWidth="sm"
+						fullWidth
+						PaperProps={{
+							sx: {
+								borderRadius: 4,
+								bgcolor: "background.paper",
+								backgroundImage: "none",
+								boxShadow: extendedShadows.panel,
+							},
+						}}
+					>
+						<DialogContent sx={{ p: 0 }}>
+							{!isLiveMode ?
+								<Box>
+									<Box
 										sx={{
 											p: 2,
-											bgcolor:
-												msg.sender === "user" ?
-													"primary.main"
-												:	"background.default",
-											color:
-												msg.sender === "user" ?
-													"primary.contrastText"
-												:	"text.primary",
-											borderRadius:
-												msg.sender === "user" ?
-													themeComponents.chatMessage.borderRadius.user
-												:	themeComponents.chatMessage.borderRadius.bot,
+											borderBottom: "1px solid",
+											borderColor: "divider",
+											display: "flex",
+											justifyContent: "space-between",
+											alignItems: "center",
 										}}
 									>
-										{typeof msg.content === "string" ?
-											<Box
-												sx={{
-													"& p": {
-														m: 0,
-														fontSize: typographyExtended.fontSizes.md,
-													},
-													"& h3": {
-														m: "0 0 8px 0",
-														fontSize: typographyExtended.fontSizes.lg,
-														fontWeight: typographyExtended.fontWeights.bold,
-													},
-													"& ul": { m: "8px 0", pl: 2 },
-												}}
-											>
-												<ReactMarkdown>{msg.content}</ReactMarkdown>
-											</Box>
-										:	msg.content}
-										{msg.actions === "analysis-actions" ?
-											<AnalysisChatActions
-												usedActions={usedActions}
-												onAction={handleQuickAction}
-											/>
-										: msg.actions ?
-											<Box sx={{ mt: 1 }}>{msg.actions}</Box>
-										:	null}
-									</Paper>
-								</Box>
-							))
-						}
-						<div ref={messagesEndRef} />
-					</Box>
-
-					<Box
-						sx={{
-							p: 2,
-							borderTop: "1px solid",
-							borderColor: "divider",
-							bgcolor: "background.paper",
-							display: "flex",
-							flexDirection: "column",
-							alignItems: "center",
-							gap: 1,
-							flexShrink: 0,
-						}}
-					>
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ fontStyle: "italic", textAlign: "center", width: "100%" }}
-						>
-							Selecciona una de las acciones predefinidas arriba para analizar
-							la sesión.
-						</Typography>
-					</Box>
-				</Paper>
-
-				{/* Column 3: Context Panel (Right) */}
-				{!isFocusMode && !showSessionsSidebar && (
-					<ContextPanel
-						onAddToNote={(text) => {
-							setSoapContent((prev) => prev + (prev ? "\n" : "") + text);
-						}}
-						analysisData={sessionData ? sessionData.analysis : undefined}
-						biometry={sessionData ? sessionData.biometry : undefined}
-					/>
-				)}
-
-				{/* Column 3 Alternate: Sessions History Sidebar */}
-				{!isFocusMode && showSessionsSidebar && (
-					<Paper
-						elevation={0}
-						sx={{
-							flex: { xs: "0 0 auto", lg: 3 },
-							display: "flex",
-							flexDirection: "column",
-							borderRadius: 4,
-							overflow: "hidden",
-							border: "1px solid",
-							borderColor: "divider",
-							boxShadow: extendedShadows.panel,
-							height: "100%",
-							bgcolor: backgrounds.glass.panel,
-							backdropFilter: "blur(16px)",
-						}}
-					>
-						<Box
-							sx={{
-								p: 2,
-								borderBottom: "1px solid",
-								borderColor: "divider",
-								bgcolor: "background.default",
-							}}
-						>
-							<Stack direction="row" alignItems="center" gap={1}>
-								<History color="primary" fontSize="small" />
-								<Typography
-									variant="subtitle2"
-									sx={{
-										fontWeight: 700,
-										textTransform: "uppercase",
-										fontSize: "0.75rem",
-										letterSpacing: "0.05em",
-									}}
-								>
-									Historial de Sesiones
-								</Typography>
-							</Stack>
-						</Box>
-						<Box sx={{ flex: 1, overflowY: "auto" }}>
-							{sessionsLoading ?
-								<Box sx={{ p: 4, textAlign: "center" }}>
-									<CircularProgress size={24} />
-								</Box>
-							: sessions.length === 0 ?
-								<Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
-									<MenuBook sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
-									<Typography variant="body2">
-										No hay sesiones registradas aún.
-									</Typography>
-								</Box>
-							:	<List sx={{ p: 0 }}>
-									{sessions.map((s) => (
-										<ListItem
-											key={s.id}
-											disablePadding
-											sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+										<Typography variant="h6" sx={{ fontWeight: 600 }}>
+											Subir Audio
+										</Typography>
+										<Button
+											variant="outlined"
+											size="small"
+											onClick={() => setIsLiveMode(true)}
+											sx={{
+												textTransform: "none",
+												borderRadius: 2,
+											}}
 										>
-											<ListItemButton
-												onClick={() => handleLoadSession(s)}
-												sx={{ py: 1.5 }}
-											>
-												<ListItemIcon sx={{ minWidth: 40 }}>
-													<EventNote color="action" fontSize="small" />
-												</ListItemIcon>
-												<ListItemText
-													primary={`Sesión #${s.session_number}`}
-													secondary={s.session_date}
-													primaryTypographyProps={{
-														variant: "body2",
-														fontWeight: 600,
-													}}
-													secondaryTypographyProps={{ variant: "caption" }}
-												/>
-											</ListItemButton>
-										</ListItem>
-									))}
-								</List>
+											Transcripción en Vivo
+										</Button>
+									</Box>
+									<AudioUploader
+										onAnalysisComplete={handleAnalysisComplete}
+										onAudioSelected={handleAudioSelected}
+										onClose={() => setOpenUploadModal(false)}
+										patientName={patient?.name}
+										patientAge={patient?.age}
+										patientGender={patient?.gender}
+										userId={userId}
+										userPlan={userAppPlan}
+									/>
+								</Box>
+							:	<Box>
+									<Box
+										sx={{
+											p: 2,
+											borderBottom: "1px solid",
+											borderColor: "divider",
+											display: "flex",
+											justifyContent: "space-between",
+											alignItems: "center",
+										}}
+									>
+										<Typography variant="h6" sx={{ fontWeight: 600 }}>
+											Transcripción en Vivo
+										</Typography>
+										<Button
+											variant="outlined"
+											size="small"
+											onClick={() => setIsLiveMode(false)}
+											sx={{
+												textTransform: "none",
+												borderRadius: 2,
+											}}
+										>
+											Subir Archivo
+										</Button>
+									</Box>
+									<Box sx={{ p: 3 }}>
+										<LiveTranscription
+											onTranscriptUpdate={handleLiveTranscriptUpdate}
+											onComplete={handleLiveTranscriptComplete}
+										/>
+									</Box>
+								</Box>
 							}
-						</Box>
-					</Paper>
-				)}
-			</Box>
+						</DialogContent>
+					</Dialog>
 
-			{/* Audio Upload Modal */}
-			<Dialog
-				open={openUploadModal}
-				onClose={() => setOpenUploadModal(false)}
-				maxWidth="sm"
-				fullWidth
-				PaperProps={{
-					sx: {
-						borderRadius: 4,
-						bgcolor: "background.paper",
-						backgroundImage: "none",
-						boxShadow: extendedShadows.panel,
-					},
-				}}
-			>
-				<DialogContent sx={{ p: 0 }}>
-					<AudioUploader
-						onAnalysisComplete={handleAnalysisComplete}
-						onAudioSelected={handleAudioSelected}
-						onClose={() => setOpenUploadModal(false)}
-						patientName={patient?.name}
-						patientAge={patient?.age}
-						patientGender={patient?.gender}
-						userId={userId}
-						userPlan={userAppPlan}
+					{/* Alert Modal */}
+					<AlertModal
+						open={alertModal.open}
+						onClose={() => setAlertModal({ ...alertModal, open: false })}
+						title={alertModal.title}
+						message={alertModal.message}
+						severity={alertModal.severity}
 					/>
-				</DialogContent>
-			</Dialog>
 
-			{/* Alert Modal */}
-			<AlertModal
-				open={alertModal.open}
-				onClose={() => setAlertModal({ ...alertModal, open: false })}
-				title={alertModal.title}
-				message={alertModal.message}
-				severity={alertModal.severity}
-			/>
+					{/* Onboarding Tutorial */}
+					<OnboardingTutorial
+						open={showOnboarding}
+						onComplete={handleCompleteOnboarding}
+					/>
 
-			{/* Onboarding Tutorial */}
-			<OnboardingTutorial
-				open={showOnboarding}
-				onComplete={handleCompleteOnboarding}
-			/>
-
-			{planData && userId && (
-				<UpgradeToProModal
-					open={upgradeModalOpen}
-					onClose={handleUpgradeClose}
-					userId={userId}
-					userEmail={planData.email || ""}
-					usedTranscriptions={3}
-					monthYear={new Date().toISOString().slice(0, 7)}
-				/>
+					{planData && userId && (
+						<UpgradeToProModal
+							open={upgradeModalOpen}
+							onClose={handleUpgradeClose}
+							userId={userId}
+							userEmail={planData.email || ""}
+							usedTranscriptions={3}
+							monthYear={new Date().toISOString().slice(0, 7)}
+						/>
+					)}
+				</>
 			)}
 		</Box>
 	);

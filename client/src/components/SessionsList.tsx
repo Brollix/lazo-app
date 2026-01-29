@@ -43,6 +43,8 @@ import { EncryptionService } from "../services/encryptionService";
 import { getBackgrounds, getExtendedShadows } from "../styles.theme";
 import { Settings } from "./Settings";
 import { AlertModal } from "./AlertModal";
+import { UpgradeToProModal } from "./UpgradeToProModal";
+import { useUserPlan } from "../hooks/useUserPlan";
 
 import { ClinicalSession } from "./Dashboard";
 
@@ -80,6 +82,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	const [newSessionTime, setNewSessionTime] = useState(
 		new Date().toTimeString().split(" ")[0].substring(0, 5),
 	);
+	const { planData, refreshPlan } = useUserPlan(userId);
+	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
 	// Action Menu State
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -346,7 +350,16 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 					<Button
 						variant="contained"
 						startIcon={<AddIcon />}
-						onClick={() => setNewSessionDialogOpen(true)}
+						onClick={() => {
+							if (
+								planData?.plan_type === "free" &&
+								planData.credits_remaining <= 0
+							) {
+								setUpgradeModalOpen(true);
+							} else {
+								setNewSessionDialogOpen(true);
+							}
+						}}
 						sx={{ borderRadius: 3, px: 3 }}
 					>
 						Nueva Sesión
@@ -547,6 +560,20 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 				message={alertModal.message}
 				severity={alertModal.severity}
 			/>
+
+			{planData && userId && (
+				<UpgradeToProModal
+					open={upgradeModalOpen}
+					onClose={() => {
+						setUpgradeModalOpen(false);
+						refreshPlan();
+					}}
+					userId={userId}
+					userEmail={planData.email || ""}
+					usedTranscriptions={3} // On the free plan, if they are here, they've used 3
+					monthYear={new Date().toISOString().slice(0, 7)}
+				/>
+			)}
 		</Box>
 	);
 };

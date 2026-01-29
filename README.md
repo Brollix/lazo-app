@@ -12,7 +12,7 @@ Mediante **Inteligencia Artificial de última generación**, Lazo escucha (si t�
 
 Lazo cuenta con una interfaz moderna y adaptable (Modo Claro / Oscuro) diseñada para reducir la fatiga visual.
 
-![Panel de Administración - Dark Mode](screenshots/admin/admin_dark_theme.png)
+![Dashboard Principal](screenshots/clinical/session_dashboard_initial.png)
 
 ---
 

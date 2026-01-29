@@ -60,3 +60,40 @@ _El objetivo de este plan es prestigio, retención y datos._
 1. **Audio:** `Deepgram Nova-2 Medical` (Con diarización y detección de hablantes).
 2. **Prompt:** "Actúa como un supervisor clínico senior. Analiza la transferencia, patrones latentes y compara con el historial."
 3. **Contexto (RAG):** Se inyectan los resúmenes de las últimas 5 sesiones del paciente (`patient_summaries`).
+
+---
+
+## Impacto de Costos: Transcripción en Vivo
+
+### Transcripción en Vivo (Todos los Planes)
+
+**Tecnología:** Groq Whisper-v3 (procesamiento por chunks de 3-5 segundos)
+
+- **Costo por sesión de 60 minutos:**
+  - Audio total: ~60 minutos = ~3.6 MB (formato comprimido)
+  - Costo Groq Whisper: $0.003 USD por sesión (mismo que transcripción estándar)
+  - **No hay costo adicional** vs. subir el archivo completo al final
+
+**Conclusión:** La transcripción en vivo NO aumenta los costos operativos. El costo es el mismo que procesar el archivo completo.
+
+### Análisis Psicológico en Vivo (Ultra - Opcional)
+
+**Tecnología:** Claude 3.5 Sonnet (AWS Bedrock)
+
+- **Escenario:** Usuario activa análisis en vivo 2 veces durante una sesión de 60 minutos
+- **Input por análisis:** ~2,500 tokens (transcripción acumulada de ~10-15 minutos)
+- **Output por análisis:** ~500 tokens (insights psicológicos preliminares)
+- **Costo por análisis:**
+  - Input: 2,500 tokens × $0.003/1K = $0.0075 USD
+  - Output: 500 tokens × $0.015/1K = $0.0075 USD
+  - **Total por análisis:** $0.015 USD
+- **Costo por sesión (2 análisis):** $0.03 USD (~$57 ARS)
+
+**Impacto en Plan Ultra:**
+
+- Costo base (100 sesiones): $7.90 USD
+- Con análisis en vivo (20 sesiones × 2 análisis): +$0.60 USD
+- **Nuevo costo total:** $8.50 USD / **$16.150 ARS**
+- **Nueva ganancia neta:** $17.03 USD / **$32.350 ARS** (Margen 67%)
+
+**Conclusión:** El análisis psicológico en vivo tiene un impacto mínimo en los costos (~$0.60 USD/mes) y mantiene un margen saludable del 67%.

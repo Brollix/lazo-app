@@ -6,6 +6,7 @@ import { Dashboard, ClinicalSession } from "./components/Dashboard";
 import { PatientsList, Patient } from "./components/PatientsList";
 import { SessionsList } from "./components/SessionsList";
 import { AdminDashboard } from "./components/AdminDashboard";
+import { InfoPage } from "./components/InfoPage";
 import { supabase } from "./supabaseClient";
 
 /**
@@ -50,8 +51,8 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 function App() {
 	const [currentView, setCurrentView] = useState<
-		"login" | "list" | "sessions" | "dashboard" | "admin"
-	>("login");
+		"login" | "list" | "sessions" | "dashboard" | "admin" | "info"
+	>("info");
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 	const [selectedSession, setSelectedSession] =
 		useState<ClinicalSession | null>(null);
@@ -115,7 +116,7 @@ function App() {
 						await supabase.auth.signOut();
 						setUserId(undefined);
 						setIsAdminUser(false);
-						setCurrentView("login");
+						setCurrentView("info");
 						setSelectedPatient(null);
 						return;
 					}
@@ -131,10 +132,10 @@ function App() {
 						setCurrentView("list");
 					}
 				} else {
-					console.log("App: No session, showing login");
+					console.log("App: No session, showing info page");
 					setUserId(undefined);
 					setIsAdminUser(false);
-					setCurrentView("login");
+					setCurrentView("info");
 					setSelectedPatient(null);
 				}
 			}, 0);
@@ -158,7 +159,7 @@ function App() {
 		await supabase.auth.signOut();
 		setIsAdminUser(false);
 		setUserId(undefined);
-		setCurrentView("login");
+		setCurrentView("info");
 		setSelectedPatient(null);
 	};
 
@@ -222,7 +223,12 @@ function App() {
 					}}
 				>
 					<Box sx={{ flex: 1, overflow: "auto", position: "relative" }}>
-						{currentView === "login" && <Login onLogin={handleLogin} />}
+						{currentView === "login" && (
+							<Login
+								onLogin={handleLogin}
+								onNavigateToInfo={() => setCurrentView("info")}
+							/>
+						)}
 						{currentView === "list" && (
 							<PatientsList
 								onSelectPatient={handleSelectPatient}
@@ -263,6 +269,9 @@ function App() {
 								userId={userId}
 								onBack={() => setCurrentView("list")}
 							/>
+						)}
+						{currentView === "info" && (
+							<InfoPage onNavigateToLogin={() => setCurrentView("login")} />
 						)}
 					</Box>
 				</Box>

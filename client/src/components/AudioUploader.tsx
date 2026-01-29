@@ -178,6 +178,21 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
 		console.log(`[Realtime] Subscribing to session ${processingSessionId}`);
 
+		// Timeout handler: if no response after 5 minutes, show error
+		const timeoutId = setTimeout(
+			() => {
+				console.error(
+					"[Realtime] Processing timeout - no response after 5 minutes",
+				);
+				setErrorMessage(
+					"El procesamiento está tardando más de lo esperado. Por favor, intenta de nuevo o contacta soporte si el problema persiste.",
+				);
+				setStatus("error");
+				setProcessingSessionId(null);
+			},
+			5 * 60 * 1000,
+		); // 5 minutes
+
 		const subscription = supabase
 			.channel(`processing_session_${processingSessionId}`)
 			.on(
@@ -190,6 +205,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 				},
 				async (payload) => {
 					console.log("[Realtime] Received update:", payload);
+					clearTimeout(timeoutId); // Clear timeout on successful response
 
 					const session = payload.new as any;
 
@@ -310,6 +326,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 							"[Realtime] Processing error:",
 							session.error_message,
 						);
+						clearTimeout(timeoutId); // Clear timeout on error
 						setErrorMessage(
 							session.error_message || "Error durante el procesamiento",
 						);
@@ -324,6 +341,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		// Cleanup on unmount
 		return () => {
 			console.log("[Realtime] Unsubscribing");
+			clearTimeout(timeoutId); // Clear timeout on cleanup
 			subscription.unsubscribe();
 		};
 	}, [
@@ -511,8 +529,19 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 					// Credits exhausted
 					if (
 						errorMessage?.includes("créditos") ||
-						errorMessage?.includes("Créditos")
+						errorMessage?.includes("Créditos") ||
+						errorMessage?.includes("monthly_limit_exceeded")
 					) {
+						if (errorData.message === "monthly_limit_exceeded") {
+							setMonthlyLimitData({
+								used: errorData.used || 3,
+								monthYear:
+									errorData.monthYear || new Date().toISOString().slice(0, 7),
+							});
+							setShowUpgradeModal(true);
+							setStatus("idle");
+							return;
+						}
 						throw new Error(errorMessage);
 					}
 
