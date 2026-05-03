@@ -8,6 +8,8 @@ import { SessionsList } from "./components/SessionsList";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { InfoPage } from "./components/InfoPage";
 import { supabase } from "./supabaseClient";
+import { SessionProcessingProvider } from "./contexts/SessionProcessingContext";
+import { useUserPlan } from "./hooks/useUserPlan";
 
 /**
  * Check if a user is an admin by querying the admin_roles table
@@ -68,6 +70,26 @@ function App() {
 	});
 	const [userId, setUserId] = useState<string | undefined>(undefined);
 	const [isAdminUser, setIsAdminUser] = useState<boolean>(false);
+	const [userSalt, setUserSalt] = useState<string | null>(null);
+	const { planData } = useUserPlan(userId);
+
+	// Fetch encryption salt when userId changes
+	useEffect(() => {
+		if (userId) {
+			supabase
+				.from("profiles")
+				.select("encryption_salt")
+				.eq("id", userId)
+				.single()
+				.then(({ data, error }) => {
+					if (!error && data?.encryption_salt) {
+						setUserSalt(data.encryption_salt);
+					}
+				});
+		} else {
+			setUserSalt(null);
+		}
+	}, [userId]);
 
 	const theme = useMemo(() => createAppTheme(themeMode), [themeMode]);
 
@@ -104,21 +126,55 @@ function App() {
 					console.log("App: Session found, user ID:", session.user.id);
 					setUserId(session.user.id);
 
-					// Check if password is available for encryption
-					// If session was restored but password is not in sessionStorage, redirect to login
+					// Check if encryption keys are available
 					const { EncryptionService } =
 						await import("./services/encryptionService");
-					if (!EncryptionService.isSetup() && event === "INITIAL_SESSION") {
+					let hasPassword = EncryptionService.isSetup();
+					let hasMasterKey = !!EncryptionService.getMasterKey();
+
+					// If session was restored but encryption is not set up, try to restore master key
+					if (!hasPassword && !hasMasterKey && event === "INITIAL_SESSION") {
 						console.log(
-							"App: Session restored but password not available, redirecting to login",
+							"App: Session restored but encryption keys not available, attempting to restore master key",
 						);
-						// Clear session to force re-login
-						await supabase.auth.signOut();
-						setUserId(undefined);
-						setIsAdminUser(false);
-						setCurrentView("info");
-						setSelectedPatient(null);
-						return;
+						
+						try {
+							// Fetch user profile to get encrypted master key
+							const { data: profile } = await supabase
+								.from("profiles")
+								.select("encrypted_master_key_password, master_key_encrypted, encryption_salt")
+								.eq("id", session.user.id)
+								.single();
+
+							if (!profile) {
+								throw new Error("Profile not found");
+							}
+
+							// Check if user has a master key setup
+							if ((profile.encrypted_master_key_password || profile.master_key_encrypted) && profile.encryption_salt) {
+								console.log("App: Master key found in database, but cannot decrypt without password. Forcing re-login.");
+								// We cannot decrypt the master key without the user's password
+								// So we need to force a re-login
+								await supabase.auth.signOut();
+								setUserId(undefined);
+								setIsAdminUser(false);
+								setCurrentView("info");
+								setSelectedPatient(null);
+								return;
+							} else {
+								// Legacy user without master key - let them continue for now
+								console.log("App: Legacy user without master key detected");
+							}
+						} catch (error) {
+							console.error("App: Error checking for master key:", error);
+							// On error, force re-login to be safe
+							await supabase.auth.signOut();
+							setUserId(undefined);
+							setIsAdminUser(false);
+							setCurrentView("info");
+							setSelectedPatient(null);
+							return;
+						}
 					}
 
 					// Check if user is admin
@@ -214,67 +270,73 @@ function App() {
 						},
 					}}
 				/>
-				<Box
-					sx={{
-						display: "flex",
-						flexDirection: "column",
-						height: "100vh",
-						overflow: "hidden",
-					}}
+				<SessionProcessingProvider
+					userId={userId}
+					userSalt={userSalt}
+					userPlan={planData?.plan_type}
 				>
-					<Box sx={{ flex: 1, overflow: "auto", position: "relative" }}>
-						{currentView === "login" && (
-							<Login
-								onLogin={handleLogin}
-								onNavigateToInfo={() => setCurrentView("info")}
-							/>
-						)}
-						{currentView === "list" && (
-							<PatientsList
-								onSelectPatient={handleSelectPatient}
-								onLogout={handleLogout}
-								onNavigateToAdmin={() => setCurrentView("admin")}
-								userId={userId}
-								isAdmin={isAdminUser}
-							/>
-						)}
-						{currentView === "sessions" && selectedPatient && (
-							<SessionsList
-								patient={selectedPatient}
-								onSelectSession={handleSelectSession}
-								onNewSession={handleNewSession}
-								onBack={handleBackToList}
-								onLogout={handleLogout}
-								onNavigateToAdmin={() => setCurrentView("admin")}
-								userId={userId}
-								isAdmin={isAdminUser}
-							/>
-						)}
-						{currentView === "dashboard" && (
-							<Dashboard
-								onLogout={handleLogout}
-								patient={selectedPatient}
-								initialSession={selectedSession}
-								initialDate={selectedDate}
-								initialTime={selectedTime}
-								onBack={handleBackToSessions}
-								userId={userId}
-								isAdmin={isAdminUser}
-								onNavigateToAdmin={() => setCurrentView("admin")}
-							/>
-						)}
-						{currentView === "admin" && (
-							<AdminDashboard
-								onLogout={handleLogout}
-								userId={userId}
-								onBack={() => setCurrentView("list")}
-							/>
-						)}
-						{currentView === "info" && (
-							<InfoPage onNavigateToLogin={() => setCurrentView("login")} />
-						)}
+					<Box
+						sx={{
+							display: "flex",
+							flexDirection: "column",
+							height: "100vh",
+							overflow: "hidden",
+						}}
+					>
+						<Box sx={{ flex: 1, overflow: "auto", position: "relative" }}>
+							{currentView === "login" && (
+								<Login
+									onLogin={handleLogin}
+									onNavigateToInfo={() => setCurrentView("info")}
+								/>
+							)}
+							{currentView === "list" && (
+								<PatientsList
+									onSelectPatient={handleSelectPatient}
+									onLogout={handleLogout}
+									onNavigateToAdmin={() => setCurrentView("admin")}
+									userId={userId}
+									isAdmin={isAdminUser}
+								/>
+							)}
+							{currentView === "sessions" && selectedPatient && (
+								<SessionsList
+									patient={selectedPatient}
+									onSelectSession={handleSelectSession}
+									onNewSession={handleNewSession}
+									onBack={handleBackToList}
+									onLogout={handleLogout}
+									onNavigateToAdmin={() => setCurrentView("admin")}
+									userId={userId}
+									isAdmin={isAdminUser}
+								/>
+							)}
+							{currentView === "dashboard" && (
+								<Dashboard
+									onLogout={handleLogout}
+									patient={selectedPatient}
+									initialSession={selectedSession}
+									initialDate={selectedDate}
+									initialTime={selectedTime}
+									onBack={handleBackToSessions}
+									userId={userId}
+									isAdmin={isAdminUser}
+									onNavigateToAdmin={() => setCurrentView("admin")}
+								/>
+							)}
+							{currentView === "admin" && (
+								<AdminDashboard
+									onLogout={handleLogout}
+									userId={userId}
+									onBack={() => setCurrentView("list")}
+								/>
+							)}
+							{currentView === "info" && (
+								<InfoPage onNavigateToLogin={() => setCurrentView("login")} />
+							)}
+						</Box>
 					</Box>
-				</Box>
+				</SessionProcessingProvider>
 			</ThemeProvider>
 		</ThemeContext.Provider>
 	);

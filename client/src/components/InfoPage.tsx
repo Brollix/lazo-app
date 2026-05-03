@@ -128,7 +128,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 						¿Qué hace Lazo?
 					</Typography>
 					<Grid container spacing={4} sx={{ justifyContent: "center" }}>
-						<Grid item xs={12} md={10} lg={8}>
+						<Grid size={{ xs: 12, md: 10, lg: 8 }} component="div">
 							<Stack spacing={4}>
 								<Box>
 									<Stack
@@ -273,7 +273,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 						Formatos de Documentación Clínica
 					</Typography>
 					<Grid container spacing={3}>
-						<Grid item xs={12} md={4}>
+						<Grid component="div" size={{ xs: 12, md: 4 }}>
 							<Box
 								sx={{
 									p: 3,
@@ -306,7 +306,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 								</Typography>
 							</Box>
 						</Grid>
-						<Grid item xs={12} md={4}>
+						<Grid component="div" size={{ xs: 12, md: 4 }}>
 							<Box
 								sx={{
 									p: 3,
@@ -336,7 +336,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 								</Typography>
 							</Box>
 						</Grid>
-						<Grid item xs={12} md={4}>
+						<Grid component="div" size={{ xs: 12, md: 4 }}>
 							<Box
 								sx={{
 									p: 3,
@@ -413,7 +413,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 					</Typography>
 
 					<Grid container spacing={2} sx={{ mb: 4 }}>
-						<Grid item xs={12} sm={6} md={3}>
+						<Grid component="div" size={{ xs: 12, sm: 6, md: 3 }}>
 							<Chip
 								icon={<VerifiedUser />}
 								label="AWS BAA Certified"
@@ -421,7 +421,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 								sx={{ width: "100%", py: 2.5, fontSize: "0.875rem" }}
 							/>
 						</Grid>
-						<Grid item xs={12} sm={6} md={3}>
+						<Grid component="div" size={{ xs: 12, sm: 6, md: 3 }}>
 							<Chip
 								icon={<CloudDone />}
 								label="Groq Zero Retention"
@@ -429,7 +429,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 								sx={{ width: "100%", py: 2.5, fontSize: "0.875rem" }}
 							/>
 						</Grid>
-						<Grid item xs={12} sm={6} md={3}>
+						<Grid component="div" size={{ xs: 12, sm: 6, md: 3 }}>
 							<Chip
 								icon={<Security />}
 								label="AES-256 Encryption"
@@ -437,7 +437,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 								sx={{ width: "100%", py: 2.5, fontSize: "0.875rem" }}
 							/>
 						</Grid>
-						<Grid item xs={12} sm={6} md={3}>
+						<Grid component="div" size={{ xs: 12, sm: 6, md: 3 }}>
 							<Chip
 								icon={<VerifiedUser />}
 								label="HIPAA Equivalent"
@@ -534,7 +534,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ onNavigateToLogin }) => {
 						¿Cómo funciona?
 					</Typography>
 					<Grid container spacing={4} sx={{ justifyContent: "center" }}>
-						<Grid item xs={12} md={10} lg={8}>
+						<Grid size={{ xs: 12, md: 10, lg: 8 }} component="div">
 							<Stack spacing={3}>
 								<Stack direction="row" spacing={2} alignItems="flex-start">
 									<Box

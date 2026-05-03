@@ -94,32 +94,67 @@ export const Login: React.FC<{
 					.eq("id", authData.user.id)
 					.single();
 
-				if (!profile) throw new Error("Perfil no encontrado");
+			if (!profile) throw new Error("Perfil no encontrado");
 
-				let currentMasterKey = "";
+			// Set password FIRST so it's available for decryption
+			EncryptionService.setPassword(password);
+			encryption.setPassword(password);
 
-				if (profile.master_key_encrypted && profile.encryption_salt) {
-					// MODERN USER: Decrypt master key using password
+			let currentMasterKey = "";
+
+			if (
+				(profile.master_key_encrypted ||
+					profile.encrypted_master_key_password) &&
+				profile.encryption_salt
+			) {
+				// MODERN USER: Decrypt master key using password
+				try {
+					const masterKeyToDecrypt =
+						profile.encrypted_master_key_password ||
+						profile.master_key_encrypted;
+
+					console.log("Attempting to decrypt master key...", {
+						hasEncryptedMasterKeyPassword: !!profile.encrypted_master_key_password,
+						hasMasterKeyEncrypted: !!profile.master_key_encrypted,
+						hasSalt: !!profile.encryption_salt,
+						masterKeyLength: masterKeyToDecrypt?.length,
+					});
+
+					if (!masterKeyToDecrypt) throw new Error("No master key found");
+
+					// Check if it's JSON (old format) or string (new format)
+					let encryptedValue = masterKeyToDecrypt;
 					try {
-						const encryptedObj = JSON.parse(profile.master_key_encrypted);
-						// Decrypt using the hook's decrypt function
-						currentMasterKey = await encryption.decrypt(
-							encryptedObj.password,
-							profile.encryption_salt,
-						);
+						const parsed = JSON.parse(masterKeyToDecrypt);
+						console.log("Master key is JSON format, extracting password field");
+						encryptedValue = parsed.password || masterKeyToDecrypt;
 					} catch (e) {
-						console.error("Master key decryption failed:", e);
-						throw new Error(
-							"Error al desencriptar la llave maestra. Verifica tu contraseña.",
-						);
+						console.log("Master key is string format (not JSON)");
 					}
-				} else {
-					// LEGACY USER: Needs migration (handled in Dashboard or later)
-					console.log("Legacy user detected. Migration needed.");
-				}
 
-				EncryptionService.setPassword(password);
-				if (currentMasterKey) EncryptionService.setMasterKey(currentMasterKey);
+					// Decrypt using decryptRaw (master key is a string, not JSON)
+					currentMasterKey = await encryption.decryptRaw(
+						encryptedValue,
+						profile.encryption_salt,
+					);
+					console.log("Master key decrypted successfully");
+				} catch (e) {
+					console.error("Master key decryption failed:", e);
+					// If master key decryption fails, it might be a legacy user
+					// Let them continue without master key for now
+					console.warn(
+						"Continuing without master key - user may need to regenerate recovery phrase",
+					);
+				}
+			} else {
+				// LEGACY USER: Needs migration (handled in Dashboard or later)
+				console.log("Legacy user detected. Migration needed.");
+			}
+
+			if (currentMasterKey) {
+				EncryptionService.setMasterKey(currentMasterKey);
+				encryption.setMasterKey(currentMasterKey);
+			}
 
 				onLogin();
 			}

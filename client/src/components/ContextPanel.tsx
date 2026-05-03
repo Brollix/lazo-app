@@ -78,6 +78,49 @@ export const ContextPanel: React.FC<{
 					</Box>
 				)}
 
+				{/* Key Moments Section */}
+				{analysisData?.key_moments && analysisData.key_moments.length > 0 && (
+					<Box
+						sx={{
+							p: 2,
+							borderBottom: "1px solid",
+							borderColor: "divider",
+						}}
+					>
+						<Typography
+							variant="caption"
+							sx={{
+								fontWeight: 700,
+								color: "text.secondary",
+								textTransform: "uppercase",
+								letterSpacing: "0.05em",
+								mb: 1.5,
+								display: "block",
+							}}
+						>
+							Momentos Importantes
+						</Typography>
+						<Stack spacing={1}>
+							{analysisData.key_moments.map((moment, i) => (
+								<Box
+									key={i}
+									sx={{
+										p: 1.5,
+										bgcolor: "background.default",
+										borderRadius: 1,
+										borderLeft: "3px solid",
+										borderLeftColor: "secondary.main",
+									}}
+								>
+									<Typography variant="body2" sx={{ fontWeight: 500 }}>
+										{moment.label}
+									</Typography>
+								</Box>
+							))}
+						</Stack>
+					</Box>
+				)}
+
 				{/* Biometry Section */}
 				{biometry && (
 					<Box

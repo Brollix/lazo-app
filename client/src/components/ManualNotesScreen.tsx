@@ -1,39 +1,56 @@
 import React, { useState } from "react";
-import { Box, Paper, Typography, IconButton, useTheme } from "@mui/material";
-import { ChevronLeft } from "@mui/icons-material";
+import {
+	Box,
+	Paper,
+	Typography,
+	IconButton,
+	useTheme,
+	Button,
+} from "@mui/material";
+import { ChevronLeft, Mic } from "@mui/icons-material";
 import {
 	getBackgrounds,
-	getExtendedShadows,
 	typographyExtended,
 	components as themeComponents,
 } from "../styles.theme";
 import { SoapNoteEditor } from "./SoapNoteEditor";
 import { Patient } from "./PatientsList";
+import { LiveTranscription } from "./LiveTranscription";
+import { AudioUploader } from "./AudioUploader";
 
 interface ManualNotesScreenProps {
 	patient: Patient | null;
 	onBack: () => void;
-	onSave: () => Promise<void>;
+	onAutoSave?: (content: string) => Promise<void>;
 	onDownload: () => void;
 	content: string;
 	onChange: (content: string) => void;
 	userId?: string;
 	userPlan?: string;
+	onAnalysisComplete?: (data: any) => void;
 }
 
 export const ManualNotesScreen: React.FC<ManualNotesScreenProps> = ({
 	patient,
 	onBack,
-	onSave,
+	onAutoSave,
 	onDownload,
 	content,
 	onChange,
 	userId,
 	userPlan,
+	onAnalysisComplete,
 }) => {
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
-	const extendedShadows = getExtendedShadows(theme.palette.mode);
+	const [isFocused, setIsFocused] = useState(false);
+	const [mode, setMode] = useState<"manual" | "record">("manual");
+	const [recordedFile, setRecordedFile] = useState<File | null>(null);
+
+	const handleRecordingComplete = (audioFile: File) => {
+		// Store the recorded file and let AudioUploader process it
+		setRecordedFile(audioFile);
+	};
 
 	return (
 		<Box
@@ -81,30 +98,111 @@ export const ManualNotesScreen: React.FC<ManualNotesScreenProps> = ({
 				</Box>
 			</Paper>
 
-			{/* Main Content - Full Width Editor */}
-			<Box
-				sx={{
-					flexGrow: 1,
-					p: { xs: 1, sm: 2 },
-					overflow: "auto",
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					gap: 2,
-				}}
-			>
-				<Box sx={{ width: "100%", maxWidth: 1200 }}>
+			{/* Manual Editor Mode - Always visible */}
+			{mode === "manual" && (
+				<Box
+					sx={{
+						flexGrow: 1,
+						p: { xs: 1, sm: 2 },
+						overflow: "auto",
+						display: "flex",
+						flexDirection: "column",
+						alignItems: "center",
+						gap: 2,
+					}}
+				>
+					<Box sx={{ width: "100%", maxWidth: 1200 }}>
+						{/* Dictation Button */}
+						<Box sx={{ mb: 2, display: "flex", justifyContent: "center" }}>
+							<Button
+								variant="contained"
+								startIcon={<Mic />}
+								onClick={() => setMode("record")}
+								size="large"
+								sx={{
+									borderRadius: 2,
+									px: 3,
+									py: 1.5,
+									textTransform: "none",
+									fontWeight: "bold",
+								}}
+							>
+								Dictar en Tiempo Real
+							</Button>
+						</Box>
+
 					<SoapNoteEditor
 						content={content}
 						onChange={onChange}
-						onSave={onSave}
+						onAutoSave={onAutoSave}
 						onDownload={onDownload}
 						method="manual"
-						isFocused={false}
-						onToggleFocus={() => {}}
+						isFocused={isFocused}
+						onToggleFocus={() => setIsFocused(!isFocused)}
 					/>
+					</Box>
 				</Box>
-			</Box>
+			)}
+
+			{/* Live Recording Mode */}
+			{mode === "record" && !recordedFile && (
+				<Box
+					sx={{
+						flexGrow: 1,
+						p: { xs: 2, sm: 3 },
+						overflow: "auto",
+					}}
+				>
+					<Box sx={{ maxWidth: 800, mx: "auto" }}>
+						<Button
+							variant="text"
+							startIcon={<ChevronLeft />}
+							onClick={() => setMode("manual")}
+							sx={{ mb: 2 }}
+						>
+							Volver
+						</Button>
+						<LiveTranscription onComplete={handleRecordingComplete} />
+					</Box>
+				</Box>
+			)}
+
+			{/* Processing Recorded Audio */}
+			{mode === "record" && recordedFile && (
+				<Box
+					sx={{
+						flexGrow: 1,
+						p: { xs: 2, sm: 3 },
+						overflow: "auto",
+					}}
+				>
+					<Box sx={{ maxWidth: 900, mx: "auto" }}>
+						<Button
+							variant="text"
+							startIcon={<ChevronLeft />}
+							onClick={() => {
+								setRecordedFile(null);
+								setMode("manual");
+							}}
+							sx={{ mb: 2 }}
+						>
+							Volver
+						</Button>
+						<AudioUploader
+							patientName={patient?.name}
+							patientAge={patient?.age}
+							patientGender={patient?.gender}
+							userId={userId}
+							userPlan={userPlan}
+							patientId={patient?.id}
+							onAnalysisComplete={onAnalysisComplete}
+							forceRecordingMethod="dictated_summary"
+							initialFile={recordedFile}
+						/>
+					</Box>
+				</Box>
+			)}
+
 		</Box>
 	);
 };

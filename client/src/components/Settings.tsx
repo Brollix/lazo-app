@@ -34,9 +34,11 @@ import { ThemeContext } from "../App";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { SecurityModal } from "./SecurityModal";
 // Disabled temporarily - regeneration flow not fully implemented
-// import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
-// import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
+import { RecoveryPhraseDisplay } from "./RecoveryPhraseDisplay";
+import { RecoveryPhraseVerification } from "./RecoveryPhraseVerification";
 import { supabase } from "../supabaseClient";
+import { useEncryption } from "../hooks/useEncryption";
+import { EncryptionService } from "../services/encryptionService";
 
 interface SettingsProps {
 	open: boolean;
@@ -76,12 +78,20 @@ export const Settings: React.FC<SettingsProps> = ({
 	const [updating, setUpdating] = React.useState<string | null>(null);
 
 	// Recovery Phrase Regeneration State (disabled temporarily)
-	// const [showRegenerateFlow, setShowRegenerateFlow] = React.useState(false);
-	// const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
-	// const [newMasterKey, setNewMasterKey] = React.useState<string | null>(null);
-	// const [regenerationStep, setRegenerationStep] = React.useState<
-	// 	"display" | "verify" | null
-	// >(null);
+	// Recovery Phrase Regeneration State
+	const [showRegenerateFlow, setShowRegenerateFlow] = React.useState(false);
+	const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
+	const [newMasterKey, setNewMasterKey] = React.useState<string | null>(null);
+	const [regenerationStep, setRegenerationStep] = React.useState<
+		"display" | "verify" | "password" | "reencrypting" | null
+	>(null);
+	const [confirmPassword, setConfirmPassword] = React.useState("");
+	const [reencryptionProgress, setReencryptionProgress] = React.useState({
+		current: 0,
+		total: 0,
+	});
+
+	const encryption = useEncryption();
 
 	// Fetch user profile from Supabase
 	React.useEffect(() => {
@@ -239,42 +249,110 @@ export const Settings: React.FC<SettingsProps> = ({
 	};
 
 	// TODO: Re-enable when regeneration flow is fully implemented
-	// const _handleStartRegeneration = async () => {
-	// 	setUpdating("regeneration");
-	// 	try {
-	// 		const response = await fetch(
-	// 			`${import.meta.env.VITE_API_URL || ""}/api/auth/generate-phrase`,
-	// 		);
-	// 		const { phrase, masterKey } = await response.json();
-	// 		setNewPhrase(phrase);
-	// 		setNewMasterKey(masterKey);
-	// 		setRegenerationStep("display");
-	// 		setShowRegenerateFlow(true);
-	// 	} catch (err: any) {
-	// 		setError("Error al generar nueva frase. Intenta de nuevo.");
-	// 	} finally {
-	// 		setUpdating(null);
-	// 	}
-	// };
+	const handleStartRegeneration = async () => {
+		setUpdating("regeneration");
+		setError(null);
+		try {
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/auth/generate-phrase`);
 
-	// const handleRegenerationComplete = async () => {
-	// 	if (!userProfile || !newPhrase || !newMasterKey) return;
-	// 	setUpdating("finalizing_regeneration");
-	// 	try {
-	// 		// Note: This requires current password to re-encrypt the master key.
-	// 		// For brevity, we'll use a placeholder or ask for it if needed.
-	// 		// The backend /setup-recovery handles this if we provide the password.
-	// 		setError(
-	// 			"La regeneración completa requiere confirmar su contraseña actual.",
-	// 		);
-	// 		setRegenerationStep(null);
-	// 		setShowRegenerateFlow(false);
-	// 	} catch (err: any) {
-	// 		setError(err.message);
-	// 	} finally {
-	// 		setUpdating(null);
-	// 	}
-	// };
+			if (!response.ok) throw new Error("Failed to generate phrase");
+
+			const { phrase, masterKey } = await response.json();
+			setNewPhrase(phrase);
+			setNewMasterKey(masterKey);
+			setRegenerationStep("display");
+			setShowRegenerateFlow(true);
+			setConfirmPassword("");
+		} catch (err: any) {
+			console.error("Error generating phrase:", err);
+			setError("Error al generar nueva frase. Intenta de nuevo.");
+		} finally {
+			setUpdating(null);
+		}
+	};
+
+	const handleRegenerationVerified = () => {
+		setRegenerationStep("password");
+	};
+
+	const handleFinalizeRegeneration = async () => {
+		if (!userProfile || !newPhrase || !newMasterKey || !confirmPassword) return;
+
+		// 1. Verify password first
+		setUpdating("finalizing_regeneration");
+		setError(null);
+
+		try {
+			// First, verify password by trying to sign in (or just rely on the API call below)
+			// Actually, setup-recovery might fail if password is wrong
+			// But we need the master key decrypted if it was already setup...
+			// Since we ARE in settings, we should have it in memory already?
+			// EncryptionService.getPassword() should be confirmPassword if they match.
+
+			if (confirmPassword !== EncryptionService.getPassword()) {
+				throw new Error(
+					"La contraseña ingresada no coincide con la sesión actual.",
+				);
+			}
+
+			// 2. Start Re-encryption
+			setRegenerationStep("reencrypting");
+			const { data: profile } = await supabase
+				.from("profiles")
+				.select("encryption_salt")
+				.eq("id", userProfile.id)
+				.single();
+
+			if (!profile?.encryption_salt) {
+				throw new Error("No se pudo encontrar el salt de encriptación.");
+			}
+
+			await encryption.reEncryptAllUserData(
+				newMasterKey,
+				profile.encryption_salt,
+				userProfile.id,
+				(current, total) => setReencryptionProgress({ current, total }),
+			);
+
+			// 3. Update recovery info in backend
+			const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
+			const response = await fetch(`${apiUrl}/api/auth/setup-recovery`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					userId: userProfile.id,
+					phrase: newPhrase,
+					masterKey: newMasterKey,
+					password: confirmPassword,
+				}),
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || "Error al finalizar la configuración");
+			}
+
+			// 4. Success! Update local master key
+			EncryptionService.setMasterKey(newMasterKey);
+
+			setSuccessMessage(
+				"Frase regenerada y datos re-encriptados exitosamente.",
+			);
+			setRegenerationStep(null);
+			setShowRegenerateFlow(false);
+			setConfirmPassword("");
+			setNewPhrase(null);
+			setNewMasterKey(null);
+		} catch (err: any) {
+			console.error("Error finalizing regeneration:", err);
+			setError(err.message || "Error al guardar la nueva configuración.");
+			// If we fail at password, we stay there. If we fail at re-encryption, we revert step
+			if (regenerationStep === "reencrypting") setRegenerationStep("password");
+		} finally {
+			setUpdating(null);
+		}
+	};
 
 	const displayName = userProfile?.full_name || "Usuario";
 	const planDisplay =
@@ -582,10 +660,11 @@ export const Settings: React.FC<SettingsProps> = ({
 												size="small"
 												fullWidth
 												startIcon={<Refresh />}
-												disabled={true}
+												onClick={handleStartRegeneration}
+												disabled={updating === "regeneration"}
 												sx={{ borderRadius: 2, fontWeight: "bold" }}
 											>
-												Regenerar Frase (Próximamente)
+												Regenerar Frase
 											</Button>
 										</Stack>
 									</Box>
@@ -721,7 +800,7 @@ export const Settings: React.FC<SettingsProps> = ({
 					:	null}
 				</DialogContent>
 
-				{/* Recovery Phrase Dialog - Disabled temporarily
+				{/* Recovery Phrase Dialog */}
 				<Dialog
 					open={showRegenerateFlow}
 					onClose={() => !updating && setShowRegenerateFlow(false)}
@@ -738,13 +817,92 @@ export const Settings: React.FC<SettingsProps> = ({
 						{regenerationStep === "verify" && newPhrase && (
 							<RecoveryPhraseVerification
 								phrase={newPhrase}
-								onComplete={handleRegenerationComplete}
+								onComplete={handleRegenerationVerified}
 								onBack={() => setRegenerationStep("display")}
 							/>
 						)}
+						{regenerationStep === "password" && (
+							<Box sx={{ p: 2 }}>
+								<Typography variant="h6" gutterBottom fontWeight="bold">
+									Confirmar contraseña
+								</Typography>
+								<Typography variant="body2" color="text.secondary" paragraph>
+									Para asegurar tu nueva frase, necesitamos encriptarla con tu
+									contraseña actual.
+								</Typography>
+
+								{error && (
+									<Alert severity="error" sx={{ mb: 2 }}>
+										{error}
+									</Alert>
+								)}
+
+								<TextField
+									autoFocus
+									margin="dense"
+									label="Contraseña actual"
+									type="password"
+									fullWidth
+									variant="outlined"
+									value={confirmPassword}
+									onChange={(e) => setConfirmPassword(e.target.value)}
+									sx={{ mb: 3 }}
+								/>
+
+								<Stack direction="row" spacing={2} justifyContent="flex-end">
+									<Button
+										onClick={() => setRegenerationStep("verify")}
+										disabled={updating === "finalizing_regeneration"}
+									>
+										Atrás
+									</Button>
+									<Button
+										variant="contained"
+										onClick={handleFinalizeRegeneration}
+										disabled={
+											!confirmPassword || updating === "finalizing_regeneration"
+										}
+									>
+										{updating === "finalizing_regeneration" ?
+											<CircularProgress size={24} />
+										:	"Finalizar y Guardar"}
+									</Button>
+								</Stack>
+							</Box>
+						)}
+						{regenerationStep === "reencrypting" && (
+							<Box
+								sx={{
+									p: 4,
+									textAlign: "center",
+									display: "flex",
+									flexDirection: "column",
+									alignItems: "center",
+									gap: 2,
+								}}
+							>
+								<CircularProgress size={48} thickness={4} />
+								<Typography variant="h6" fontWeight="bold">
+									Re-encriptando tus datos
+								</Typography>
+								<Typography variant="body2" color="text.secondary">
+									Por favor no cierres la ventana mientras migramos tus
+									registros al nuevo estándar de seguridad.
+								</Typography>
+								{reencryptionProgress.total > 0 && (
+									<Typography
+										variant="caption"
+										color="primary"
+										fontWeight="bold"
+									>
+										Procesando: {reencryptionProgress.current} /{" "}
+										{reencryptionProgress.total} registros
+									</Typography>
+								)}
+							</Box>
+						)}
 					</Box>
 				</Dialog>
-				*/}
 
 				<DialogActions
 					sx={{

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
 	Box,
 	Paper,
@@ -34,9 +34,6 @@ import {
 	MenuBook,
 	NotificationsActive as NotifyIcon,
 	AdminPanelSettings as AdminIcon,
-	Mic,
-	Edit,
-	GraphicEq,
 } from "@mui/icons-material";
 import { Settings } from "./Settings";
 import { SubscriptionModal } from "./SubscriptionModal";
@@ -62,6 +59,7 @@ import { supabase } from "../supabaseClient";
 import ReactMarkdown from "react-markdown";
 import { ModeSelectionScreen } from "./ModeSelectionScreen";
 import { ManualNotesScreen } from "./ManualNotesScreen";
+import { useSessionProcessing } from "../contexts/SessionProcessingContext";
 
 interface ChatMessage {
 	id: string;
@@ -166,6 +164,7 @@ export const Dashboard: React.FC<{
 	const theme = useTheme();
 	const backgrounds = getBackgrounds(theme.palette.mode);
 	const extendedShadows = getExtendedShadows(theme.palette.mode);
+	const { getPatientSession } = useSessionProcessing();
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
 	const [userAppPlan, setUserAppPlan] = useState<string | null>(null);
@@ -183,9 +182,16 @@ export const Dashboard: React.FC<{
 	const [usedActions, setUsedActions] = useState<Set<string>>(new Set());
 	const [isActionLoading, setIsActionLoading] = useState(false);
 	const [openUploadModal, setOpenUploadModal] = useState(false); // State for the new Dialog
+
 	const [isFocusMode, setIsFocusMode] = useState(false);
+
 	const [draftDialogOpen, setDraftDialogOpen] = useState(false);
-	const [pendingDraft, setPendingDraft] = useState<any>(null);
+	const [pendingDraft, setPendingDraft] = useState<{
+		sessionData: ProcessSessionResponse | null;
+		soapContent: string;
+		messages: ChatMessage[];
+		lastUpdated: string;
+	} | null>(null);
 	const [showOnboarding, setShowOnboarding] = useState(false);
 	const [announcement, setAnnouncement] = useState<{
 		message: string;
@@ -211,6 +217,12 @@ export const Dashboard: React.FC<{
 	const [showSessionsSidebar, setShowSessionsSidebar] = useState(false);
 	const { planData, refreshPlan } = useUserPlan(userId);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+	const [currentSessionId, setCurrentSessionId] = useState<string | null>(
+		initialSession?.id || null,
+	);
+	const [sessionNumber, setSessionNumber] = useState<number | null>(
+		initialSession?.session_number || null,
+	);
 
 	// Sync ref with state
 	useEffect(() => {
@@ -272,29 +284,8 @@ export const Dashboard: React.FC<{
 			.catch((err) => console.error("Error fetching announcements:", err));
 	}, [userId]);
 
-	// Fetch sessions when patient changes
-	useEffect(() => {
-		if (patient?.id) {
-			fetchSessions();
-
-			// If initialSession is provided, load it
-			if (initialSession) {
-				handleLoadSession(initialSession);
-				setSessionMode("audio"); // Set to audio mode when loading existing session
-			} else {
-				// Otherwise try draft, but don't auto-open sidebar anymore
-				const draftKey = getStorageKey();
-				if (!draftKey || !localStorage.getItem(draftKey)) {
-					// If no draft and no session, show mode selection
-					setSessionMode(null);
-				}
-			}
-		} else {
-			setSessions([]);
-		}
-	}, [patient?.id, initialSession]);
-
-	const fetchSessions = async () => {
+	/* Moved definitions up to avoid hoisting issues */
+	const fetchSessions = useCallback(async () => {
 		if (!patient?.id) return;
 		try {
 			setSessionsLoading(true);
@@ -311,28 +302,158 @@ export const Dashboard: React.FC<{
 		} finally {
 			setSessionsLoading(false);
 		}
-	};
+	}, [patient?.id]);
+
+	const handleLoadSession = useCallback(
+		async (session: ClinicalSession) => {
+			setUsedActions(new Set());
+			try {
+				if (!userId) {
+					setAlertModal({
+						open: true,
+						message: "Error de seguridad: Usuario no autenticado.",
+						severity: "error",
+					});
+					return;
+				}
+
+				// Verify encryption is set up and salt is available
+				const hasPassword = encryption.getPassword();
+				const hasMasterKey = encryption.getMasterKey();
+				if ((!hasPassword && !hasMasterKey) || !userSalt) {
+					setAlertModal({
+						open: true,
+						message:
+							"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+						severity: "error",
+					});
+					return;
+				}
+
+				let data;
+				try {
+					data = await encryption.decryptWithFallback(
+						session.encrypted_data,
+						userSalt,
+						userId,
+					);
+				} catch (decryptErr) {
+					console.error("Error decrypting session data:", decryptErr);
+					setAlertModal({
+						open: true,
+						message:
+							"Error al cargar la sesión: No se pudo desencriptar los datos con ningún método conocido.",
+						severity: "error",
+					});
+					return;
+				}
+
+				// Patch session object with time from encrypted data if available
+				if (data.session_time) {
+					session.session_time = data.session_time;
+				}
+
+				// Restore full session data if available
+				if (data.full_analysis_data) {
+					setSessionData(data.full_analysis_data);
+				}
+
+				setSoapContent(data.clinical_note || "");
+				// Show a message in chat about loaded session
+				setMessages([
+					{
+						id: "loaded-msg",
+						sender: "bot",
+						content: `He cargado la **Nota Clínica** de la **Sesión #${session.session_number}** (${session.session_date}).`,
+						timestamp: new Date(),
+					},
+				]);
+				setShowSessionsSidebar(false);
+			} catch (err: any) {
+				console.error("Error parsing session data:", err);
+				setAlertModal({
+					open: true,
+					message: "Error al cargar la sesión",
+					severity: "error",
+				});
+			}
+		},
+		[userId, userSalt, encryption],
+	);
+
+	const getStorageKey = useCallback(
+		() => (patient ? `lazo_draft_${patient.id}` : null),
+		[patient],
+	);
 
 	const addMessage = (
 		sender: "user" | "bot",
-		content: React.ReactNode,
+		content: string | React.ReactNode,
 		actions?: React.ReactNode,
 	) => {
-		const id = Date.now().toString() + Math.random();
-		setMessages((prev) => [
-			...prev,
-			{
-				id,
-				sender,
-				content,
-				actions,
-				timestamp: new Date(),
-			} as ChatMessage,
-		]);
+		const newMessage: ChatMessage = {
+			id: Date.now().toString(),
+			sender,
+			content,
+			actions,
+			timestamp: new Date(),
+		};
+		setMessages((prev) => [...prev, newMessage]);
 	};
 
-	// --- PERSISTENCE LOGIC ---
-	const getStorageKey = () => (patient ? `lazo_draft_${patient.id}` : null);
+	// Fetch sessions when patient changes
+	useEffect(() => {
+		if (patient?.id) {
+			fetchSessions();
+
+			// If initialSession is provided, load it
+			if (initialSession) {
+				// Si la sesión tiene datos encriptados, cargarla
+				// Si no tiene datos (sesión recién creada), solo establecer el ID
+				if (initialSession.encrypted_data && initialSession.encrypted_data.length > 0) {
+					// Sesión existente con datos - cargarla
+					handleLoadSession(initialSession);
+				} else {
+					// Sesión nueva vacía - solo establecer el ID y modo
+					setCurrentSessionId(initialSession.id);
+					setSessionNumber(initialSession.session_number);
+					setSoapContent("");
+					setMessages([
+						{
+							id: "new-session-msg",
+							sender: "bot",
+							content: `Sesión #${initialSession.session_number} creada. Puedes comenzar a escribir tus notas.`,
+							timestamp: new Date(),
+						},
+					]);
+				}
+				setSessionMode("audio"); // Set to audio mode when loading existing session
+			} else {
+				// Check for background processing sessions for this patient
+				const activeSession = getPatientSession(patient.id);
+				if (activeSession && activeSession.status === "processing") {
+					setOpenUploadModal(true);
+					setSessionMode("audio");
+				}
+
+				// Otherwise try draft, but don't auto-open sidebar anymore
+				const draftKey = getStorageKey();
+				if (!draftKey || !localStorage.getItem(draftKey)) {
+					// If no draft and no session, show mode selection
+					if (!activeSession) setSessionMode(null);
+				}
+			}
+		} else {
+			setSessions([]);
+		}
+	}, [
+		patient?.id,
+		initialSession,
+		fetchSessions,
+		handleLoadSession,
+		getPatientSession,
+		getStorageKey,
+	]);
 
 	// Load draft on mount or patient change
 	useEffect(() => {
@@ -349,6 +470,7 @@ export const Dashboard: React.FC<{
 					// Ask user before loading
 					setPendingDraft(parsed);
 					setDraftDialogOpen(true);
+					setSessionMode("audio"); // Priority: show draft dialog in audio mode
 					// Do NOT load yet
 				} else {
 					// If viewing an existing session, we generally ignore drafts
@@ -366,7 +488,7 @@ export const Dashboard: React.FC<{
 				setMessages([]);
 			}
 		}
-	}, [patient?.id, initialSession]); // Dependency on initialSession is key
+	}, [patient?.id, initialSession, getStorageKey]); // Dependency on initialSession is key
 
 	// Save draft on state changes
 	useEffect(() => {
@@ -395,7 +517,7 @@ export const Dashboard: React.FC<{
 		};
 
 		localStorage.setItem(key, JSON.stringify(draft));
-	}, [sessionData, soapContent, messages, patient?.id]);
+	}, [sessionData, soapContent, messages, patient?.id, getStorageKey]);
 
 	// Reset used actions when switching sessions
 	useEffect(() => {
@@ -408,6 +530,7 @@ export const Dashboard: React.FC<{
 
 		// Show analyzed greeting with chips as requested
 		addMessage(
+			"bot",
 			`He analizado el audio de **${
 				patient?.name || "Paciente"
 			} ${formatDuration(data.localDuration)}**. ¿Por dónde quieres empezar?`,
@@ -455,6 +578,7 @@ export const Dashboard: React.FC<{
 
 		// We don't auto-generate SOAP here anymore as per new flow,
 		// but we keep the data for when the user clicks the button.
+		setOpenUploadModal(false);
 	};
 
 	const generateClinicalNote = (data: ProcessSessionResponse) => {
@@ -616,6 +740,125 @@ export const Dashboard: React.FC<{
 		document.body.removeChild(element);
 	};
 
+	// Función de autoguardado silencioso (sin alertas)
+	const handleAutoSave = async (content: string) => {
+		if (!patient?.id || !userId || !encryption.isSetup() || !userSalt) {
+			return;
+		}
+
+		try {
+			// Prepare session data object
+			const sessionRecord = {
+				clinical_note: content,
+				summary: sessionData?.analysis.summary,
+				topics: sessionData?.analysis.topics,
+				transcript: sessionData?.transcript,
+				session_time:
+					initialTime ||
+					new Date().toTimeString().split(" ")[0].substring(0, 5),
+				full_analysis_data:
+					sessionData ?
+						{
+							...sessionData,
+							analysis: {
+								...sessionData.analysis,
+								clinical_note: content,
+							},
+						}
+					:	null,
+			};
+
+			const encryptedData = await encryption.encryptWithCurrentStandard(
+				sessionRecord,
+				userSalt,
+			);
+
+			// Usar currentSessionId si existe, o initialSession.id si fue pasado
+			const sessionIdToUpdate = currentSessionId || initialSession?.id;
+
+			if (sessionIdToUpdate) {
+				// --- UPDATE EXISTING SESSION ---
+				const { error: updateError } = await supabase
+					.from("sessions")
+					.update({
+						encrypted_data: encryptedData,
+						updated_at: new Date().toISOString(),
+					})
+					.eq("id", sessionIdToUpdate);
+
+				if (updateError) throw updateError;
+				
+				// Si no teníamos currentSessionId pero sí initialSession, guardarlo ahora
+				if (!currentSessionId && initialSession) {
+					setCurrentSessionId(initialSession.id);
+					setSessionNumber(initialSession.session_number);
+				}
+			} else {
+				// --- CREATE NEW SESSION (primera vez) ---
+				const { data: nextNum, error: rpcError } = await supabase.rpc(
+					"get_next_session_number",
+					{ p_patient_id: patient.id },
+				);
+
+				if (rpcError) throw rpcError;
+
+				const { data: newSession, error: insertError } = await supabase
+					.from("sessions")
+					.insert({
+						patient_id: patient.id,
+						user_id: userId,
+						session_number: nextNum,
+						encrypted_data: encryptedData,
+						session_date: initialDate || new Date().toISOString().split("T")[0],
+						session_time:
+							initialTime ||
+							new Date().toTimeString().split(" ")[0].substring(0, 5),
+					})
+					.select()
+					.single();
+
+				if (insertError) throw insertError;
+
+				// Guardar el ID de la sesión para futuras actualizaciones
+				if (newSession) {
+					setCurrentSessionId(newSession.id);
+					setSessionNumber(nextNum);
+				}
+
+				// Clear draft only on new save
+				const draftKey = getStorageKey();
+				if (draftKey) localStorage.removeItem(draftKey);
+			}
+
+			// Update last visit for patient silently
+			const sessionDate = initialDate || new Date().toISOString().split("T")[0];
+			const updatedPatientData = {
+				name: patient.name,
+				age: patient.age,
+				gender: patient.gender,
+				lastVisit: sessionDate,
+				consultationReason: patient.consultationReason,
+				status: patient.status,
+				admissionDate: patient.admissionDate,
+			};
+			const encryptedPatientData = await encryption.encryptWithCurrentStandard(
+				updatedPatientData,
+				userSalt,
+			);
+
+			await supabase
+				.from("patients")
+				.update({
+					encrypted_data: encryptedPatientData,
+					updated_at: new Date().toISOString(),
+				})
+				.eq("id", patient.id);
+		} catch (err: any) {
+			console.error("Error en autoguardado:", err);
+			// No mostrar alerta para no interrumpir al usuario
+		}
+	};
+
 	const handleSaveSession = async () => {
 		if (!patient?.id || !userId) return;
 
@@ -644,109 +887,30 @@ export const Dashboard: React.FC<{
 				return;
 			}
 
-			// Prepare session data object
-			const sessionRecord = {
-				clinical_note: soapContent,
-				summary: sessionData?.analysis.summary,
-				topics: sessionData?.analysis.topics,
-				transcript: sessionData?.transcript,
-				session_time:
-					initialTime ||
-					new Date().toTimeString().split(" ")[0].substring(0, 5),
-				// Save full analysis data for restoration
-				full_analysis_data:
-					sessionData ?
-						{
-							...sessionData,
-							analysis: {
-								...sessionData.analysis,
-								clinical_note: soapContent, // Ensure note matches what was saved
-							},
-						}
-					:	null,
-			};
-
-			const encryptedData = await encryption.encrypt(sessionRecord, userSalt);
-
-			if (initialSession?.id) {
-				// --- UPDATE EXISTING SESSION ---
-				const { error: updateError } = await supabase
-					.from("sessions")
-					.update({
-						encrypted_data: encryptedData,
-						updated_at: new Date().toISOString(),
-						// We don't update session_number or patient_id
-						// We might update session_date/time if editable, but keeping simple for now
-					})
-					.eq("id", initialSession.id);
-
-				if (updateError) throw updateError;
+			// Si ya existe una sesión guardada, solo actualizar
+			if (currentSessionId) {
+				await handleAutoSave(soapContent);
 				setAlertModal({
 					open: true,
-					message: "Sesión actualizada exitosamente",
+					message: `Sesión #${sessionNumber} guardada exitosamente`,
 					severity: "success",
 				});
 			} else {
-				// --- CREATE NEW SESSION ---
-				// 1. Get next session number via RPC
-				const { data: nextNum, error: rpcError } = await supabase.rpc(
-					"get_next_session_number",
-					{ p_patient_id: patient.id },
-				);
-
-				if (rpcError) throw rpcError;
-
-				// 2. Insert into sessions table
-				const { error: insertError } = await supabase.from("sessions").insert({
-					patient_id: patient.id,
-					user_id: userId,
-					session_number: nextNum,
-					encrypted_data: encryptedData,
-					session_date: initialDate || new Date().toISOString().split("T")[0],
-					session_time:
-						initialTime ||
-						new Date().toTimeString().split(" ")[0].substring(0, 5),
-				});
-
-				if (insertError) throw insertError;
+				// Crear nueva sesión
+				await handleAutoSave(soapContent);
 				setAlertModal({
 					open: true,
-					message: `Sesión #${nextNum} guardada exitosamente`,
+					message: `Sesión #${sessionNumber} guardada exitosamente`,
 					severity: "success",
 				});
-
-				// Clear draft only on new save
-				const draftKey = getStorageKey();
-				if (draftKey) localStorage.removeItem(draftKey);
 			}
-
-			// Update last visit for patient (requires re-encrypting patient data)
-			// Only update if it's the latest session or new?
-			// For simplicity/robustness, just always update last visit to "today" or this session date
-			const sessionDate = initialDate || new Date().toISOString().split("T")[0];
-			const updatedPatientData = {
-				name: patient.name,
-				age: patient.age,
-				gender: patient.gender,
-				lastVisit: sessionDate, // Use the session date as last visit
-			};
-			const encryptedPatientData = await encryption.encrypt(
-				updatedPatientData,
-				userSalt,
-			);
-
-			await supabase
-				.from("patients")
-				.update({
-					encrypted_data: encryptedPatientData,
-					updated_at: new Date().toISOString(),
-				})
-				.eq("id", patient.id);
 
 			setSoapContent("");
 			setSessionData(null);
 			setMessages([]);
 			setUsedActions(new Set());
+			setCurrentSessionId(null);
+			setSessionNumber(null);
 
 			await fetchSessions();
 			if (onBack) onBack(); // Go back to sessions list after save
@@ -759,86 +923,6 @@ export const Dashboard: React.FC<{
 			});
 		} finally {
 			setIsActionLoading(false);
-		}
-	};
-
-	const handleLoadSession = async (session: ClinicalSession) => {
-		setUsedActions(new Set());
-		try {
-			if (!userId) {
-				setAlertModal({
-					open: true,
-					message: "Error de seguridad: Usuario no autenticado.",
-					severity: "error",
-				});
-				return;
-			}
-
-			// Verify encryption is set up and salt is available
-			if (!encryption.isSetup() || !userSalt) {
-				setAlertModal({
-					open: true,
-					message:
-						"Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
-					severity: "error",
-				});
-				return;
-			}
-
-			let data;
-			try {
-				data = await encryption.decrypt(session.encrypted_data, userSalt);
-			} catch (decryptErr) {
-				console.warn("Decrypt failed, trying JSON parse for old sessions");
-				try {
-					data = JSON.parse(session.encrypted_data);
-				} catch (jsonErr) {
-					setAlertModal({
-						open: true,
-						message:
-							"Error al cargar la sesión: No se pudo desencriptar ni parsear los datos.",
-						severity: "error",
-					});
-					console.error(
-						"Failed to decrypt or parse session:",
-						decryptErr,
-						jsonErr,
-					);
-					return;
-				}
-			}
-
-			// Patch session object with time from encrypted data if available
-			if (data.session_time) {
-				session.session_time = data.session_time;
-			}
-
-			// Restore full session data if available
-			if (data.full_analysis_data) {
-				setSessionData(data.full_analysis_data);
-				// Regenerate the "analysis complete" style view or just let the UI react to sessionData
-				// We might want to clear messages or restore them if we saved them,
-				// but for now let's at least show the analysis chips which depend on sessionData
-			}
-
-			setSoapContent(data.clinical_note || "");
-			// Show a message in chat about loaded session
-			setMessages([
-				{
-					id: "loaded-msg",
-					sender: "bot",
-					content: `He cargado la **Nota Clínica** de la **Sesión #${session.session_number}** (${session.session_date}).`,
-					timestamp: new Date(),
-				},
-			]);
-			setShowSessionsSidebar(false);
-		} catch (err) {
-			console.error("Error parsing session data:", err);
-			setAlertModal({
-				open: true,
-				message: "Error al cargar la sesión",
-				severity: "error",
-			});
 		}
 	};
 
@@ -882,8 +966,7 @@ export const Dashboard: React.FC<{
 			setSoapContent("");
 			setMessages([]);
 			setUsedActions(new Set());
-			// Auto-open upload since we are new and empty
-			setOpenUploadModal(true);
+			// No longer auto-opening upload modal here to avoid being intrusive
 		}
 		setDraftDialogOpen(false);
 		setPendingDraft(null);
@@ -903,7 +986,10 @@ export const Dashboard: React.FC<{
 
 	const handleSelectAudioMode = () => {
 		setSessionMode("audio");
-		handleUploadCheck(); // Open the upload modal
+		// Only open upload check if no draft is pending to avoid double modals
+		if (!pendingDraft) {
+			handleUploadCheck();
+		}
 	};
 
 	const handleSelectNotesMode = () => {
@@ -938,19 +1024,23 @@ export const Dashboard: React.FC<{
 				/>
 			)}
 
-			{/* Manual Notes Screen */}
-			{sessionMode === "notes" && (
-				<ManualNotesScreen
-					patient={patient}
-					onBack={handleBackToModeSelection}
-					onSave={handleSaveSession}
-					onDownload={handleExportTxt}
-					content={soapContent}
-					onChange={setSoapContent}
-					userId={userId || undefined}
-					userPlan={userAppPlan}
-				/>
-			)}
+		{/* Manual Notes Screen */}
+		{sessionMode === "notes" && (
+			<ManualNotesScreen
+				patient={patient}
+				onBack={handleBackToModeSelection}
+				onAutoSave={handleAutoSave}
+				onDownload={handleExportTxt}
+				content={soapContent}
+				onChange={setSoapContent}
+				userId={userId || undefined}
+				userPlan={userAppPlan || undefined}
+				onAnalysisComplete={(data) => {
+					setSessionData(data);
+					setSoapContent(data.analysis.clinical_note);
+				}}
+			/>
+		)}
 
 			{/* Audio Dashboard Content - Only show when mode is 'audio' */}
 			{sessionMode === "audio" && (
@@ -1119,16 +1209,16 @@ export const Dashboard: React.FC<{
 							overflow: { xs: "auto", lg: "hidden" },
 						}}
 					>
-						{/* Column 1: SOAP Editor (Left) */}
-						<SoapNoteEditor
-							content={soapContent}
-							onChange={setSoapContent}
-							onSave={handleSaveSession}
-							onDownload={handleExportTxt}
-							method={sessionData?.noteFormat}
-							isFocused={isFocusMode}
-							onToggleFocus={() => setIsFocusMode(!isFocusMode)}
-						/>
+					{/* Column 1: SOAP Editor (Left) */}
+					<SoapNoteEditor
+						content={soapContent}
+						onChange={setSoapContent}
+						onAutoSave={handleAutoSave}
+						onDownload={handleExportTxt}
+						method={sessionData?.noteFormat}
+						isFocused={isFocusMode}
+						onToggleFocus={() => setIsFocusMode(!isFocusMode)}
+					/>
 
 						{/* Column 2: Command Center (Center) */}
 						<Paper
@@ -1146,43 +1236,6 @@ export const Dashboard: React.FC<{
 								backdropFilter: "blur(16px)",
 							}}
 						>
-							{/* Draft Confirmation Dialog */}
-							<Dialog
-								open={draftDialogOpen}
-								onClose={() => handleConfirmDraft(true)} // Default to resume if clicked outside? Or block.
-							>
-								<DialogContent>
-									<Typography variant="h6" gutterBottom>
-										Sesión No Guardada Encontrada
-									</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Tienes una sesión anterior que no fue guardada. ¿Quieres
-										continuar con ella o empezar una nueva?
-									</Typography>
-								</DialogContent>
-								<Box
-									sx={{
-										p: 2,
-										display: "flex",
-										justifyContent: "flex-end",
-										gap: 1,
-									}}
-								>
-									<Button
-										color="error"
-										onClick={() => handleConfirmDraft(false)}
-									>
-										Empezar Nueva (Borrar anterior)
-									</Button>
-									<Button
-										variant="contained"
-										onClick={() => handleConfirmDraft(true)}
-									>
-										Continuar Sesión
-									</Button>
-								</Box>
-							</Dialog>
-
 							{/* Top Section: Audio Player or New Session Button */}
 							<Box
 								sx={{
@@ -1612,12 +1665,64 @@ export const Dashboard: React.FC<{
 						)}
 					</Box>
 
+					{/* Draft Confirmation Dialog */}
+					<Dialog
+						open={draftDialogOpen}
+						onClose={() => {}} // User MUST choose to proceed properly
+						PaperProps={{
+							sx: {
+								borderRadius: 4,
+								bgcolor: "background.paper",
+								backgroundImage: "none",
+								boxShadow: extendedShadows.panel,
+							},
+						}}
+					>
+						<DialogContent sx={{ p: 3 }}>
+							<Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
+								Sesión No Guardada Encontrada
+							</Typography>
+							<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+								Tienes una sesión anterior que no fue guardada para{" "}
+								<strong>{patient?.name}</strong>.
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								¿Quieres continuar con ella o empezar una nueva?
+							</Typography>
+						</DialogContent>
+						<Box
+							sx={{
+								p: 3,
+								pt: 0,
+								display: "flex",
+								flexDirection: { xs: "column", sm: "row" },
+								justifyContent: "flex-end",
+								gap: 1.5,
+							}}
+						>
+							<Button
+								variant="outlined"
+								color="error"
+								onClick={() => handleConfirmDraft(false)}
+								sx={{ borderRadius: 2, textTransform: "none" }}
+							>
+								Empezar Nueva
+							</Button>
+							<Button
+								variant="contained"
+								onClick={() => handleConfirmDraft(true)}
+								sx={{ borderRadius: 2, textTransform: "none" }}
+							>
+								Continuar Sesión
+							</Button>
+						</Box>
+					</Dialog>
+
 					{/* Audio Upload Modal */}
 					<Dialog
 						open={openUploadModal}
 						onClose={() => {
 							setOpenUploadModal(false);
-							setIsLiveMode(false);
 						}}
 						maxWidth="sm"
 						fullWidth
@@ -1631,78 +1736,33 @@ export const Dashboard: React.FC<{
 						}}
 					>
 						<DialogContent sx={{ p: 0 }}>
-							{!isLiveMode ?
-								<Box>
-									<Box
-										sx={{
-											p: 2,
-											borderBottom: "1px solid",
-											borderColor: "divider",
-											display: "flex",
-											justifyContent: "space-between",
-											alignItems: "center",
-										}}
-									>
-										<Typography variant="h6" sx={{ fontWeight: 600 }}>
-											Subir Audio
-										</Typography>
-										<Button
-											variant="outlined"
-											size="small"
-											onClick={() => setIsLiveMode(true)}
-											sx={{
-												textTransform: "none",
-												borderRadius: 2,
-											}}
-										>
-											Transcripción en Vivo
-										</Button>
-									</Box>
-									<AudioUploader
-										onAnalysisComplete={handleAnalysisComplete}
-										onAudioSelected={handleAudioSelected}
-										onClose={() => setOpenUploadModal(false)}
-										patientName={patient?.name}
-										patientAge={patient?.age}
-										patientGender={patient?.gender}
-										userId={userId}
-										userPlan={userAppPlan}
-									/>
+							<Box>
+								<Box
+									sx={{
+										p: 2,
+										borderBottom: "1px solid",
+										borderColor: "divider",
+										display: "flex",
+										justifyContent: "space-between",
+										alignItems: "center",
+									}}
+								>
+									<Typography variant="h6" sx={{ fontWeight: 600 }}>
+										Subir Audio
+									</Typography>
 								</Box>
-							:	<Box>
-									<Box
-										sx={{
-											p: 2,
-											borderBottom: "1px solid",
-											borderColor: "divider",
-											display: "flex",
-											justifyContent: "space-between",
-											alignItems: "center",
-										}}
-									>
-										<Typography variant="h6" sx={{ fontWeight: 600 }}>
-											Transcripción en Vivo
-										</Typography>
-										<Button
-											variant="outlined"
-											size="small"
-											onClick={() => setIsLiveMode(false)}
-											sx={{
-												textTransform: "none",
-												borderRadius: 2,
-											}}
-										>
-											Subir Archivo
-										</Button>
-									</Box>
-									<Box sx={{ p: 3 }}>
-										<LiveTranscription
-											onTranscriptUpdate={handleLiveTranscriptUpdate}
-											onComplete={handleLiveTranscriptComplete}
-										/>
-									</Box>
-								</Box>
-							}
+								<AudioUploader
+									onAnalysisComplete={handleAnalysisComplete}
+									onAudioSelected={handleAudioSelected}
+									onClose={() => setOpenUploadModal(false)}
+									patientName={patient?.name}
+									patientAge={patient?.age}
+									patientGender={patient?.gender}
+									patientId={patient?.id}
+									userId={userId}
+									userPlan={userAppPlan}
+								/>
+							</Box>
 						</DialogContent>
 					</Dialog>
 

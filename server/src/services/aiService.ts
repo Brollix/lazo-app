@@ -74,12 +74,13 @@ const sanitizeTranscript = (text: string): string => {
 export const processTranscriptWithClaude = async (
 	transcriptText: string,
 	targetLanguage: string = "Spanish", // Default to Spanish
-	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP",
+	noteFormat: "SOAP" | "DAP" | "BIRP" | "ADMISSION" = "SOAP",
 	patientName: string = "el paciente",
 	patientAge?: number,
 	patientGender?: string,
 	isUltraPlan: boolean = false,
 	historicalContext?: string | null,
+	recordingMethod: "full_session" | "dictated_summary" = "full_session",
 ) => {
 	// Build historical context section if available (Ultra Plan only)
 	const historicalContextSection =
@@ -126,22 +127,50 @@ export const processTranscriptWithClaude = async (
     `
 		:	"";
 
-	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.${historicalContextSection}
+	// Build recording method context
+	const recordingMethodContext =
+		recordingMethod === "dictated_summary" ?
+			`
+    
+    RECORDING METHOD: DICTATED SUMMARY (Post-Session)
+    This is NOT a full session recording. The therapist is dictating a summary AFTER the session ended.
+    
+    Key differences in your analysis:
+    - The transcript is the therapist's own summary, not a verbatim session recording
+    - There is NO patient dialogue to analyze (no diarization needed)
+    - Focus on organizing and structuring what the therapist dictated
+    - Do NOT analyze "patient speech patterns" or "therapist-patient dynamics" as this is only the therapist speaking
+    - Your role is to help format the therapist's dictation into a professional clinical note
+    - Be concise and direct - the therapist already synthesized the key points
+    `
+		:	`
+    
+    RECORDING METHOD: FULL SESSION RECORDING
+    This is a complete recording of the therapy session with the patient.
+    
+    Your analysis should:
+    - Analyze the full therapeutic interaction and dialogue
+    - Identify patient and therapist speech patterns
+    - Extract key moments and therapeutic dynamics
+    - Provide deep clinical analysis of the session content
+    `;
+
+	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.${historicalContextSection}${recordingMethodContext}
     
     Session Context:
     - Patient Name: ${patientName}
     ${patientAge ? `- Patient Age: ${patientAge}` : ""}
     ${patientGender ? `- Patient Gender: ${patientGender}` : ""}
-    - Participants: ${patientName} (Patient) and the Therapist.
+    ${recordingMethod === "full_session" ? `- Participants: ${patientName} (Patient) and the Therapist.` : "- Recording: Therapist's post-session dictation"}
     
     
     Processing Task:
-    Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata.
+    ${recordingMethod === "dictated_summary" ? "Structure the therapist's dictated summary into a professional clinical note." : "Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata."}
 
     IMPORTANT - CLINICAL RIGOR:
     - Use professional, clinical language. 
     - Be concise but thorough.
-    - Avoid generic statements; focus on specific evidence from the transcript.
+    - Avoid generic statements; focus on specific evidence from the ${recordingMethod === "dictated_summary" ? "dictation" : "transcript"}.
 
     CRITICAL - NOTE FORMAT INSTRUCTIONS:
     You MUST follow the specific structure for: ${noteFormat}
@@ -156,6 +185,13 @@ export const processTranscriptWithClaude = async (
 				`- **D (Data)**: Objective and subjective information. What happened during the session? (Combines S and O from SOAP).
        - **A (Assessment)**: Interpretation of the data. What did this session mean for the therapeutic process?
        - **P (Plan)**: Future steps based on the assessment.`
+			: noteFormat === "ADMISSION" ?
+				`- **Motivo de Consulta**: Main reason for seeking therapy.
+       - **Antecedentes**: Relevant history of the problem, previous treatments, medical/family history.
+       - **Observaciones**: Patient's appearance, attitude, mental state examination during the interview.
+       - **Dinámica Familiar/Social**: Support network, living situation, job/school status.
+       - **Impresión Diagnóstica**: Preliminary diagnostic hypothesis or clinical impression.
+       - **Plan de Tratamiento**: Proposed treatment goals, frequency, and initial interventions.`
 			:	`- **B (Behavior)**: Specific observations of the patient's behavior and presentation.
        - **I (Intervention)**: Specific interventions the therapist used during the session.
        - **R (Response)**: How the patient responded to the interventions.
@@ -165,14 +201,18 @@ export const processTranscriptWithClaude = async (
     Session Context:
     - Patient Name: ${patientName}
     
-    Recognition Support:
+    ${
+			recordingMethod === "full_session" ?
+				`Recognition Support:
     The transcription below includes speaker labels (e.g., [spk_0], [spk_1]). 
     IMPORTANT: Identify which speaker is "${patientName}" (the patient) and which is the Therapist based on the content of their Speech.
     - Usually, one speaker asks questions and provides guidance (Therapist).
     - The other speaker shares feelings, symptoms, and life details (${patientName}).
-    - Use this mapping to accurately attribute all clinical findings.
+    - Use this mapping to accurately attribute all clinical findings.`
+			:	`Note: This is a therapist's dictation, not a dialogue. There are NO speaker labels to identify.`
+		}
 
-     Transcript:
+     ${recordingMethod === "dictated_summary" ? "Dictation" : "Transcript"}:
     "${transcriptText}"
     ${ultraPsychologicalAnalysis}
     
@@ -400,26 +440,55 @@ export const performAiAction = async (
 export const processWithLlama3 = async (
 	transcriptText: string,
 	targetLanguage: string = "Spanish",
-	noteFormat: "SOAP" | "DAP" | "BIRP" = "SOAP",
+	noteFormat: "SOAP" | "DAP" | "BIRP" | "ADMISSION" = "SOAP",
 	patientName: string = "el paciente",
 	patientAge?: number,
 	patientGender?: string,
+	recordingMethod: "full_session" | "dictated_summary" = "full_session",
 ) => {
-	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.
+	// Build recording method context
+	const recordingMethodContext =
+		recordingMethod === "dictated_summary" ?
+			`
+
+RECORDING METHOD: DICTATED SUMMARY (Post-Session)
+This is NOT a full session recording. The therapist is dictating a summary AFTER the session ended.
+
+Key differences in your analysis:
+- The transcript is the therapist's own summary, not a verbatim session recording
+- There is NO patient dialogue to analyze (no diarization needed)
+- Focus on organizing and structuring what the therapist dictated
+- Do NOT analyze "patient speech patterns" or "therapist-patient dynamics" as this is only the therapist speaking
+- Your role is to help format the therapist's dictation into a professional clinical note
+- Be concise and direct - the therapist already synthesized the key points
+`
+		:	`
+
+RECORDING METHOD: FULL SESSION RECORDING
+This is a complete recording of the therapy session with the patient.
+
+Your analysis should:
+- Analyze the full therapeutic interaction and dialogue
+- Identify patient and therapist speech patterns
+- Extract key moments and therapeutic dynamics
+- Provide clinical analysis of the session content
+`;
+
+	const prompt = `You are an expert clinical AI assistant for "Lazo", a premium platform for psychologists and therapists.${recordingMethodContext}
     
 Session Context:
 - Patient Name: ${patientName}
 ${patientAge ? `- Patient Age: ${patientAge}` : ""}
 ${patientGender ? `- Patient Gender: ${patientGender}` : ""}
-- Participants: ${patientName} (Patient) and the Therapist.
+${recordingMethod === "full_session" ? `- Participants: ${patientName} (Patient) and the Therapist.` : "- Recording: Therapist's post-session dictation"}
 
 Processing Task:
-Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata.
+${recordingMethod === "dictated_summary" ? "Structure the therapist's dictated summary into a professional clinical note." : "Analyze the following therapy session transcription and generate a highly structured clinical note and session metadata."}
 
 IMPORTANT - CLINICAL RIGOR:
 - Use professional, clinical language.
 - Be concise but thorough.
-- Avoid generic statements; focus on specific evidence from the transcript.
+- Avoid generic statements; focus on specific evidence from the ${recordingMethod === "dictated_summary" ? "dictation" : "transcript"}.
 
 CRITICAL - NOTE FORMAT INSTRUCTIONS:
 You MUST follow the specific structure for: ${noteFormat}
@@ -434,17 +503,28 @@ ${
 		`- **D (Data)**: Objective and subjective information from the session.
 - **A (Assessment)**: Interpretation of the data and therapeutic progress.
 - **P (Plan)**: Future steps based on the assessment.`
+	: noteFormat === "ADMISSION" ?
+		`- **Motivo de Consulta**: Main reason for seeking therapy.
+- **Antecedentes**: Relevant history of the problem, previous treatments.
+- **Observaciones**: Appearance, attitude, mental state.
+- **Dinámica Familiar/Social**: Life context.
+- **Impresión Diagnóstica**: Preliminary hypothesis.
+- **Plan de Tratamiento**: Initial proposal.`
 	:	`- **B (Behavior)**: Specific observations of patient's behavior.
 - **I (Intervention)**: Specific interventions used during the session.
 - **R (Response)**: How the patient responded to interventions.
 - **P (Plan)**: Recommendations for the next session.`
 }
 
-Recognition Support:
+${
+		recordingMethod === "full_session" ?
+			`Recognition Support:
 The transcription includes speaker labels (e.g., [spk_0], [spk_1]).
-IMPORTANT: Identify which speaker is "${patientName}" (patient) and which is the Therapist based on content.
+IMPORTANT: Identify which speaker is "${patientName}" (patient) and which is the Therapist based on content.`
+		:	`Note: This is a therapist's dictation, not a dialogue. There are NO speaker labels to identify.`
+	}
 
-Transcript:
+${recordingMethod === "dictated_summary" ? "Dictation" : "Transcript"}:
 "${transcriptText}"
 
 Output Format (JSON Only):

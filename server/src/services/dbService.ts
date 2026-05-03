@@ -52,7 +52,7 @@ export const decrementCredits = async (
 	// Free, Pro, or Ultra (standard): decrement regular credits
 	if (profile.credits_remaining > 0) {
 		const { error } = await supabase.rpc("decrement_credits", {
-			user_id: userId,
+			p_user_id: userId,
 		});
 
 		if (error) {
@@ -371,6 +371,8 @@ export const updateProcessingSession = async (
 		temp_result_consumed?: boolean;
 		temp_result_expires_at?: string;
 		error_message?: string;
+		debug_info?: string;
+		duration?: number;
 	},
 ) => {
 	const { data, error } = await supabase

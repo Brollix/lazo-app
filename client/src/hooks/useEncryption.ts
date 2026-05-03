@@ -1,12 +1,6 @@
-/**
- * useEncryption Hook
- *
- * Provides secure client-side encryption using Web Crypto API
- * - PBKDF2 key derivation with 100,000 iterations
- * - AES-256-GCM authenticated encryption
- * - Random 16-byte salt per user
- * - Password stored in sessionStorage (cleared on logout)
- */
+import { useMemo } from "react";
+import { EncryptionService } from "../services/encryptionService";
+import { supabase } from "../supabaseClient";
 
 const PASSWORD_STORAGE_KEY = "lazo_encryption_password";
 const MASTER_KEY_STORAGE_KEY = "lazo_master_key";
@@ -128,15 +122,15 @@ export const useEncryption = () => {
 	};
 
 	/**
-	 * Decrypt data using AES-256-GCM
+	 * Decrypt raw string using AES-256-GCM (for master key decryption)
 	 * @param ciphertext - Base64-encoded ciphertext
 	 * @param saltBase64 - User's salt from database
-	 * @returns Decrypted data (parsed from JSON)
+	 * @returns Decrypted string (NOT parsed as JSON)
 	 */
-	const decrypt = async (
+	const decryptRaw = async (
 		ciphertext: string,
 		saltBase64: string,
-	): Promise<any> => {
+	): Promise<string> => {
 		const password = sessionStorage.getItem(PASSWORD_STORAGE_KEY);
 		if (!password) {
 			throw new Error(
@@ -160,11 +154,12 @@ export const useEncryption = () => {
 			const combined = base64ToArrayBuffer(ciphertext);
 			const combinedArray = new Uint8Array(combined);
 
-			// Extract IV (first 12 bytes) and encrypted data
+			// Extract IV (first 12 bytes) and encrypted data (rest includes authTag)
+			// AES-GCM authTag is automatically handled by the browser's crypto.subtle
 			const iv = combinedArray.slice(0, 12);
 			const encryptedData = combinedArray.slice(12);
 
-			// Decrypt
+			// Decrypt (authTag is automatically verified by AES-GCM)
 			const decryptedBuffer = await crypto.subtle.decrypt(
 				{
 					name: "AES-GCM",
@@ -174,16 +169,29 @@ export const useEncryption = () => {
 				encryptedData,
 			);
 
-			// Parse JSON
+			// Return as string (NO JSON parsing)
 			const decoder = new TextDecoder();
-			const decryptedString = decoder.decode(decryptedBuffer);
-			return JSON.parse(decryptedString);
+			return decoder.decode(decryptedBuffer);
 		} catch (error: any) {
-			console.error("Decryption error:", error);
+			console.error("Raw decryption error:", error);
 			throw new Error(
 				"Error al desencriptar los datos. La contraseña puede ser incorrecta o los datos están corruptos.",
 			);
 		}
+	};
+
+	/**
+	 * Decrypt data using AES-256-GCM
+	 * @param ciphertext - Base64-encoded ciphertext
+	 * @param saltBase64 - User's salt from database
+	 * @returns Decrypted data (parsed from JSON)
+	 */
+	const decrypt = async (
+		ciphertext: string,
+		saltBase64: string,
+	): Promise<any> => {
+		const decryptedString = await decryptRaw(ciphertext, saltBase64);
+		return JSON.parse(decryptedString);
 	};
 
 	/**
@@ -209,10 +217,10 @@ export const useEncryption = () => {
 	};
 
 	/**
-	 * Check if encryption is set up (password exists)
+	 * Check if encryption is set up (password or master key exists)
 	 */
 	const isSetup = (): boolean => {
-		return !!sessionStorage.getItem(PASSWORD_STORAGE_KEY);
+		return !!(sessionStorage.getItem(PASSWORD_STORAGE_KEY) || sessionStorage.getItem(MASTER_KEY_STORAGE_KEY));
 	};
 
 	/**
@@ -231,7 +239,7 @@ export const useEncryption = () => {
 
 	/**
 	 * Encrypt data using AES-256-GCM with MASTER KEY
-	 * This is the new standard
+	 * This is the current standard
 	 */
 	const encryptWithMasterKey = async (
 		data: any,
@@ -241,7 +249,7 @@ export const useEncryption = () => {
 		const encoder = new TextEncoder();
 		const keyMaterial = await crypto.subtle.importKey(
 			"raw",
-			Buffer.from(masterKey, "base64"),
+			base64ToArrayBuffer(masterKey),
 			{ name: "AES-GCM" },
 			false,
 			["encrypt", "decrypt"],
@@ -279,7 +287,7 @@ export const useEncryption = () => {
 			// Import key
 			const keyMaterial = await crypto.subtle.importKey(
 				"raw",
-				Buffer.from(masterKey, "base64"),
+				base64ToArrayBuffer(masterKey),
 				{ name: "AES-GCM" },
 				false,
 				["encrypt", "decrypt"],
@@ -302,23 +310,173 @@ export const useEncryption = () => {
 			const decoder = new TextDecoder();
 			return JSON.parse(decoder.decode(decryptedBuffer));
 		} catch (error) {
-			console.error("Master key decryption error:", error);
+			// Don't log error here as it might be an expected failure during fallback
 			throw new Error("Failed to decrypt data with master key");
 		}
 	};
 
-	return {
-		generateSalt,
-		deriveKey,
-		encrypt,
-		decrypt,
-		setPassword,
-		getPassword,
-		clearPassword,
-		setMasterKey,
-		getMasterKey,
-		encryptWithMasterKey,
-		decryptWithMasterKey,
-		isSetup,
+	/**
+	 * Decrypt data using multiple fallback strategies
+	 */
+	const decryptWithFallback = async (
+		ciphertext: string,
+		saltBase64: string,
+		userId: string,
+	): Promise<any> => {
+		if (!ciphertext) return null;
+
+		const errors: string[] = [];
+
+		// 1. Try Master Key (current standard)
+		const masterKey = getMasterKey();
+		if (masterKey) {
+			try {
+				const result = await decryptWithMasterKey(ciphertext, masterKey);
+				console.log("✓ Decrypted with Master Key");
+				return result;
+			} catch (e: any) {
+				errors.push(`Master Key: ${e.message}`);
+			}
+		}
+
+		// 2. Try PBKDF2/AES-GCM (previous system)
+		if (saltBase64) {
+			try {
+				const result = await decrypt(ciphertext, saltBase64);
+				console.log("✓ Decrypted with PBKDF2");
+				return result;
+			} catch (e: any) {
+				errors.push(`PBKDF2: ${e.message}`);
+			}
+		}
+
+		// 3. Try CryptoJS (absolute legacy system)
+		try {
+			const result = EncryptionService.decryptData(ciphertext, userId);
+			console.log("✓ Decrypted with CryptoJS");
+			return result;
+		} catch (e: any) {
+			errors.push(`CryptoJS: ${e.message}`);
+		}
+
+		console.error("All decryption attempts failed:", errors);
+		throw new Error("No se pudo desencriptar el registro con ningún método.");
 	};
+
+	/**
+	 * Encrypt data using the currently active standard (Master Key preferred)
+	 */
+	const encryptWithCurrentStandard = async (
+		data: any,
+		saltBase64: string,
+	): Promise<string> => {
+		const masterKey = getMasterKey();
+		if (masterKey) {
+			return await encryptWithMasterKey(data, masterKey);
+		}
+		// Fallback to PBKDF2 if no master key (though it should be migration time)
+		return await encrypt(data, saltBase64);
+	};
+
+	/**
+	 * Bulk re-encryption of all user data
+	 * Used during passphrase regeneration
+	 */
+	const reEncryptAllUserData = async (
+		newMasterKey: string,
+		saltBase64: string,
+		userId: string,
+		onProgress?: (current: number, total: number) => void,
+	) => {
+		// 1. Fetch all patients
+		const { data: patients, error: pError } = await supabase
+			.from("patients")
+			.select("*")
+			.eq("user_id", userId);
+
+		if (pError) throw pError;
+
+		// 2. Fetch all sessions
+		const { data: sessions, error: sError } = await supabase
+			.from("sessions")
+			.select("*")
+			.eq("user_id", userId);
+
+		if (sError) throw sError;
+
+		const total = (patients?.length || 0) + (sessions?.length || 0);
+		let current = 0;
+
+		// 3. Re-encrypt patients
+		if (patients) {
+			for (const p of patients) {
+				try {
+					const decrypted = await decryptWithFallback(
+						p.encrypted_data,
+						saltBase64,
+						userId,
+					);
+					const reEncrypted = await encryptWithMasterKey(
+						decrypted,
+						newMasterKey,
+					);
+					await supabase
+						.from("patients")
+						.update({ encrypted_data: reEncrypted })
+						.eq("id", p.id);
+				} catch (e) {
+					console.error(`Failed to re-encrypt patient ${p.id}:`, e);
+				}
+				current++;
+				onProgress?.(current, total);
+			}
+		}
+
+		// 4. Re-encrypt sessions
+		if (sessions) {
+			for (const s of sessions) {
+				try {
+					const decrypted = await decryptWithFallback(
+						s.encrypted_data,
+						saltBase64,
+						userId,
+					);
+					const reEncrypted = await encryptWithMasterKey(
+						decrypted,
+						newMasterKey,
+					);
+					await supabase
+						.from("sessions")
+						.update({ encrypted_data: reEncrypted })
+						.eq("id", s.id);
+				} catch (e) {
+					console.error(`Failed to re-encrypt session ${s.id}:`, e);
+				}
+				current++;
+				onProgress?.(current, total);
+			}
+		}
+	};
+
+	return useMemo(
+		() => ({
+			generateSalt,
+			deriveKey,
+			encrypt,
+			decrypt,
+			decryptRaw,
+			setPassword,
+			getPassword,
+			clearPassword,
+			setMasterKey,
+			getMasterKey,
+			encryptWithMasterKey,
+			decryptWithMasterKey,
+			decryptWithFallback,
+			encryptWithCurrentStandard,
+			reEncryptAllUserData,
+			isSetup,
+		}),
+		[],
+	);
 };

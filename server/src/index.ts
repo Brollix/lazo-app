@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+import { RecoveryPhraseService } from "./services/recoveryPhraseService";
 
 // Load environment variables
 // Priority: .env.local (development/test) > .env (production)
@@ -122,7 +124,6 @@ import {
 	updateRecoveryInfo,
 	supabase,
 } from "./services/dbService";
-import { RecoveryPhraseService } from "./services/recoveryPhraseService";
 import { multerErrorHandler, globalErrorHandler } from "./utils/errorHandlers";
 import { sanitizeErrorMessage } from "./utils/errorSanitization";
 
@@ -132,6 +133,74 @@ const upload = multer({
 	limits: {
 		fileSize: 100 * 1024 * 1024, // 100MB limit for audio uploads
 	},
+});
+
+// Auth routes for Recovery Phrase
+app.get("/api/auth/generate-phrase", (req, res) => {
+	try {
+		const phrase = RecoveryPhraseService.generateRecoveryPhrase();
+		const masterKey = RecoveryPhraseService.generateMasterKey();
+		res.json({ phrase, masterKey });
+	} catch (error: any) {
+		res.status(500).json({ error: error.message });
+	}
+});
+
+app.post("/api/auth/setup-recovery", async (req: any, res: any) => {
+	try {
+		const { userId, phrase, masterKey, password } = req.body;
+
+		if (!userId || !phrase || !masterKey || !password) {
+			return res.status(400).json({ error: "Missing required fields" });
+		}
+
+		// Verify user exists
+		const profile = await getUserProfile(userId);
+		if (!profile) return res.status(404).json({ error: "User not found" });
+
+		// Update recovery phrase fields
+		// Since we are regenerating, we assume masterKey is new.
+		// We need to fetch salt from profile or use existing.
+		let salt = profile.encryption_salt;
+		if (!salt) {
+			// Generate new salt if missing (should happen if never setup)
+			salt = crypto.randomBytes(16).toString("base64");
+			// Update profile with new salt
+			await supabase
+				.from("profiles")
+				.update({ encryption_salt: salt })
+				.eq("id", userId);
+		}
+
+		const encryptedKeys = RecoveryPhraseService.createMasterKeyEncryption(
+			masterKey,
+			password,
+			salt,
+			phrase,
+		);
+
+		// Store hash of phrase for verification
+		const phraseHash = RecoveryPhraseService.hashRecoveryPhrase(phrase);
+
+		// Update profile
+		const { error } = await supabase
+			.from("profiles")
+			.update({
+				encrypted_master_key_password: encryptedKeys.password,
+				encrypted_master_key_recovery_phrase: encryptedKeys.phrase,
+				recovery_phrase_hash: phraseHash,
+				encryption_setup_completed: true,
+				updated_at: new Date().toISOString(),
+			})
+			.eq("id", userId);
+
+		if (error) throw error;
+
+		res.json({ success: true, message: "Security updated successfully" });
+	} catch (error: any) {
+		console.error("Error setting up recovery:", error);
+		res.status(500).json({ error: error.message });
+	}
 });
 
 app.post(
@@ -151,6 +220,7 @@ app.post(
 			const inputLanguage = req.body.inputLanguage || "es-US";
 			const outputLanguage = req.body.outputLanguage || "Spanish";
 			const noteFormat = req.body.noteFormat || "SOAP";
+			const recordingMethod = req.body.recordingMethod || "full_session"; // "full_session" or "dictated_summary"
 			const patientName = req.body.patientName || "el paciente";
 			const patientAge =
 				req.body.patientAge ? parseInt(req.body.patientAge) : undefined;
@@ -161,7 +231,7 @@ app.post(
 			const patientIdentifier = req.body.patientIdentifier || null; // Ultra Plan: patient ID for long-term memory
 
 			console.log(
-				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}, High Precision: ${useHighPrecision}, Patient ID: ${patientIdentifier || "N/A"}`,
+				`[${sessionId}] Starting processing. Input: ${inputLanguage}, Output: ${outputLanguage}, High Precision: ${useHighPrecision}, Recording Method: ${recordingMethod}, Patient ID: ${patientIdentifier || "N/A"}`,
 			);
 
 			const userId = req.body.userId || "anonymous"; // Should come from Auth header
@@ -175,6 +245,9 @@ app.post(
 			// Check monthly transcription limit for free users
 			const monthlyCheck = await checkMonthlyTranscriptionLimit(userId);
 			if (!monthlyCheck.allowed) {
+				console.log(
+					`[${sessionId}] 403 Block: Monthly transcription limit exceeded for ${userId}`,
+				);
 				return res.status(403).json({
 					message: "monthly_limit_exceeded",
 					used: monthlyCheck.used,
@@ -186,6 +259,9 @@ app.post(
 			// Check Ultra plan's 120 sessions/month hard limit
 			const ultraCheck = await checkUltraSessionLimit(userId);
 			if (!ultraCheck.allowed) {
+				console.log(
+					`[${sessionId}] 403 Block: Ultra session limit exceeded for ${userId}`,
+				);
 				return res.status(403).json({
 					message: "ultra_monthly_limit_exceeded",
 					used: ultraCheck.used,
@@ -198,6 +274,7 @@ app.post(
 			// Free plan: check regular credits
 			if (profile.plan_type === "free") {
 				if (profile.credits_remaining <= 0) {
+					console.log(`[${sessionId}] 403 Block: Free plan credits exhausted`);
 					return res.status(403).json({
 						message: "monthly_limit_exceeded",
 						error:
@@ -213,6 +290,7 @@ app.post(
 			// Pro plan: check 100 sessions/month limit
 			if (profile.plan_type === "pro") {
 				if (profile.credits_remaining <= 0) {
+					console.log(`[${sessionId}] 403 Block: Pro plan credits exhausted`);
 					return res.status(403).json({
 						message:
 							"Límite mensual alcanzado (100 sesiones). Espera la renovación o actualiza a Ultra.",
@@ -225,6 +303,9 @@ app.post(
 			// Ultra plan with high precision: check premium credits
 			if (profile.plan_type === "ultra" && useHighPrecision) {
 				if (profile.premium_credits_remaining <= 0) {
+					console.log(
+						`[${sessionId}] 403 Block: Ultra Premium credits exhausted`,
+					);
 					return res.status(403).json({
 						message:
 							"Créditos premium agotados. Usa modo estándar o espera la renovación mensual.",
@@ -236,6 +317,9 @@ app.post(
 			// Ultra plan with standard mode: check standard credits
 			if (profile.plan_type === "ultra" && !useHighPrecision) {
 				if (profile.credits_remaining <= 0) {
+					console.log(
+						`[${sessionId}] 403 Block: Ultra Standard credits exhausted`,
+					);
 					return res.status(403).json({
 						message:
 							"Créditos estándar agotados. Espera la renovación mensual.",
@@ -246,6 +330,9 @@ app.post(
 
 			// Additional validation: High Precision only for Ultra users
 			if (useHighPrecision && profile.plan_type !== "ultra") {
+				console.log(
+					`[${sessionId}] 403 Block: High Precision locked for non-Ultra user`,
+				);
 				return res.status(403).json({
 					message:
 						"La opción de Alta Precisión solo está disponible para usuarios del plan Ultra.",
@@ -602,6 +689,7 @@ app.post(
 								patientGender,
 								true, // isUltraPlan
 								historicalContext,
+								recordingMethod,
 							);
 						} catch (error: any) {
 							console.error(
@@ -619,6 +707,7 @@ app.post(
 								patientName,
 								patientAge,
 								patientGender,
+								recordingMethod,
 							);
 						}
 					} else {
@@ -633,6 +722,7 @@ app.post(
 							patientName,
 							patientAge,
 							patientGender,
+							recordingMethod,
 						);
 					}
 
@@ -712,6 +802,7 @@ app.post(
 					await updateProcessingSession(dbSessionId, {
 						status: "error",
 						error_message: sanitizedError,
+						debug_info: `Error: ${err.message}\nStack: ${err.stack}`,
 					});
 				}
 			})(); // End background async IIFE
@@ -735,8 +826,12 @@ app.get("/api/session/:sessionId", async (req: any, res: any) => {
 		// Return encrypted_result if available, otherwise legacy result
 		const response = {
 			status: session.status,
-			data: session.encrypted_result || session.result, // Prefer encrypted
-			encrypted_result: session.encrypted_result, // New field for client
+			// Include temp_result for polling fallback (client needs to consume and encrypt this)
+			// Return encrypted_result if available, otherwise temp_result (for polling flow), otherwise legacy result
+			data: session.encrypted_result || session.temp_result || session.result,
+			encrypted_result: session.encrypted_result,
+			temp_result: session.temp_result, // Explicitly send this for the client logic
+			temp_result_consumed: session.temp_result_consumed,
 			is_legacy: session.is_legacy || false,
 			error: session.error_message,
 		};
@@ -1029,6 +1124,76 @@ app.get(
 	},
 );
 
+// GET user settings
+app.get("/api/settings", async (req: any, res: any) => {
+	try {
+		const userId = req.query.userId;
+
+		if (!userId) {
+			return res.status(400).json({
+				error: "Missing required parameter: userId",
+			});
+		}
+
+		const { data, error } = await supabase
+			.from("profiles")
+			.select("settings")
+			.eq("id", userId)
+			.single();
+
+		if (error) throw error;
+
+		// Return settings or default if null
+		const settings = data?.settings || {
+			features: {
+				paymentsModule: true,
+				advancedAnalytics: true,
+			},
+			preferences: {
+				defaultDocFormat: "SOAP",
+				autoSaveInterval: 30,
+			},
+		};
+
+		res.json({ settings });
+	} catch (error: any) {
+		console.error("Error fetching settings:", error);
+		res.status(500).json({
+			error: "Error fetching settings",
+			details: error.message,
+		});
+	}
+});
+
+// PUT user settings
+app.put("/api/settings", async (req: any, res: any) => {
+	try {
+		const { userId, settings } = req.body;
+
+		if (!userId || !settings) {
+			return res.status(400).json({
+				error: "Missing required parameters: userId, settings",
+			});
+		}
+
+		const { error } = await supabase
+			.from("profiles")
+			.update({ settings })
+			.eq("id", userId);
+
+		if (error) throw error;
+
+		console.log(`[API] Settings updated for user ${userId}`);
+		res.json({ success: true, message: "Settings updated successfully" });
+	} catch (error: any) {
+		console.error("Error updating settings:", error);
+		res.status(500).json({
+			error: "Error updating settings",
+			details: error.message,
+		});
+	}
+});
+
 app.post("/api/ai-action", async (req: any, res: any) => {
 	try {
 		const { transcriptText, actionType, targetLanguage, patientName } =
@@ -1161,6 +1326,30 @@ app.get("/api/plans", async (req, res) => {
 	}
 });
 
+app.get("/api/prices", async (req, res) => {
+	try {
+		const { data: plans, error } = await supabase
+			.from("subscription_plans")
+			.select("plan_type, price_ars")
+			.in("plan_type", ["pro", "ultra"]);
+
+		if (error) throw error;
+
+		const proPrice =
+			plans.find((p) => p.plan_type === "pro")?.price_ars || 19500;
+		const ultraPrice =
+			plans.find((p) => p.plan_type === "ultra")?.price_ars || 48500;
+
+		res.json({
+			pro: Number(proPrice),
+			ultra: Number(ultraPrice),
+		});
+	} catch (error: any) {
+		console.error("Error fetching prices:", error);
+		res.status(500).json({ error: "Error al obtener precios" });
+	}
+});
+
 app.get("/api/user-plan/:userId", async (req, res) => {
 	const profile = await getUserProfile(req.params.userId);
 	res.json(profile);
@@ -1217,7 +1406,6 @@ app.post("/api/create-subscription", async (req, res) => {
 });
 
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
-import crypto from "crypto";
 
 // Determine MercadoPago mode (test or production) - same logic as subscriptionService
 const mpMode = (process.env.MP_MODE || "production").toLowerCase();

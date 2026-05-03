@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 export interface UserPlanData {
 	plan_type: string | null;
@@ -46,18 +46,21 @@ export const useUserPlan = (userId: string | undefined) => {
 		fetchPlan();
 	}, [userId]);
 
-	const refreshPlan = () => {
+	const refreshPlan = useCallback(() => {
 		fetchPlan();
-	};
+	}, [userId]); // Depends on userId as fetchPlan uses it
 
-	return {
-		planData,
-		loading,
-		error,
-		refreshPlan,
-		isFree: planData?.plan_type === "free",
-		isPro: planData?.plan_type === "pro",
-		isUltra: planData?.plan_type === "ultra",
-		creditsExhausted: (planData?.credits_remaining ?? 0) <= 0,
-	};
+	return useMemo(
+		() => ({
+			planData,
+			loading,
+			error,
+			refreshPlan,
+			isFree: planData?.plan_type === "free",
+			isPro: planData?.plan_type === "pro",
+			isUltra: planData?.plan_type === "ultra",
+			creditsExhausted: (planData?.credits_remaining ?? 0) <= 0,
+		}),
+		[planData, loading, error, refreshPlan],
+	);
 };

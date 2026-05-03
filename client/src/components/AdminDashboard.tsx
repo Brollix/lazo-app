@@ -185,8 +185,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 	const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 	useEffect(() => {
-		fetchData();
-	}, []);
+		if (userId) {
+			fetchData();
+		}
+	}, [userId]);
 
 	const fetchData = async () => {
 		setLoading(true);

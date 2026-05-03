@@ -39,7 +39,7 @@ import {
 	ListItemIcon,
 } from "@mui/material";
 import { supabase } from "../supabaseClient";
-import { EncryptionService } from "../services/encryptionService";
+import { useEncryption } from "../hooks/useEncryption";
 import { getBackgrounds, getExtendedShadows } from "../styles.theme";
 import { Settings } from "./Settings";
 import { AlertModal } from "./AlertModal";
@@ -84,6 +84,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 	);
 	const { planData, refreshPlan } = useUserPlan(userId);
 	const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+	const [creatingSession, setCreatingSession] = useState(false);
 
 	// Action Menu State
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -100,6 +101,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 		message: "",
 		severity: "info",
 	});
+
+	const encryption = useEncryption();
 
 	const handleMenuOpen = (
 		event: React.MouseEvent<HTMLButtonElement>,
@@ -161,6 +164,110 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 		}
 	};
 
+	const handleCreateNewSession = async () => {
+		if (!userId) {
+			setAlertModal({
+				open: true,
+				message: "Error: No se pudo autenticar al usuario.",
+				severity: "error",
+			});
+			return;
+		}
+
+		// Verificar que tenemos las claves de encriptación disponibles
+		const hasPassword = encryption.getPassword();
+		const hasMasterKey = encryption.getMasterKey();
+		if (!hasPassword && !hasMasterKey) {
+			setAlertModal({
+				open: true,
+				message: "Error: La contraseña de encriptación no está disponible. Por favor, cierra sesión e inicia sesión nuevamente.",
+				severity: "error",
+			});
+			return;
+		}
+
+		try {
+			setCreatingSession(true);
+
+			// Fetch encryption salt
+			const { data: profile } = await supabase
+				.from("profiles")
+				.select("encryption_salt")
+				.eq("id", userId)
+				.single();
+
+			const salt = profile?.encryption_salt || "";
+
+			// Get next session number
+			const { data: nextNum, error: rpcError } = await supabase.rpc(
+				"get_next_session_number",
+				{ p_patient_id: patient.id },
+			);
+
+			if (rpcError) throw rpcError;
+
+			// Prepare empty session data
+			const sessionRecord = {
+				clinical_note: "",
+				summary: null,
+				topics: null,
+				transcript: null,
+				session_time: newSessionTime,
+				full_analysis_data: null,
+			};
+
+			const encryptedData = await encryption.encryptWithCurrentStandard(
+				sessionRecord,
+				salt,
+			);
+
+			// Create session in database
+			const { data: newSession, error: insertError } = await supabase
+				.from("sessions")
+				.insert({
+					patient_id: patient.id,
+					user_id: userId,
+					session_number: nextNum,
+					encrypted_data: encryptedData,
+					session_date: newSessionDate,
+					session_time: newSessionTime,
+				})
+				.select()
+				.single();
+
+			if (insertError) throw insertError;
+
+			// Refresh sessions list to show the new empty session
+			await fetchSessions();
+
+			// Close dialog and navigate to the new session
+			setNewSessionDialogOpen(false);
+			
+			// Navigate to the session with the new session data
+			if (newSession) {
+				// Pass the newly created session WITHOUT encrypted_data
+				// para que el Dashboard sepa que es una sesión nueva vacía
+				const sessionToLoad: ClinicalSession = {
+					id: newSession.id,
+					session_number: nextNum,
+					session_date: newSessionDate,
+					session_time: newSessionTime,
+					encrypted_data: "", // Vacío para indicar sesión nueva
+				};
+				onSelectSession(sessionToLoad);
+			}
+		} catch (error: any) {
+			console.error("Error creating session:", error);
+			setAlertModal({
+				open: true,
+				message: `Error al crear la sesión: ${error.message}`,
+				severity: "error",
+			});
+		} finally {
+			setCreatingSession(false);
+		}
+	};
+
 	useEffect(() => {
 		if (patient.id) {
 			fetchSessions();
@@ -179,29 +286,37 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 			if (error) throw error;
 
 			// Verify encryption is set up before attempting to decrypt
-			const canDecrypt = userId && EncryptionService.isSetup();
+			const canDecrypt = userId && encryption.isSetup();
 
-			const mappedSessions = (data || []).map((s: any) => {
-				let sessionTime = s.session_time; // Fallback to column if it exists
-				if (canDecrypt) {
-					try {
-						const decoded = EncryptionService.decryptData(
-							s.encrypted_data,
-							userId!,
-						);
-						if (decoded.session_time) sessionTime = decoded.session_time;
-					} catch (e) {
-						// Fallback to JSON if not encrypted (for old sessions)
+			// Fetch salt
+			let salt = "";
+			if (canDecrypt) {
+				const { data: profile } = await supabase
+					.from("profiles")
+					.select("encryption_salt")
+					.eq("id", userId)
+					.single();
+				salt = profile?.encryption_salt || "";
+			}
+
+			const mappedSessions = await Promise.all(
+				(data || []).map(async (s: any) => {
+					let sessionTime = s.session_time;
+					if (canDecrypt) {
 						try {
-							const decoded = JSON.parse(s.encrypted_data);
-							if (decoded.session_time) sessionTime = decoded.session_time;
-						} catch (e2) {
+							const decoded = await encryption.decryptWithFallback(
+								s.encrypted_data,
+								salt,
+								userId!,
+							);
+							if (decoded?.session_time) sessionTime = decoded.session_time;
+						} catch (e) {
 							console.warn("Failed to decrypt or parse session", s.id);
 						}
 					}
-				}
-				return { ...s, session_time: sessionTime };
-			});
+					return { ...s, session_time: sessionTime };
+				}),
+			);
 
 			setSessions(mappedSessions);
 		} catch (error) {
@@ -492,18 +607,24 @@ export const SessionsList: React.FC<SessionsListProps> = ({
 					<Button
 						onClick={() => setNewSessionDialogOpen(false)}
 						color="inherit"
+						disabled={creatingSession}
 					>
 						Cancelar
 					</Button>
 					<Button
-						onClick={() => {
-							onNewSession(newSessionDate, newSessionTime);
-							setNewSessionDialogOpen(false);
-						}}
+						onClick={handleCreateNewSession}
 						variant="contained"
 						sx={{ borderRadius: 2 }}
+						disabled={creatingSession}
 					>
-						Confirmar e Iniciar
+						{creatingSession ? (
+							<>
+								<CircularProgress size={20} sx={{ mr: 1 }} />
+								Creando...
+							</>
+						) : (
+							"Confirmar e Iniciar"
+						)}
 					</Button>
 				</DialogActions>
 			</Dialog>

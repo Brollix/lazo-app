@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,8 +12,8 @@ import {
 	Stack,
 	Divider,
 	alpha,
+	useTheme,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -23,8 +23,7 @@ import Psychology from "@mui/icons-material/Psychology";
 import { GlassCard, StyledDropzone } from "./UploaderStyles";
 import { getGradients, typographyExtended } from "../styles.theme";
 import { UpgradeToProModal } from "./UpgradeToProModal";
-import { supabase } from "../supabaseClient";
-import { useEncryption } from "../hooks/useEncryption";
+import { useSessionProcessing } from "../contexts/SessionProcessingContext";
 
 // Define the response structure
 export interface Topic {
@@ -91,7 +90,9 @@ interface AudioUploaderProps {
 	patientGender?: string;
 	userId?: string;
 	userPlan?: string | null;
-	userSalt?: string | null; // Required for encryption
+	patientId?: string;
+	initialFile?: File | null; // Allow passing a file directly (e.g. from LiveTranscription)
+	forceRecordingMethod?: "full_session" | "dictated_summary"; // Force a specific recording method
 }
 
 // Helper functions for sentiment display
@@ -140,16 +141,18 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	patientGender,
 	userId,
 	userPlan,
-	userSalt,
 	onAnalysisComplete,
 	onAudioSelected,
+	patientId,
 	onClose,
+	initialFile,
+	forceRecordingMethod,
 }) => {
-	const encryption = useEncryption();
+	const { activeSessions, registerSession } = useSessionProcessing();
 	const theme = useTheme();
 	const gradients = getGradients(theme.palette.mode as "light" | "dark");
 
-	const [file, setFile] = useState<File | null>(null);
+	const [file, setFile] = useState<File | null>(initialFile || null);
 
 	const [status, setStatus] = useState<
 		"idle" | "uploading" | "processing" | "completed" | "error"
@@ -158,7 +161,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 	const [errorMessage, setErrorMessage] = useState<string>("");
 	const [inputLang, setInputLang] = useState<string>("es-US");
 	const [outputLang, setOutputLang] = useState<string>("Spanish");
-	const [noteFormat, setNoteFormat] = useState<"SOAP" | "DAP" | "BIRP">("SOAP");
+	const [noteFormat, setNoteFormat] = useState<
+		"SOAP" | "DAP" | "BIRP" | "ADMISSION"
+	>("SOAP");
+	const [recordingMethod, setRecordingMethod] = useState<
+		"full_session" | "dictated_summary"
+	>(forceRecordingMethod || "full_session");
 	const [patientIdentifier, setPatientIdentifier] = useState<string>("");
 	const [audioDuration, setAudioDuration] = useState<number | null>(null);
 	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -172,188 +180,66 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
 	const [isExporting, setIsExporting] = useState(false);
 
-	// Supabase Realtime subscription for receiving processing results
-	React.useEffect(() => {
-		if (!processingSessionId || !userId || !userSalt) return;
+	// Refs for callbacks to remove them from useEffect dependencies
+	const onAnalysisCompleteRef = useRef(onAnalysisComplete);
+	const onAudioSelectedRef = useRef(onAudioSelected);
 
-		console.log(`[Realtime] Subscribing to session ${processingSessionId}`);
+	const activeSessionId = useRef<string | null>(null);
 
-		// Timeout handler: if no response after 5 minutes, show error
-		const timeoutId = setTimeout(
-			() => {
-				console.error(
-					"[Realtime] Processing timeout - no response after 5 minutes",
-				);
-				setErrorMessage(
-					"El procesamiento está tardando más de lo esperado. Por favor, intenta de nuevo o contacta soporte si el problema persiste.",
-				);
-				setStatus("error");
-				setProcessingSessionId(null);
-			},
-			5 * 60 * 1000,
-		); // 5 minutes
+	useEffect(() => {
+		onAnalysisCompleteRef.current = onAnalysisComplete;
+		onAudioSelectedRef.current = onAudioSelected;
+	}, [onAnalysisComplete, onAudioSelected]);
 
-		const subscription = supabase
-			.channel(`processing_session_${processingSessionId}`)
-			.on(
-				"postgres_changes",
-				{
-					event: "UPDATE",
-					schema: "public",
-					table: "processing_sessions",
-					filter: `id=eq.${processingSessionId}`,
-				},
-				async (payload) => {
-					console.log("[Realtime] Received update:", payload);
-					clearTimeout(timeoutId); // Clear timeout on successful response
+	// Simplified Effect to sync with Global Context
+	useEffect(() => {
+		// Identify if there is an active session for this specific upload
+		const sessionId = processingSessionId;
+		if (!sessionId) return;
 
-					const session = payload.new as any;
+		const session = activeSessions[sessionId];
+		if (!session) return;
 
-					// Check if temp_result is available and not consumed
-					if (session.temp_result && !session.temp_result_consumed) {
-						console.log("[Realtime] Temp result received, encrypting...");
+		// Sync status
+		if (session.status !== status) {
+			setStatus(session.status);
+		}
 
-						try {
-							// 1. Encrypt result with user's password + salt
-							const encryptedResult = await encryption.encrypt(
-								session.temp_result,
-								userSalt,
-							);
+		// Sync error
+		if (session.error && session.error !== errorMessage) {
+			setErrorMessage(session.error);
+		}
 
-							console.log("[Realtime] Result encrypted, saving...");
+		// Handle completion
+		if (session.status === "completed" && session.result) {
+			if (activeSessionId.current === sessionId) return; // Already handled
+			activeSessionId.current = sessionId;
 
-							// 2. Save encrypted result to server
-							const apiUrl = (import.meta.env.VITE_API_URL || "").trim();
-							const saveResponse = await fetch(
-								`${apiUrl}/api/save-encrypted-result`,
-								{
-									method: "POST",
-									headers: { "Content-Type": "application/json" },
-									body: JSON.stringify({
-										sessionId: processingSessionId,
-										encryptedResult: encryptedResult,
-										userId: userId,
-									}),
-								},
-							);
+			const data = {
+				...session.result,
+				noteFormat: noteFormat,
+			};
 
-							if (!saveResponse.ok) {
-								throw new Error("Failed to save encrypted result");
-							}
+			setResult(data);
 
-							console.log("[Realtime] Encrypted result saved");
+			// Execute callbacks
+			if (onAnalysisCompleteRef.current) {
+				onAnalysisCompleteRef.current(data);
+			}
+			if (file && onAudioSelectedRef.current) {
+				onAudioSelectedRef.current(file);
+			}
 
-							// 3. Clear temp_result from server for security
-							await fetch(`${apiUrl}/api/clear-temp-result`, {
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									sessionId: processingSessionId,
-									userId: userId,
-								}),
-							});
-
-							console.log("[Realtime] Temp result cleared from server");
-
-							// 4. Save patient summary if Ultra plan and patientIdentifier provided
-							if (
-								userPlan === "ultra" &&
-								session.temp_result.patientIdentifier
-							) {
-								try {
-									const summaryText =
-										session.temp_result.analysis?.clinical_note ||
-										session.temp_result.analysis?.summary ||
-										"";
-
-									if (summaryText) {
-										const encryptedSummary = await encryption.encrypt(
-											summaryText,
-											userSalt,
-										);
-
-										await fetch(`${apiUrl}/api/save-patient-summary`, {
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({
-												userId: userId,
-												patientIdentifier:
-													session.temp_result.patientIdentifier,
-												encryptedSummary: encryptedSummary,
-											}),
-										});
-
-										console.log("[Patient Summary] Saved successfully");
-									}
-								} catch (summaryError) {
-									console.error(
-										"[Patient Summary] Error saving:",
-										summaryError,
-									);
-									// Don't fail main flow if summary fails
-								}
-							}
-
-							// 5. Display result to user
-							const data: ProcessSessionResponse = {
-								message: "Procesamiento completado",
-								transcript: session.temp_result.transcript || "",
-								analysis: session.temp_result.analysis,
-								biometry: session.temp_result.biometry,
-								noteFormat: noteFormat,
-								hasHistoricalContext: session.temp_result.hasHistoricalContext,
-								patientIdentifier: session.temp_result.patientIdentifier,
-							};
-
-							setResult(data);
-							setStatus("completed");
-							onAnalysisComplete?.(data);
-							if (file) {
-								onAudioSelected?.(file);
-							}
-						} catch (error) {
-							console.error("[Realtime] Error processing result:", error);
-							setErrorMessage(
-								"Error al procesar el resultado cifrado. Por favor, intenta de nuevo.",
-							);
-							setStatus("error");
-						}
-					}
-
-					// Handle error status
-					if (session.status === "error") {
-						console.error(
-							"[Realtime] Processing error:",
-							session.error_message,
-						);
-						clearTimeout(timeoutId); // Clear timeout on error
-						setErrorMessage(
-							session.error_message || "Error durante el procesamiento",
-						);
-						setStatus("error");
-					}
-				},
-			)
-			.subscribe((status) => {
-				console.log("[Realtime] Subscription status:", status);
-			});
-
-		// Cleanup on unmount
-		return () => {
-			console.log("[Realtime] Unsubscribing");
-			clearTimeout(timeoutId); // Clear timeout on cleanup
-			subscription.unsubscribe();
-		};
+			// Optional: auto-clear from global context after consumption if desired
+			// clearSession(sessionId);
+		}
 	}, [
 		processingSessionId,
-		userId,
-		userSalt,
-		encryption,
+		activeSessions,
+		status,
+		errorMessage,
 		noteFormat,
 		file,
-		onAnalysisComplete,
-		onAudioSelected,
-		userPlan,
 	]);
 
 	const handleExportMedicalReport = async () => {
@@ -367,7 +253,8 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					sessionId:
-						(result as any).sessionId || result.transcript.substring(0, 10), // Fallback if sessionId not directly in result
+						(result as { sessionId?: string }).sessionId ||
+						result.transcript.substring(0, 10), // Fallback if sessionId not directly in result
 					userId: userId,
 				}),
 			});
@@ -403,6 +290,15 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 			setResult(null);
 		}
 	}, []);
+
+	// Effect to handle initialFile changes
+	React.useEffect(() => {
+		if (initialFile) {
+			setFile(initialFile);
+			setStatus("idle");
+			setResult(null);
+		}
+	}, [initialFile]);
 
 	// Extract audio duration
 	React.useEffect(() => {
@@ -464,6 +360,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 		formData.append("inputLanguage", inputLang);
 		formData.append("outputLanguage", outputLang);
 		formData.append("noteFormat", noteFormat);
+		formData.append("recordingMethod", recordingMethod);
 		if (patientName) {
 			formData.append("patientName", patientName);
 		}
@@ -580,31 +477,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 				}
 			}
 
-			const initResponse = await response.json();
+			const data = await response.json();
+			console.log("Upload response:", data);
 
-			if (initResponse.sessionId) {
-				const sessionId = initResponse.sessionId;
-				console.log("Procesamiento iniciado, sessionId:", sessionId);
-
-				// Set processingSessionId to trigger Realtime subscription
-				// The useEffect will handle receiving the result via Realtime
-				setProcessingSessionId(sessionId);
-
-				// Result will be received via Realtime subscription
-				// No need to poll - Supabase will notify us when temp_result is ready
-				console.log("[Upload] Waiting for Realtime notification...");
-			} else {
-				const data: ProcessSessionResponse = initResponse;
-				setResult(data);
-				setStatus("completed");
-				onAnalysisComplete?.(data);
-				if (file) {
-					onAudioSelected?.(file);
-				}
-			}
-		} catch (error: any) {
-			console.error("Error en la subida", error);
-			let message = error.message || "Algo salió mal al procesar la sesión";
+			// Register in Global Context
+			registerSession(data.sessionId, patientId, file);
+			setProcessingSessionId(data.sessionId);
+			// Status will be synced via useEffect
+		} catch (error: unknown) {
+			const err = error as Error;
+			console.error("Upload error:", err);
+			let message = err.message || "Algo salió mal al procesar la sesión";
 
 			// Network errors
 			if (
@@ -707,7 +590,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										label="Formato de Nota"
 										value={noteFormat}
 										onChange={(e) =>
-											setNoteFormat(e.target.value as "SOAP" | "DAP" | "BIRP")
+											setNoteFormat(
+												e.target.value as "SOAP" | "DAP" | "BIRP" | "ADMISSION",
+											)
 										}
 										SelectProps={{ native: true }}
 										fullWidth
@@ -717,8 +602,39 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 										<option value="SOAP">Formato SOAP</option>
 										<option value="DAP">Formato DAP</option>
 										<option value="BIRP">Formato BIRP</option>
+										<option value="ADMISSION">Entrevista de Admisión</option>
 									</TextField>
 								</Stack>
+
+								{!forceRecordingMethod && (
+									<TextField
+										select
+										label="Tipo de Grabación"
+										value={recordingMethod}
+										onChange={(e) =>
+											setRecordingMethod(
+												e.target.value as "full_session" | "dictated_summary",
+											)
+										}
+										SelectProps={{ native: true }}
+										fullWidth
+										variant="outlined"
+										size="small"
+										helperText={
+											recordingMethod === "full_session" ?
+												"Sesión completa grabada con el paciente (análisis profundo)"
+											:	"Resumen dictado por el terapeuta después de la sesión (transcripción rápida)"
+										}
+									>
+										<option value="full_session">
+											Sesión Completa con Paciente
+										</option>
+										<option value="dictated_summary">
+											Resumen Dictado (Post-Sesión)
+										</option>
+									</TextField>
+								)}
+
 
 								{/* Ultra Plan Feature: Patient Identifier for Memory */}
 								{userPlan === "ultra" && (

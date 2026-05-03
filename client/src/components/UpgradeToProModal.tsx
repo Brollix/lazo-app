@@ -152,10 +152,10 @@ export const UpgradeToProModal: React.FC<UpgradeToProModalProps> = ({
 
 					<Stack spacing={1}>
 						{[
-							"Grabaciones ilimitadas cada mes",
-							"Transcripción Whisper-v3 de alta calidad",
-							"Análisis con Claude Sonnet 3.5",
-							"Asistente IA 24/7 integrado",
+							"100 sesiones mensuales",
+							"El Asistente de Redacción ideal para dictados",
+							"Transcripción rápida Whisper + Llama 3.3",
+							"Notas SOAP/DAP/BIRP estándar",
 							"Soporte prioritario por WhatsApp",
 							"Exportación a PDF/Word",
 						].map((feature, i) => (
